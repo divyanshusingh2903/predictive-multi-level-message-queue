@@ -1,0 +1,75 @@
+# Build output
+build/
+out/
+cmake-build-*/
+
+# CMake artifacts
+CMakeCache.txt
+CMakeFiles/
+CMakeScripts/
+cmake_install.cmake
+install_manifest.txt
+CTestTestfile.cmake
+_deps/
+
+# Generated protobuf/gRPC files
+*.pb.cc
+*.pb.h
+*.grpc.pb.cc
+*.grpc.pb.h
+
+# Compiled object files
+*.o
+*.obj
+*.a
+*.so
+*.so.*
+*.dylib
+*.dll
+*.lib
+
+# Executables
+*.exe
+*.out
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.venv/
+venv/
+env/
+*.egg-info/
+dist/
+.eggs/
+.mypy_cache/
+.ruff_cache/
+
+# ML model artifacts
+*.pkl
+*.joblib
+*.model
+*.bin
+ml_engine/models/
+
+# IDE / editor
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Logs and benchmark output
+*.log
+benchmarks/results/
+benchmarks/output/
+
+# Coverage / profiling
+*.gcov
+*.gcda
+*.gcno
+coverage/
+*.profraw
+*.profdata

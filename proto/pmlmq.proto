@@ -1,0 +1,92 @@
+syntax = "proto3";
+
+// pmlmq_rpc is intentionally distinct from the pmlmq C++ namespace to
+// avoid symbol collisions with the server-side implementation headers.
+package pmlmq_rpc;
+
+option cc_generic_services = false;
+
+// ── Registration ──────────────────────────────────────────────────────────────
+
+message RegisterProducerRequest {}
+
+message RegisterProducerResponse {
+    string producer_id = 1;
+}
+
+message RegisterConsumerRequest {}
+
+message RegisterConsumerResponse {
+    string consumer_id = 1;
+}
+
+// ── Producer operations ───────────────────────────────────────────────────────
+
+message SubmitRequest {
+    string              producer_id = 1;
+    bytes               payload     = 2;
+    map<string, string> headers     = 3;
+}
+
+message SubmitResponse {
+    string message_id = 1;
+}
+
+// ── Consumer operations ───────────────────────────────────────────────────────
+
+message PullRequest {
+    string consumer_id = 1;
+    // Maximum milliseconds the server will block waiting for a message.
+    // 0 = use the server's configured default.
+    int64 timeout_ms   = 2;
+}
+
+message PulledMessage {
+    string              message_id = 1;
+    bytes               payload    = 2;
+    map<string, string> headers    = 3;
+}
+
+message PullResponse {
+    // Exactly one of these is set.
+    bool          timed_out = 1;   // true when no message arrived in time
+    PulledMessage message   = 2;   // valid when timed_out == false
+}
+
+// Processing time in milliseconds measured by the consumer.
+// Carried on both Ack and Nack so the server can record it for the
+// Phase 2 ML feedback loop regardless of outcome.
+message AckRequest {
+    string consumer_id        = 1;
+    string message_id         = 2;
+    int64  processing_time_ms = 3;
+}
+
+message AckResponse {}
+
+message NackRequest {
+    string consumer_id        = 1;
+    string message_id         = 2;
+    int64  processing_time_ms = 3;
+    string reason             = 4;
+}
+
+message NackResponse {}
+
+// ── Broker service ────────────────────────────────────────────────────────────
+
+service Broker {
+    // Producers register once and receive a unique ID for all subsequent calls.
+    rpc RegisterProducer (RegisterProducerRequest)  returns (RegisterProducerResponse);
+    rpc Submit           (SubmitRequest)             returns (SubmitResponse);
+
+    // Consumers register once and receive a unique ID.
+    // Pull blocks on the server until a message is available or timeout elapses.
+    // PMLMQ decides which message to dispatch — consumers are tier-blind.
+    rpc RegisterConsumer (RegisterConsumerRequest)   returns (RegisterConsumerResponse);
+    rpc Pull             (PullRequest)               returns (PullResponse);
+
+    // Ack/Nack carry actual processing time for the Phase 2 feedback loop.
+    rpc Ack              (AckRequest)                returns (AckResponse);
+    rpc Nack             (NackRequest)               returns (NackResponse);
+}
