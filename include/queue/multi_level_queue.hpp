@@ -14,67 +14,79 @@
 
 namespace pmlmq {
 
-/// Thread-safe multi-level priority queue.
-///
-/// Messages are routed into one of `num_levels` sub-queues, where index 0
-/// holds the highest-priority messages. `try_dequeue()` and `dequeue()`
-/// always drain index 0 before 1, etc. (strict priority).
-///
-/// Optional aging: a background thread periodically promotes messages that
-/// have been waiting longer than `AgingConfig::threshold`, moving them one
-/// level toward index 0 to prevent starvation of lower-priority queues.
+/// Thread-safe strict-priority queue with optional aging.
+/// Level 0 holds the highest-priority messages; dequeue always drains
+/// level 0 before 1, and so on. Aging promotes stale messages one level
+/// per scan so low-priority queues are not starved.
 class MultiLevelQueue {
 public:
-    /// @param num_levels   Number of priority levels (must be >= 1).
-    /// @param aging        Optional aging configuration. Pass std::nullopt to
-    ///                     disable aging (pure strict-priority mode).
+    /// Build a queue with the given level count and aging policy.
+    /// @param num_levels Number of priority levels; must be >= 1.
+    /// @param aging Optional aging config; nullopt disables the aging thread.
+    /// @return New queue with empty levels.
+    /// @side_effects Spawns a background aging thread if aging is set.
+    /// @throws std::invalid_argument if num_levels == 0.
     explicit MultiLevelQueue(uint8_t num_levels = 3,
                              std::optional<AgingConfig> aging = std::nullopt);
 
     ~MultiLevelQueue();
 
-    // Non-copyable, non-movable (owns a background thread).
+    // Non-copyable, non-movable (owns background thread).
     MultiLevelQueue(const MultiLevelQueue&) = delete;
     MultiLevelQueue& operator=(const MultiLevelQueue&) = delete;
 
-    /// Enqueue a message. Sets `msg.enqueue_time` to now.
+    /// Place a message into its priority level.
+    /// @param msg Message to store; priority must be < num_levels.
+    /// @side_effects Resets msg.enqueue_time to now, appends to the level,
+    ///   increments total size, notifies one blocked dequeue waiter.
     /// @throws std::out_of_range if msg.priority >= num_levels.
     void enqueue(Message msg);
 
-    /// Non-blocking dequeue. Returns the highest-priority available message,
-    /// or std::nullopt if the queue is empty.
+    /// Take the highest-priority message without blocking.
+    /// @return The message, or std::nullopt when all levels are empty.
+    /// @side_effects Removes the message and decrements total size.
     [[nodiscard]] std::optional<Message> try_dequeue();
 
-    /// Blocking dequeue with timeout.
-    /// @param timeout  Maximum time to wait for a message.
-    /// @return         The next message, or std::nullopt on timeout/shutdown.
+    /// Take the highest-priority message, waiting up to timeout.
+    /// @param timeout Maximum time to block for a message.
+    /// @return The message, or std::nullopt on timeout or after shutdown.
+    /// @side_effects Blocks on a condition variable; removes and returns
+    ///   a message when one arrives, decrements total size.
     [[nodiscard]] std::optional<Message> dequeue(
         std::chrono::milliseconds timeout = std::chrono::milliseconds{100});
 
-    /// Signal all blocked `dequeue()` calls to return std::nullopt and stop
-    /// the aging thread. Safe to call from any thread.
+    /// Stop the queue permanently.
+    /// @side_effects Sets the shutdown flag, wakes all blocked dequeue
+    ///   callers (they return nullopt), and joins the aging thread.
+    ///   Safe to call multiple times from any thread.
     void shutdown();
 
-    /// Total number of messages across all levels.
+    /// Total messages across all levels.
+    /// @return Sum of all per-level sizes (lock-free estimate).
     [[nodiscard]] std::size_t size() const noexcept {
         return total_size_.load(std::memory_order_relaxed);
     }
 
-    /// Number of messages in a specific priority level.
+    /// Messages held in one priority level.
+    /// @param level Level index in [0, num_levels).
+    /// @return Number of queued messages at that level.
     /// @throws std::out_of_range if level >= num_levels.
     [[nodiscard]] std::size_t size(uint8_t level) const;
 
+    /// Check whether all levels are empty.
+    /// @return True when total size is 0.
     [[nodiscard]] bool empty() const noexcept {
         return total_size_.load(std::memory_order_relaxed) == 0;
     }
 
+    /// Number of priority levels this queue was built with.
+    /// @return num_levels passed to the constructor.
     [[nodiscard]] uint8_t num_levels() const noexcept { return num_levels_; }
 
 private:
     void run_aging();
 
-    /// Returns the highest-priority non-empty message while the mutex is held.
-    /// Caller must hold mutex_.
+    /// Highest-priority message; caller must hold mutex_.
     std::optional<Message> dequeue_locked();
 
     uint8_t num_levels_;

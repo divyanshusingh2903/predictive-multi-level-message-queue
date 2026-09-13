@@ -11,33 +11,39 @@
 
 namespace pmlmq {
 
-/// Thin ingress layer between the gRPC Submit handler and the routing logic.
-///
-/// Responsibilities (deliberately narrow):
-///   1. Generate a globally unique message ID.
-///   2. Stamp the arrival_time.
-///   3. Store the originating producer_id in message headers.
-///   4. Forward the enriched Message to the routing sink (PMLMQ::route_message).
-///
-/// The Proxy has no knowledge of queue tiers, priorities, TTL, or retries.
+/// Ingress layer between Submit handling and routing.
+/// Generates the message ID, stamps arrival_time, records the producer ID
+/// in headers, then forwards the message to the routing sink.
+/// Has no knowledge of queue tiers, priorities, TTL, or retries.
 class Proxy {
 public:
-    /// Callback invoked once per message after ID and arrival time are set.
-    /// Supplied by PMLMQService so the Proxy stays decoupled from queue internals.
+    /// Callback invoked once per accepted message. Supplied by the broker
+    /// so the proxy stays decoupled from queue internals.
     using MessageSink = std::function<void(Message)>;
 
+    /// Build a proxy that forwards accepted messages to sink.
+    /// @param sink Routing callback invoked with each stamped message.
+    /// @throws std::invalid_argument if sink is null.
     explicit Proxy(MessageSink sink);
 
-    /// Accept a raw message from a producer, stamp it, and forward to the sink.
-    /// @returns The generated message ID (so the caller can return it to the producer).
+    /// Stamp and forward a raw producer payload.
+    /// @param payload Opaque message bytes (moved into the Message).
+    /// @param headers Key-value metadata (moved; producer ID is added under "__producer_id").
+    /// @param producer_id Originating producer, stored in headers.
+    /// @return The generated unique message ID.
+    /// @side_effects Sets arrival_time to now, increments the accepted
+    ///   counter, and invokes the sink with the finished Message.
     [[nodiscard]] std::string accept(std::vector<uint8_t> payload,
                                      std::unordered_map<std::string, std::string> headers,
                                      const std::string& producer_id);
 
-    /// Generate a globally unique message ID.
-    /// Format: "<nanosecond-timestamp>-<monotonic-counter>"
+    /// Generate a unique message ID.
+    /// @return String of the form "<ns-timestamp>-<monotonic-counter>".
+    /// @side_effects Atomically increments a process-wide counter.
     [[nodiscard]] static std::string generate_id();
 
+    /// Total messages accepted so far.
+    /// @return Value of the accepted counter.
     [[nodiscard]] uint64_t messages_accepted() const noexcept {
         return accepted_.load(std::memory_order_relaxed);
     }

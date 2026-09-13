@@ -14,71 +14,71 @@
 
 namespace pmlmq {
 
-/// Result returned by the consumer's message handler.
+/// Handler result: SUCCESS deletes the message; FAILURE retries or DLQs it.
 enum class AckResult : uint8_t {
-    SUCCESS, ///< Processing succeeded — server deletes the message.
-    FAILURE, ///< Processing failed — server retries or DLQs the message.
+    SUCCESS,
+    FAILURE,
 };
 
-/// Message received from the server by a consumer.
-/// Intentionally decoupled from protobuf types and internal queue fields.
+/// Server-delivered message, decoupled from protobuf and queue internals.
 struct ReceivedMessage {
     std::string                              id;
     std::vector<uint8_t>                     payload;
     std::unordered_map<std::string, std::string> headers;
 };
 
-/// gRPC client for consumers.
-///
-/// A consumer connects to a running PMLMQ server, receives a unique ID at
-/// registration, and then polls for messages via Pull(). The server decides
-/// which message to dispatch — consumers are completely tier-blind.
-///
-/// Actual processing time is measured and reported back on every Ack/Nack,
-/// providing the data stream for the Phase 2 ML feedback loop.
-///
-///     auto consumer = Consumer::connect("127.0.0.1:50051", [](const ReceivedMessage& msg) {
-///         // process msg.payload...
-///         return AckResult::SUCCESS;
-///     });
-///     consumer->start();
-///     // ...
-///     consumer->stop();
+/// Tier-blind gRPC consumer client.
+/// The broker decides which message each Pull receives; the consumer never
+/// sees queue levels. Processing time is measured and reported on every
+/// Ack/Nack for the ML feedback loop.
 class Consumer {
 public:
     using Handler = std::function<AckResult(const ReceivedMessage&)>;
 
-    /// Connect to a PMLMQ server, register, and obtain a consumer ID.
-    /// @param server_addr   gRPC target address, e.g. "127.0.0.1:50051".
-    /// @param handler       Callback invoked for each delivered message.
-    /// @param pull_timeout  How long each Pull() waits server-side before
-    ///                      returning an empty response. Shorter = faster
-    ///                      shutdown; longer = fewer round-trips under load.
-    /// @throws std::runtime_error if the registration RPC fails.
+    /// Register with the broker and obtain a consumer ID.
+    /// @param server_addr gRPC target, e.g. "127.0.0.1:50051".
+    /// @param handler Callback invoked for each delivered message.
+    /// @param pull_timeout Time each Pull waits server-side before returning
+    ///   empty; shorter shuts down faster, longer saves round-trips under load.
+    /// @return Connected consumer holding its server-assigned ID.
+    /// @side_effects Opens a channel and performs a RegisterConsumer RPC.
+    /// @throws std::runtime_error if registration fails.
     [[nodiscard]] static std::shared_ptr<Consumer> connect(
         const std::string& server_addr,
         Handler handler,
         std::chrono::milliseconds pull_timeout = std::chrono::milliseconds{1000});
 
-    /// Start the background polling thread.
+    /// Start the background polling loop.
+    /// @side_effects Sets running flag and spawns the worker thread.
     /// @throws std::runtime_error if already running.
     void start();
 
-    /// Signal the polling thread to stop and block until it exits.
+    /// Stop the polling loop and wait for it to exit.
+    /// @side_effects Clears the running flag and joins the worker thread.
     void stop();
 
+    /// Check whether the polling thread is active.
+    /// @return True between start and stop.
     [[nodiscard]] bool is_running() const noexcept {
         return running_.load(std::memory_order_acquire);
     }
 
+    /// Server-assigned consumer ID from registration.
+    /// @return Opaque ID string (e.g. "consumer-0").
     [[nodiscard]] const std::string& id() const noexcept { return id_; }
 
+    /// Total messages handed to the handler.
+    /// @return Value of the processed counter.
     [[nodiscard]] uint64_t messages_processed() const noexcept {
         return processed_.load(std::memory_order_relaxed);
     }
+    /// Total messages acknowledged with SUCCESS.
+    /// @return Value of the acked counter.
     [[nodiscard]] uint64_t messages_acked() const noexcept {
         return acked_.load(std::memory_order_relaxed);
     }
+    /// Total messages reported with FAILURE.
+    /// @return Value of the nacked counter.
     [[nodiscard]] uint64_t messages_nacked() const noexcept {
         return nacked_.load(std::memory_order_relaxed);
     }

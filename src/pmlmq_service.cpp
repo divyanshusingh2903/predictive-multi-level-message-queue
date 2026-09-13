@@ -15,8 +15,6 @@ PMLMQService::PMLMQService(PMLMQConfig config)
     }
 }
 
-// ── Helpers ───────────────────────────────────────────────────────────────────
-
 bool PMLMQService::is_registered_producer(const std::string& id) const {
     std::lock_guard lock{producers_mutex_};
     return registered_producers_.contains(id);
@@ -33,8 +31,6 @@ std::size_t PMLMQService::in_flight_count() const {
 }
 
 void PMLMQService::route_message(Message msg) {
-    // Phase 1: assign static context from system config.
-    // Phase 2: invoke ML classifier here to predict priority.
     msg.priority          = config_.default_priority;
     msg.original_priority = config_.default_priority;
     msg.max_retries       = config_.default_max_retries;
@@ -43,8 +39,6 @@ void PMLMQService::route_message(Message msg) {
     }
     queue_.enqueue(std::move(msg));
 }
-
-// ── Producer RPCs ─────────────────────────────────────────────────────────────
 
 grpc::Status PMLMQService::RegisterProducer(
     grpc::ServerContext*,
@@ -80,8 +74,6 @@ grpc::Status PMLMQService::Submit(grpc::ServerContext*,
     return grpc::Status::OK;
 }
 
-// ── Consumer RPCs ─────────────────────────────────────────────────────────────
-
 grpc::Status PMLMQService::RegisterConsumer(
     grpc::ServerContext*,
     const pmlmq_rpc::RegisterConsumerRequest*,
@@ -112,8 +104,6 @@ grpc::Status PMLMQService::Pull(grpc::ServerContext* ctx,
             : config_.max_pull_wait;
     const auto wait = std::min(requested, config_.max_pull_wait);
     const auto deadline = std::chrono::steady_clock::now() + wait;
-
-    // Poll in short chunks so we can check for client cancellation.
     constexpr std::chrono::milliseconds kChunk{100};
 
     while (std::chrono::steady_clock::now() < deadline) {
@@ -125,18 +115,16 @@ grpc::Status PMLMQService::Pull(grpc::ServerContext* ctx,
             deadline - std::chrono::steady_clock::now());
         auto msg_opt = queue_.dequeue(std::min(remaining, kChunk));
 
-        if (!msg_opt) continue; // timeout chunk — keep waiting
+        if (!msg_opt) continue;
 
         auto& msg = *msg_opt;
 
-        // Check TTL before dispatching to consumer.
         if (msg.is_expired()) {
             dlq_.push(std::move(msg), DLQReason::TTL_EXPIRED,
                       "TTL expired at Pull time");
-            continue; // look for the next message
+            continue;
         }
 
-        // Save copies before moving into the in-flight map.
         const std::string            msg_id  = msg.id;
         const std::vector<uint8_t>   payload = msg.payload;
         const auto                   headers = msg.headers;
@@ -150,7 +138,6 @@ grpc::Status PMLMQService::Pull(grpc::ServerContext* ctx,
             });
         }
 
-        // Build response.
         auto* pulled = resp->mutable_message();
         pulled->set_message_id(msg_id);
         pulled->set_payload(std::string(payload.begin(), payload.end()));
@@ -184,7 +171,6 @@ grpc::Status PMLMQService::Ack(grpc::ServerContext*,
                 "Message owned by a different consumer"};
     }
 
-    // Phase 2: feed req->processing_time_ms() into the ML feedback loop.
     in_flight_.erase(it);
     return grpc::Status::OK;
 }
@@ -209,7 +195,6 @@ grpc::Status PMLMQService::Nack(grpc::ServerContext*,
             return {grpc::StatusCode::PERMISSION_DENIED,
                     "Message owned by a different consumer"};
         }
-        // Phase 2: feed req->processing_time_ms() into the ML feedback loop.
         msg_to_handle = std::move(it->second.message);
         in_flight_.erase(it);
     }

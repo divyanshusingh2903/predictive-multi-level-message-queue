@@ -66,9 +66,11 @@ pmlmq/
 ├── server/main.cpp            # pmlmq_server binary (SIGINT/SIGTERM graceful shutdown)
 ├── demo/main.cpp              # End-to-end demo (embedded broker + 2 producers + 2 consumers)
 ├── tests/
-│   └── unit/                  # GoogleTest: queue, DLQ, proxy, broker, client
-├── ml_engine/                 # (Phase 2) Python online-learning service
-├── benchmarks/                # (Phase 3) Workload generators and comparison harness
+│   └── unit/                  # GoogleTest sources; built as pmlmq_unit_tests
+│                              # (queue, DLQ, proxy — no gRPC) and
+│                              # pmlmq_integration_tests (broker, client over gRPC)
+├── ml_engine/                 # (Phase 2, planned — not yet present)
+├── benchmarks/                # (Phase 3, planned — not yet present)
 └── CMakeLists.txt
 ```
 
@@ -98,8 +100,8 @@ cmake --build build -j$(nproc)
 | Binary | Description |
 |---|---|
 | `build/pmlmq_server` | Standalone broker process |
-| `build/pmlmq_unit_tests` | Internal tests (no gRPC required) |
-| `build/pmlmq_integration_tests` | Full gRPC round-trip tests |
+| `build/tests/pmlmq_unit_tests` | Internal tests (no gRPC required) |
+| `build/tests/pmlmq_integration_tests` | Full gRPC round-trip tests |
 | `build/demo/pmlmq_demo` | End-to-end demo |
 
 ---
@@ -114,7 +116,7 @@ cmake --build build -j$(nproc)
 ./build/pmlmq_server 127.0.0.1:50051
 ```
 
-**End-to-end demo** (embedded broker + 2 producers + 2 consumers, demonstrates retries and DLQ):
+**End-to-end demo** (embedded broker + 2 producers + 2 consumers, demonstrates retries; the DLQ path is exercised in the integration tests):
 
 ```bash
 ./build/demo/pmlmq_demo
@@ -123,8 +125,8 @@ cmake --build build -j$(nproc)
 **Tests**
 
 ```bash
-./build/pmlmq_unit_tests
-./build/pmlmq_integration_tests
+./build/tests/pmlmq_unit_tests
+./build/tests/pmlmq_integration_tests
 ```
 
 ---
@@ -159,8 +161,7 @@ consumer->stop();
 | Field | Default | Description |
 |---|---|---|
 | `num_levels` | `3` | Number of priority queue levels (0 = highest) |
-| `aging.threshold` | `5000 ms` | Wait time before a message is promoted one level |
-| `aging.interval` | `500 ms` | How often the aging thread scans |
+| `aging` | `nullopt` (off) | `AgingConfig{threshold 5000 ms, interval 500 ms}` when enabled; `nullopt` = strict-priority with no aging thread (`server/main.cpp` and the demo enable aging explicitly) |
 | `default_max_retries` | `3` | Nack attempts before the message moves to the DLQ |
 | `default_ttl` | `0` (off) | TTL from arrival; `0` = no expiry |
 | `default_priority` | `1` (medium) | Static priority for Phase 1; ML classifier overrides in Phase 2 |

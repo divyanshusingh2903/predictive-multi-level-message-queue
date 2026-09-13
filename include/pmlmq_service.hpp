@@ -19,94 +19,129 @@
 namespace pmlmq {
 
 /// System-wide server configuration.
-///
-///     PMLMQService service{ PMLMQConfig{
-///         .num_levels          = 3,
-///         .aging               = AgingConfig{ .threshold = 2s, .interval = 500ms },
-///         .default_max_retries = 5,
-///         .default_priority    = 1,   // MEDIUM
-///     }};
 struct PMLMQConfig {
-    /// Number of priority queue levels. Level 0 is highest.
+    /// Number of priority queue levels; level 0 is highest.
     uint8_t num_levels{3};
 
-    /// Optional aging: background thread promotes long-waiting messages toward
-    /// level 0 so lower-priority queues are never permanently starved.
+    /// Aging policy; nullopt selects strict-priority mode with no aging thread.
     std::optional<AgingConfig> aging{std::nullopt};
 
-    /// Default delivery attempts before a message is moved to the DLQ.
+    /// Delivery attempts per message before it moves to the DLQ.
     uint32_t default_max_retries{3};
 
-    /// Default TTL from arrival. Zero means no expiry.
+    /// Default TTL from arrival_time; zero disables expiry.
     std::chrono::milliseconds default_ttl{0};
 
-    /// Priority assigned to every message at ingress.
-    /// Phase 1: static. Phase 2: overridden by the ML classifier.
+    /// Ingress priority for every message (static today, ML-predicted later).
+    /// Must be < num_levels or the service constructor throws.
     uint8_t default_priority{1};
 
-    /// Maximum time the server will block inside a Pull() handler waiting for
-    /// a message. The consumer's requested timeout_ms is capped to this value.
+    /// Upper bound on how long a Pull handler blocks waiting for a message.
     std::chrono::milliseconds max_pull_wait{5000};
 };
 
-/// gRPC Broker service implementation and system orchestrator.
-///
-/// Owns the multi-level queue, DLQ, and proxy. All coordination happens here:
-/// producers register and submit messages; consumers register and pull messages;
-/// PMLMQ decides which message each pull receives (consumers are tier-blind).
-///
-/// Thread-safe: gRPC calls concurrent RPC handlers from a thread pool.
+/// gRPC Broker service and system orchestrator.
+/// Owns the multi-level queue, DLQ, proxy, in-flight map, and client
+/// registries. Decides which message each Pull receives. Thread-safe:
+/// gRPC dispatches RPC handlers from a thread pool.
 class PMLMQService final : public pmlmq_rpc::Broker::Service {
 public:
+    /// Build the broker from config.
+    /// @param config Levels, aging, retries, TTL, ingress priority, pull cap.
+    /// @side_effects Constructs the queue, DLQ, and proxy wired to route_message.
+    /// @throws std::invalid_argument if default_priority >= num_levels.
     explicit PMLMQService(PMLMQConfig config = {});
 
-    // Non-copyable, non-movable (owns live threads via MultiLevelQueue aging).
+    // Non-copyable, non-movable (owns threads).
     PMLMQService(const PMLMQService&) = delete;
     PMLMQService& operator=(const PMLMQService&) = delete;
 
-    // ── Producer RPCs ────────────────────────────────────────────────────────
-
+    /// Register a producer and assign its ID.
+    /// @param req Empty registration request (reserved for future fields).
+    /// @param resp Receives producer_id ("producer-<counter>").
+    /// @return OK; always succeeds.
+    /// @side_effects Inserts the new ID into the producer registry.
     grpc::Status RegisterProducer(grpc::ServerContext* ctx,
                                   const pmlmq_rpc::RegisterProducerRequest* req,
                                   pmlmq_rpc::RegisterProducerResponse* resp) override;
 
+    /// Accept a producer payload into the queue.
+    /// @param req Carries producer_id, payload bytes, and headers.
+    /// @param resp Receives the broker-assigned message_id.
+    /// @return OK on enqueue; PERMISSION_DENIED for an unknown producer.
+    /// @side_effects Stamps ID/arrival_time via Proxy and enqueues the message.
     grpc::Status Submit(grpc::ServerContext* ctx,
                         const pmlmq_rpc::SubmitRequest* req,
                         pmlmq_rpc::SubmitResponse* resp) override;
 
-    // ── Consumer RPCs ────────────────────────────────────────────────────────
-
+    /// Register a consumer and assign its ID.
+    /// @param req Empty registration request (reserved for future fields).
+    /// @param resp Receives consumer_id ("consumer-<counter>").
+    /// @return OK; always succeeds.
+    /// @side_effects Inserts the new ID into the consumer registry.
     grpc::Status RegisterConsumer(grpc::ServerContext* ctx,
                                   const pmlmq_rpc::RegisterConsumerRequest* req,
                                   pmlmq_rpc::RegisterConsumerResponse* resp) override;
 
     /// Block until a message is available or the timeout elapses.
-    /// PMLMQ picks the highest-priority message — consumers are tier-blind.
+    /// @param req Carries consumer_id and timeout_ms (0 selects the server default).
+    /// @param resp Receives timed_out=true when nothing arrived, else the
+    ///   highest-priority message with its ID, payload, and headers.
+    /// @return OK with a message or timed_out; PERMISSION_DENIED for an
+    ///   unknown consumer; CANCELLED when the client cancels mid-wait.
+    /// @side_effects Caps the wait at max_pull_wait, polls in 100 ms chunks,
+    ///   DLQs TTL-expired messages while scanning, and records dispatched
+    ///   messages in the in-flight map under the pulling consumer.
     grpc::Status Pull(grpc::ServerContext* ctx,
                       const pmlmq_rpc::PullRequest* req,
                       pmlmq_rpc::PullResponse* resp) override;
 
+    /// Confirm successful processing and release the message.
+    /// @param req Carries consumer_id, message_id, and measured processing_time_ms.
+    /// @return OK on delete; PERMISSION_DENIED for unknown consumer or wrong
+    ///   owner; NOT_FOUND when the message is not in flight.
+    /// @side_effects Removes the entry from the in-flight map.
     grpc::Status Ack(grpc::ServerContext* ctx,
                      const pmlmq_rpc::AckRequest* req,
                      pmlmq_rpc::AckResponse* resp) override;
 
+    /// Report failed processing for retry or DLQ.
+    /// @param req Carries consumer_id, message_id, processing_time_ms, and reason.
+    /// @return OK on re-queue/DLQ; PERMISSION_DENIED for unknown consumer or
+    ///   wrong owner; NOT_FOUND when the message is not in flight.
+    /// @side_effects Removes the in-flight entry, increments retry_count,
+    ///   then re-queues at original_priority or DLQs on max-retries with
+    ///   the caller reason appended to the DLQ details.
     grpc::Status Nack(grpc::ServerContext* ctx,
                       const pmlmq_rpc::NackRequest* req,
                       pmlmq_rpc::NackResponse* resp) override;
 
-    // ── Observability ────────────────────────────────────────────────────────
-
+    // Observability
+    /// Queued (not in-flight, not DLQ) message count.
+    /// @return Total size across all queue levels.
     [[nodiscard]] std::size_t queue_size() const { return queue_.size(); }
+    /// Retained DLQ entry count.
+    /// @return Current DLQ depth.
     [[nodiscard]] std::size_t dlq_size()   const { return dlq_.size();   }
+    /// Messages pulled but not yet acked/nacked.
+    /// @return Current in-flight map size.
     [[nodiscard]] std::size_t in_flight_count() const;
 
 private:
-    /// Assigns system context (priority, TTL, retries) and enqueues.
-    /// Called by the Proxy's MessageSink on every Submit RPC.
-    /// Phase 2: this is where the ML classifier call will be injected.
+    /// Assign routing context and enqueue an accepted message.
+    /// @param msg Stamped message from the Proxy sink.
+    /// @side_effects Sets priority/original_priority from config, applies
+    ///   default retries/TTL when unset, and enqueues. Future ML classifier
+    ///   injection point.
     void route_message(Message msg);
 
+    /// Check producer registration.
+    /// @param id Producer ID to look up.
+    /// @return True when the ID is registered.
     [[nodiscard]] bool is_registered_producer(const std::string& id) const;
+    /// Check consumer registration.
+    /// @param id Consumer ID to look up.
+    /// @return True when the ID is registered.
     [[nodiscard]] bool is_registered_consumer(const std::string& id) const;
 
     PMLMQConfig     config_;
@@ -114,8 +149,7 @@ private:
     DeadLetterQueue dlq_;
     Proxy           proxy_;
 
-    // ── In-flight tracking ───────────────────────────────────────────────────
-    // Messages pulled by a consumer but not yet ack'd or nack'd.
+    // In-flight: pulled but not yet ack'd/nack'd.
     struct InFlightEntry {
         Message     message;
         std::string consumer_id;
@@ -124,7 +158,7 @@ private:
     mutable std::mutex in_flight_mutex_;
     std::unordered_map<std::string, InFlightEntry> in_flight_;
 
-    // ── Registered clients ───────────────────────────────────────────────────
+    // Registered clients
     mutable std::mutex                producers_mutex_;
     std::unordered_set<std::string>   registered_producers_;
     std::atomic<uint64_t>             producer_counter_{0};

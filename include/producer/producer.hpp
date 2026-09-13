@@ -11,34 +11,35 @@
 
 namespace pmlmq {
 
-/// gRPC client for producers.
-///
-/// A producer connects to a running PMLMQ server, receives a unique ID at
-/// registration, and then sends raw payloads. It has no knowledge of queue
-/// tiers, priorities, TTL, or retries — all routing context is assigned by
-/// the server.
-///
-///     auto producer = Producer::connect("127.0.0.1:50051");
-///     producer->send({0x01, 0x02}, {{"job_type", "resize"}});
+/// gRPC producer client.
+/// Connects to a broker, registers once, then sends payloads with optional
+/// headers. Routing context (priority, TTL, retries) is assigned server-side.
 class Producer {
 public:
-    /// Connect to a PMLMQ server, register, and obtain a producer ID.
-    /// @param server_addr  gRPC target address, e.g. "127.0.0.1:50051".
-    /// @throws std::runtime_error if the registration RPC fails.
+    /// Register with the broker and obtain a producer ID.
+    /// @param server_addr gRPC target, e.g. "127.0.0.1:50051".
+    /// @return Connected producer holding its server-assigned ID.
+    /// @side_effects Opens a channel and performs a RegisterProducer RPC.
+    /// @throws std::runtime_error if registration fails.
     [[nodiscard]] static std::shared_ptr<Producer> connect(
         const std::string& server_addr);
 
-    /// Send a message into the system.
-    /// @param payload  Opaque byte payload.
-    /// @param headers  Optional key-value metadata (e.g. job type, source service).
-    ///                 Forwarded to consumers and used for ML feature extraction in Phase 2.
-    /// @returns The message ID assigned by the server (useful for tracing).
+    /// Submit one message to the broker.
+    /// @param payload Opaque bytes sent as the message body.
+    /// @param headers Optional metadata forwarded to consumers and used
+    ///   for future ML feature extraction.
+    /// @return Message ID assigned by the server, useful for tracing.
+    /// @side_effects Performs a Submit RPC and increments the sent counter.
     /// @throws std::runtime_error if the Submit RPC fails.
     std::string send(std::vector<uint8_t> payload,
                      std::unordered_map<std::string, std::string> headers = {});
 
+    /// Server-assigned producer ID from registration.
+    /// @return Opaque ID string (e.g. "producer-0").
     [[nodiscard]] const std::string& id() const noexcept { return id_; }
 
+    /// Total successful sends through this client.
+    /// @return Value of the sent counter.
     [[nodiscard]] uint64_t messages_sent() const noexcept {
         return sent_.load(std::memory_order_relaxed);
     }
