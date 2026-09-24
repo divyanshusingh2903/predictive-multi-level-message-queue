@@ -1,2 +1,2 @@
-add_executable(pmlmq_demo main.cpp)
-target_link_libraries(pmlmq_demo PRIVATE pmlmq_server_lib pmlmq_client_lib gRPC::grpc++)
+add_executable(harbinger_demo main.cpp)
+target_link_libraries(harbinger_demo PRIVATE harbinger_server_lib harbinger_client_lib gRPC::grpc++)

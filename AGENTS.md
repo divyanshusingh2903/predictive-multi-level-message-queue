@@ -1,4 +1,4 @@
-# AGENTS.md — PMLMQ
+# AGENTS.md — Harbinger
 
 Predictive Multi-Level Message Queue: ML-predicted processing time + MLFQ routing to cut P50/P95/P99 vs FIFO/static-priority/round-robin.
 
@@ -8,7 +8,7 @@ Predictive Multi-Level Message Queue: ML-predicted processing time + MLFQ routin
 
 - **Consumers are tier-blind.** Broker picks the message; levels never leak to clients.
 - **Proxy is narrow:** ID + `arrival_time` + `__producer_id` header → forwards to sink. No queue/priority/TTL knowledge.
-- **Phase 2 hooks (stubbed):** `route_message()` in `src/pmlmq_service.cpp` is the single ML-classifier injection point; `processing_time_ms` on every Ack/Nack feeds training.
+- **Phase 2 hooks (stubbed):** `route_message()` in `src/harbinger_service.cpp` is the single ML-classifier injection point; `processing_time_ms` on every Ack/Nack feeds training.
 
 ## Invariants (don't break)
 
@@ -24,9 +24,9 @@ Predictive Multi-Level Message Queue: ML-predicted processing time + MLFQ routin
 - `Pull`: `wait = min(requested>0 ? requested : max_pull_wait, max_pull_wait)`; polls in 100 ms chunks checking `IsCancelled()`. No message → `timed_out=true`.
 - Consumer poll deadline = `pull_timeout + 500 ms`; transient Pull errors back off 200 ms.
 - ID format: `<ns-timestamp>-<counter>`. Producer key stored as `__producer_id` header.
-- Proto package `pmlmq_rpc` ≠ C++ namespace `pmlmq` (avoids collisions).
+- Proto package `harbinger_rpc` ≠ C++ namespace `harbinger` (avoids collisions).
 
-## Config defaults (`PMLMQConfig`)
+## Config defaults (`HarbingerConfig`)
 
 `num_levels=3`, `aging=nullopt` (strict-priority; use `{5000 ms, 500 ms}` to enable aging), `default_max_retries=3`, `default_ttl=0`, `default_priority=1`, `max_pull_wait=5000 ms`, `ttl_sweep_interval=100 ms` (`0` = off).
 
@@ -44,16 +44,16 @@ Predictive Multi-Level Message Queue: ML-predicted processing time + MLFQ routin
 # deps (Ubuntu): sudo apt install -y libgrpc++-dev protobuf-compiler-grpc libprotobuf-dev
 # deps (macOS):  brew install grpc protobuf
 cmake -B build -DCMAKE_BUILD_TYPE=Release && cmake --build build -j$(nproc)
-./build/pmlmq_server [addr]          # default 0.0.0.0:50051
-./build/demo/pmlmq_demo              # embedded broker on 127.0.0.1:50099
-./build/tests/pmlmq_unit_tests; ./build/tests/pmlmq_integration_tests
+./build/harbinger_server [addr]          # default 0.0.0.0:50051
+./build/demo/harbinger_demo              # embedded broker on 127.0.0.1:50099
+./build/tests/harbinger_unit_tests; ./build/tests/harbinger_integration_tests
 ```
 
-Targets: `pmlmq_server`, `pmlmq_unit_tests`, `pmlmq_integration_tests`, `demo/pmlmq_demo`. GTest via `FetchContent`.
+Targets: `harbinger_server`, `harbinger_unit_tests`, `harbinger_integration_tests`, `demo/harbinger_demo`. GTest via `FetchContent`.
 
 ## Layout
 
-`proto/pmlmq.proto` · `include/{pmlmq_service,proxy,queue/{message,multi_level_queue,dead_letter_queue},producer,consumer}.hpp` · `src/` mirrors `include/` · `server/main.cpp` · `demo/main.cpp` · `tests/unit/` · `ml_engine/` (Phase 2) · `benchmarks/` (Phase 3)
+`proto/harbinger.proto` · `include/{harbinger_service,proxy,queue/{message,multi_level_queue,dead_letter_queue},producer,consumer}.hpp` · `src/` mirrors `include/` · `server/main.cpp` · `demo/main.cpp` · `tests/unit/` · `ml_engine/` (Phase 2) · `benchmarks/` (Phase 3)
 
 ## Conventions
 

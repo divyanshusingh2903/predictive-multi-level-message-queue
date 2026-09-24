@@ -2,7 +2,7 @@
 
 #include <gtest/gtest.h>
 
-using namespace pmlmq;
+using namespace harbinger;
 
 namespace {
 

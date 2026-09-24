@@ -4,19 +4,19 @@
 
 #include <stdexcept>
 
-namespace pmlmq {
+namespace harbinger {
 
 Producer::Producer(std::string id,
-                   std::unique_ptr<pmlmq_rpc::Broker::Stub> stub)
+                   std::unique_ptr<harbinger_rpc::Broker::Stub> stub)
     : id_(std::move(id)), stub_(std::move(stub)) {}
 
 std::shared_ptr<Producer> Producer::connect(const std::string& server_addr) {
     auto channel = grpc::CreateChannel(server_addr,
                                        grpc::InsecureChannelCredentials());
-    auto stub = pmlmq_rpc::Broker::NewStub(channel);
+    auto stub = harbinger_rpc::Broker::NewStub(channel);
 
-    pmlmq_rpc::RegisterProducerRequest  req;
-    pmlmq_rpc::RegisterProducerResponse resp;
+    harbinger_rpc::RegisterProducerRequest  req;
+    harbinger_rpc::RegisterProducerResponse resp;
     grpc::ClientContext ctx;
 
     const auto status = stub->RegisterProducer(&ctx, req, &resp);
@@ -35,7 +35,7 @@ std::string Producer::send(std::vector<uint8_t> payload,
     if (ttl && ttl->count() < 0) {
         throw std::invalid_argument("Producer::send: ttl must be >= 0");
     }
-    pmlmq_rpc::SubmitRequest req;
+    harbinger_rpc::SubmitRequest req;
     req.set_producer_id(id_);
     req.set_payload(std::string(payload.begin(), payload.end()));
     for (const auto& [k, v] : headers) {
@@ -45,7 +45,7 @@ std::string Producer::send(std::vector<uint8_t> payload,
         req.set_ttl_ms(ttl->count());
     }
 
-    pmlmq_rpc::SubmitResponse resp;
+    harbinger_rpc::SubmitResponse resp;
     grpc::ClientContext ctx;
     ctx.set_deadline(std::chrono::system_clock::now() +
                      std::chrono::seconds{5});
@@ -59,4 +59,4 @@ std::string Producer::send(std::vector<uint8_t> payload,
     return resp.message_id();
 }
 
-} // namespace pmlmq
+} // namespace harbinger

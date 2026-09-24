@@ -1,4 +1,6 @@
-# PMLMQ — Predictive Multi-Level Message Queue
+# Harbinger — Predictive Multi-Level Message Queue
+
+*Harbinger (formerly PMLMQ) — the queue that knows what's coming: it predicts each message's cost, then prioritizes.*
 
 A research messaging system that combines **online ML-based processing time prediction** with **Multi-Level Feedback Queue (MLFQ)** scheduling to reduce end-to-end message latency.
 
@@ -19,7 +21,7 @@ Producer::send()
       │
       ▼  gRPC Submit
  ┌─────────────────────────────────────────────────────────────────┐
- │  PMLMQService (Broker)                                          │
+ │  HarbingerService (Broker)                                          │
  │                                                                 │
  │  Proxy::accept()  →  route_message()  →  MultiLevelQueue        │
  │    stamp ID              ▲                  Level 0 (HIGH)      │
@@ -43,18 +45,18 @@ Producer::send()
 - **Consumers are tier-blind** — the broker picks which message each `Pull()` receives; consumers never see queue levels.
 - **Proxy is narrowly scoped** — stamps ID and `arrival_time`, stores `producer_id` in headers, then hands off to `route_message()`.
 - **In-flight tracking** — messages are held in an `unordered_map` between `Pull` and `Ack/Nack`; on `Nack` they are re-queued or DLQ'd.
-- **Phase 2 hook** — `route_message()` in `pmlmq_service.cpp` is the single injection point for the ML classifier; `processing_time_ms` in every `Ack`/`Nack` feeds the training loop.
-- **`pmlmq_rpc` proto package** — kept distinct from the `pmlmq` C++ namespace to avoid symbol collisions.
+- **Phase 2 hook** — `route_message()` in `harbinger_service.cpp` is the single injection point for the ML classifier; `processing_time_ms` in every `Ack`/`Nack` feeds the training loop.
+- **`harbinger_rpc` proto package** — kept distinct from the `harbinger` C++ namespace to avoid symbol collisions.
 
 ---
 
 ## Repository layout
 
 ```
-pmlmq/
-├── proto/pmlmq.proto          # Broker service definition (package pmlmq_rpc)
+harbinger/
+├── proto/harbinger.proto          # Broker service definition (package harbinger_rpc)
 ├── include/
-│   ├── pmlmq_service.hpp      # PMLMQService : pmlmq_rpc::Broker::Service
+│   ├── harbinger_service.hpp      # HarbingerService : harbinger_rpc::Broker::Service
 │   ├── proxy/proxy.hpp
 │   ├── queue/
 │   │   ├── message.hpp        # Message, AgingConfig, DLQEntry
@@ -63,12 +65,12 @@ pmlmq/
 │   ├── producer/producer.hpp  # gRPC client: connect() → send()
 │   └── consumer/consumer.hpp  # gRPC client: connect() → start() / stop()
 ├── src/                       # C++ implementations
-├── server/main.cpp            # pmlmq_server binary (SIGINT/SIGTERM graceful shutdown)
+├── server/main.cpp            # harbinger_server binary (SIGINT/SIGTERM graceful shutdown)
 ├── demo/main.cpp              # End-to-end demo (embedded broker + 2 producers + 2 consumers)
 ├── tests/
-│   └── unit/                  # GoogleTest sources; built as pmlmq_unit_tests
+│   └── unit/                  # GoogleTest sources; built as harbinger_unit_tests
 │                              # (queue, DLQ, proxy — no gRPC) and
-│                              # pmlmq_integration_tests (broker, client over gRPC)
+│                              # harbinger_integration_tests (broker, client over gRPC)
 ├── ml_engine/                 # (Phase 2, planned — not yet present)
 ├── benchmarks/                # (Phase 3, planned — not yet present)
 └── CMakeLists.txt
@@ -97,16 +99,16 @@ cmake --build build -j$(nproc)
 
 The build expects Protobuf and gRPC CMake CONFIG packages from a compatible
 installation. For sanitizer verification, configure with
-`-DPMLMQ_SANITIZER=address`, `undefined`, or `thread`.
+`-DHARBINGER_SANITIZER=address`, `undefined`, or `thread`.
 
 **Targets**
 
 | Binary | Description |
 |---|---|
-| `build/pmlmq_server` | Standalone broker process |
-| `build/tests/pmlmq_unit_tests` | Internal tests (no gRPC required) |
-| `build/tests/pmlmq_integration_tests` | Full gRPC round-trip tests |
-| `build/demo/pmlmq_demo` | End-to-end demo |
+| `build/harbinger_server` | Standalone broker process |
+| `build/tests/harbinger_unit_tests` | Internal tests (no gRPC required) |
+| `build/tests/harbinger_integration_tests` | Full gRPC round-trip tests |
+| `build/demo/harbinger_demo` | End-to-end demo |
 
 ---
 
@@ -115,22 +117,22 @@ installation. For sanitizer verification, configure with
 **Standalone broker** (default `0.0.0.0:50051`, accepts an address override as `argv[1]`):
 
 ```bash
-./build/pmlmq_server
+./build/harbinger_server
 # or
-./build/pmlmq_server 127.0.0.1:50051
+./build/harbinger_server 127.0.0.1:50051
 ```
 
 **End-to-end demo** (embedded broker + 2 producers + 2 consumers, demonstrates retries; the DLQ path is exercised in the integration tests):
 
 ```bash
-./build/demo/pmlmq_demo
+./build/demo/harbinger_demo
 ```
 
 **Tests**
 
 ```bash
-./build/tests/pmlmq_unit_tests
-./build/tests/pmlmq_integration_tests
+./build/tests/harbinger_unit_tests
+./build/tests/harbinger_integration_tests
 # or, when configured with CMake testing
 ctest --test-dir build --output-on-failure
 ```
@@ -141,18 +143,18 @@ ctest --test-dir build --output-on-failure
 
 ```cpp
 // Producer
-auto producer = pmlmq::Producer::connect("127.0.0.1:50051");
+auto producer = harbinger::Producer::connect("127.0.0.1:50051");
 std::string msg_id = producer->send(
     {0x01, 0x02},                          // payload bytes
     {{"job_type", "resize"}, {"src", "a"}} // headers (used for ML features in Phase 2)
 );
 
 // Consumer
-auto consumer = pmlmq::Consumer::connect(
+auto consumer = harbinger::Consumer::connect(
     "127.0.0.1:50051",
-    [](const pmlmq::ReceivedMessage& msg) -> pmlmq::AckResult {
+    [](const harbinger::ReceivedMessage& msg) -> harbinger::AckResult {
         // process msg.payload / msg.headers
-        return pmlmq::AckResult::SUCCESS; // or FAILURE to trigger retry / DLQ
+        return harbinger::AckResult::SUCCESS; // or FAILURE to trigger retry / DLQ
     }
 );
 consumer->start();
@@ -162,7 +164,7 @@ consumer->stop();
 
 ---
 
-## Configuration (`PMLMQConfig`)
+## Configuration (`HarbingerConfig`)
 
 | Field | Default | Description |
 |---|---|---|
@@ -206,7 +208,7 @@ lease recovery once that feature is implemented.
 - [ ] Feature extraction from message headers/payload metadata
 - [ ] Python ML service with online learning (`river` or scikit-learn incremental estimators)
 - [ ] gRPC/IPC bridge between C++ broker and Python classifier
-- [ ] Predictive routing injected into `route_message()` in `pmlmq_service.cpp`
+- [ ] Predictive routing injected into `route_message()` in `harbinger_service.cpp`
 - [ ] `processing_time_ms` feedback from Ack/Nack fed to classifier
 - [ ] Model drift monitoring and accuracy tracking
 

@@ -6,7 +6,7 @@
 #include <thread>
 #include <vector>
 
-using namespace pmlmq;
+using namespace harbinger;
 using namespace std::chrono_literals;
 
 namespace {

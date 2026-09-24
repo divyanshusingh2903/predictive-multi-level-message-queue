@@ -1,6 +1,6 @@
 #include "queue/dead_letter_queue.hpp"
 
-namespace pmlmq {
+namespace harbinger {
 
 void DeadLetterQueue::push(Message msg, DLQReason reason, std::string details) {
     DLQEntry entry{
@@ -45,4 +45,4 @@ bool DeadLetterQueue::empty() const {
     return entries_.empty();
 }
 
-} // namespace pmlmq
+} // namespace harbinger

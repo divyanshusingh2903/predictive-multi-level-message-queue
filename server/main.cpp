@@ -1,4 +1,4 @@
-#include "pmlmq_service.hpp"
+#include "harbinger_service.hpp"
 
 #include <grpcpp/grpcpp.h>
 
@@ -21,9 +21,9 @@ int main(int argc, char* argv[]) {
     const std::string addr =
         (argc > 1) ? argv[1] : "0.0.0.0:50051";
 
-    pmlmq::PMLMQService service{ pmlmq::PMLMQConfig{
+    harbinger::HarbingerService service{ harbinger::HarbingerConfig{
         .num_levels          = 3,
-        .aging               = pmlmq::AgingConfig{
+        .aging               = harbinger::AgingConfig{
             .threshold = std::chrono::milliseconds{5000},
             .interval  = std::chrono::milliseconds{500},
         },
@@ -43,11 +43,11 @@ int main(int argc, char* argv[]) {
     std::signal(SIGINT,  signal_handler);
     std::signal(SIGTERM, signal_handler);
 
-    std::cout << "[pmlmq] Broker listening on " << addr << "\n";
-    std::cout << "[pmlmq] Send SIGINT or SIGTERM to shut down gracefully.\n";
+    std::cout << "[harbinger] Broker listening on " << addr << "\n";
+    std::cout << "[harbinger] Send SIGINT or SIGTERM to shut down gracefully.\n";
 
     server->Wait();
 
-    std::cout << "[pmlmq] Server stopped.\n";
+    std::cout << "[harbinger] Server stopped.\n";
     return EXIT_SUCCESS;
 }

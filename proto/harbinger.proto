@@ -1,8 +1,8 @@
 syntax = "proto3";
 
-// pmlmq_rpc is intentionally distinct from the pmlmq C++ namespace to
+// harbinger_rpc is intentionally distinct from the harbinger C++ namespace to
 // avoid symbol collisions with the server-side implementation headers.
-package pmlmq_rpc;
+package harbinger_rpc;
 
 option cc_generic_services = false;
 
@@ -119,7 +119,7 @@ service Broker {
 
     // Consumers register once and receive a unique ID.
     // Pull blocks on the server until a message is available or timeout elapses.
-    // PMLMQ decides which message to dispatch — consumers are tier-blind.
+    // Harbinger decides which message to dispatch — consumers are tier-blind.
     rpc RegisterConsumer (RegisterConsumerRequest)   returns (RegisterConsumerResponse);
     rpc Pull             (PullRequest)               returns (PullResponse);
 

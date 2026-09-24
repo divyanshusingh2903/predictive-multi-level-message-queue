@@ -2,7 +2,7 @@
 
 #include <stdexcept>
 
-namespace pmlmq {
+namespace harbinger {
 
 MultiLevelQueue::MultiLevelQueue(uint8_t num_levels,
                                  std::optional<AgingConfig> aging)
@@ -165,4 +165,4 @@ void MultiLevelQueue::run_aging() {
     }
 }
 
-} // namespace pmlmq
+} // namespace harbinger

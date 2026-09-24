@@ -4,7 +4,7 @@
 #include <chrono>
 #include <stdexcept>
 
-namespace pmlmq {
+namespace harbinger {
 
 Proxy::Proxy(MessageSink sink) : sink_(std::move(sink)) {
     if (!sink_) {
@@ -40,4 +40,4 @@ std::string Proxy::accept(std::vector<uint8_t> payload,
     return id;
 }
 
-} // namespace pmlmq
+} // namespace harbinger

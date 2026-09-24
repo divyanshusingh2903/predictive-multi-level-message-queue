@@ -1,6 +1,6 @@
 #pragma once
 
-#include <pmlmq.grpc.pb.h>
+#include <harbinger.grpc.pb.h>
 
 #include <atomic>
 #include <chrono>
@@ -11,7 +11,7 @@
 #include <unordered_map>
 #include <vector>
 
-namespace pmlmq {
+namespace harbinger {
 
 /// gRPC producer client.
 /// Connects to a broker, registers once, then sends payloads with optional
@@ -52,11 +52,11 @@ public:
 
 private:
     Producer(std::string id,
-             std::unique_ptr<pmlmq_rpc::Broker::Stub> stub);
+             std::unique_ptr<harbinger_rpc::Broker::Stub> stub);
 
     std::string                              id_;
-    std::unique_ptr<pmlmq_rpc::Broker::Stub> stub_;
+    std::unique_ptr<harbinger_rpc::Broker::Stub> stub_;
     std::atomic<uint64_t>                    sent_{0};
 };
 
-} // namespace pmlmq
+} // namespace harbinger

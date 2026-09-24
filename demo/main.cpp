@@ -1,5 +1,5 @@
 #include "consumer/consumer.hpp"
-#include "pmlmq_service.hpp"
+#include "harbinger_service.hpp"
 #include "producer/producer.hpp"
 
 #include <grpcpp/grpcpp.h>
@@ -8,17 +8,17 @@
 #include <iostream>
 #include <thread>
 
-using namespace pmlmq;
+using namespace harbinger;
 using namespace std::chrono_literals;
 
 int main() {
-    std::cout << "=== PMLMQ Phase 1 Demo ===\n\n";
+    std::cout << "=== Harbinger Phase 1 Demo ===\n\n";
 
-    // ── Start the PMLMQ broker ────────────────────────────────────────────────
-    // In production this runs as a separate process (./pmlmq_server).
+    // ── Start the Harbinger broker ────────────────────────────────────────────────
+    // In production this runs as a separate process (./harbinger_server).
     // Here we embed it in the demo binary for convenience.
 
-    PMLMQService service{ PMLMQConfig{
+    HarbingerService service{ HarbingerConfig{
         .num_levels          = 3,
         .aging               = AgingConfig{
             .threshold = 4000ms,
@@ -47,7 +47,7 @@ int main() {
     std::cout << "Producer B registered: " << producer_b->id() << "\n\n";
 
     // ── Consumers connect ─────────────────────────────────────────────────────
-    // Consumers are tier-blind. PMLMQ decides which message each pull receives.
+    // Consumers are tier-blind. Harbinger decides which message each pull receives.
     // Actual processing time is reported back on every Ack/Nack.
 
     int fail_budget = 3; // first 3 messages fail to demonstrate retry

@@ -6,7 +6,7 @@
 #include <unordered_map>
 #include <vector>
 
-namespace pmlmq {
+namespace harbinger {
 
 /// Sentinel TTL meaning "unset — apply the server default in route_message".
 /// Flows only from Proxy to route_message; never stored in queue/DLQ/in-flight.
@@ -59,4 +59,4 @@ struct DLQEntry {
     std::string details;
 };
 
-} // namespace pmlmq
+} // namespace harbinger

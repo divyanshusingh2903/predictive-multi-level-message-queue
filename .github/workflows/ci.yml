@@ -28,7 +28,7 @@ jobs:
       - name: Install dependencies
         run: sudo apt-get update && sudo apt-get install -y cmake ninja-build g++ libgrpc++-dev protobuf-compiler-grpc libprotobuf-dev
       - name: Configure
-        run: cmake -S . -B build-ci -G Ninja -DCMAKE_BUILD_TYPE=Debug -DPMLMQ_SANITIZER=${{ matrix.sanitizer }}
+        run: cmake -S . -B build-ci -G Ninja -DCMAKE_BUILD_TYPE=Debug -DHARBINGER_SANITIZER=${{ matrix.sanitizer }}
       - name: Build
         run: cmake --build build-ci --parallel
       - name: Test

@@ -8,7 +8,7 @@
 #include <string>
 #include <vector>
 
-namespace pmlmq {
+namespace harbinger {
 
 /// FIFO store for messages that cannot be delivered.
 /// Entries arrive on max-retries, TTL expiry, or processing errors.
@@ -47,4 +47,4 @@ private:
     std::deque<DLQEntry> entries_;
 };
 
-} // namespace pmlmq
+} // namespace harbinger

@@ -1,6 +1,6 @@
 #pragma once
 
-#include <pmlmq.grpc.pb.h>
+#include <harbinger.grpc.pb.h>
 
 #include <atomic>
 #include <chrono>
@@ -12,7 +12,7 @@
 #include <unordered_map>
 #include <vector>
 
-namespace pmlmq {
+namespace harbinger {
 
 /// Handler result: SUCCESS deletes the message; FAILURE retries or DLQs it.
 enum class AckResult : uint8_t {
@@ -89,14 +89,14 @@ public:
 
 private:
     Consumer(std::string id,
-             std::unique_ptr<pmlmq_rpc::Broker::Stub> stub,
+             std::unique_ptr<harbinger_rpc::Broker::Stub> stub,
              Handler handler,
              std::chrono::milliseconds pull_timeout);
 
     void run();
 
     std::string                              id_;
-    std::unique_ptr<pmlmq_rpc::Broker::Stub> stub_;
+    std::unique_ptr<harbinger_rpc::Broker::Stub> stub_;
     Handler                                  handler_;
     std::chrono::milliseconds                pull_timeout_;
 
@@ -109,4 +109,4 @@ private:
     std::atomic<uint64_t> rpc_failures_{0};
 };
 
-} // namespace pmlmq
+} // namespace harbinger

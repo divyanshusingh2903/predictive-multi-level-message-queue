@@ -1,4 +1,4 @@
-# PMLMQ — Predictive Multi-Level Message Queue
+# Harbinger — Predictive Multi-Level Message Queue
 
 ML-predicted processing time + MLFQ routing to cut P50/P95/P99 vs FIFO/static-priority/round-robin.
 

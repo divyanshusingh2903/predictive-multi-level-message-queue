@@ -10,7 +10,7 @@
 #include <unordered_map>
 #include <vector>
 
-namespace pmlmq {
+namespace harbinger {
 
 /// Ingress layer between Submit handling and routing.
 /// Generates the message ID, stamps arrival_time, records the producer ID
@@ -58,4 +58,4 @@ private:
     std::atomic<uint64_t>  accepted_{0};
 };
 
-} // namespace pmlmq
+} // namespace harbinger

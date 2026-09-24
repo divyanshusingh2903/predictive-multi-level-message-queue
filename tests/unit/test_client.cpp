@@ -1,5 +1,5 @@
 #include "consumer/consumer.hpp"
-#include "pmlmq_service.hpp"
+#include "harbinger_service.hpp"
 #include "producer/producer.hpp"
 
 #include <grpcpp/grpcpp.h>
@@ -10,7 +10,7 @@
 #include <stdexcept>
 #include <thread>
 
-using namespace pmlmq;
+using namespace harbinger;
 using namespace std::chrono_literals;
 
 // ── Shared fixture: starts a real in-process gRPC server on port 0 ────────────
@@ -41,7 +41,7 @@ protected:
         return true;
     }
 
-    PMLMQService                  service_;
+    HarbingerService                  service_;
     std::unique_ptr<grpc::Server> server_;
     std::string                   addr_;
 };
@@ -116,7 +116,7 @@ TEST_F(ClientTest, ConsumerStartStop) {
     EXPECT_FALSE(c->is_running());
 }
 
-// ── End-to-end: Producer → PMLMQ → Consumer ──────────────────────────────────
+// ── End-to-end: Producer → Harbinger → Consumer ──────────────────────────────────
 
 TEST_F(ClientTest, EndToEndAck) {
     std::atomic<int> processed{0};
@@ -212,7 +212,7 @@ TEST_F(ClientTest, HandlerExceptionIsNackedAndRetried) {
 
 TEST_F(ClientTest, NackExceedingMaxRetriesSendsToDLQ) {
     // Spin up a service with max_retries=1 for this test.
-    PMLMQService svc{ PMLMQConfig{ .default_max_retries = 1, .max_pull_wait = 500ms } };
+    HarbingerService svc{ HarbingerConfig{ .default_max_retries = 1, .max_pull_wait = 500ms } };
     int port = 0;
     grpc::ServerBuilder b;
     b.AddListeningPort("127.0.0.1:0", grpc::InsecureServerCredentials(), &port);

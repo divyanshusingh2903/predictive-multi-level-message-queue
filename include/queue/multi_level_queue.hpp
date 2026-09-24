@@ -12,7 +12,7 @@
 #include <thread>
 #include <vector>
 
-namespace pmlmq {
+namespace harbinger {
 
 /// Thread-safe strict-priority queue with optional aging.
 /// Level 0 holds the highest-priority messages; dequeue always drains
@@ -108,4 +108,4 @@ private:
     std::thread aging_thread_;
 };
 
-} // namespace pmlmq
+} // namespace harbinger

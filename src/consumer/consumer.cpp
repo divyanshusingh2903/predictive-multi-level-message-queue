@@ -5,10 +5,10 @@
 #include <stdexcept>
 #include <utility>
 
-namespace pmlmq {
+namespace harbinger {
 
 Consumer::Consumer(std::string id,
-                   std::unique_ptr<pmlmq_rpc::Broker::Stub> stub,
+                   std::unique_ptr<harbinger_rpc::Broker::Stub> stub,
                    Handler handler,
                    std::chrono::milliseconds pull_timeout)
     : id_(std::move(id)),
@@ -28,10 +28,10 @@ std::shared_ptr<Consumer> Consumer::connect(const std::string& server_addr,
                                              std::chrono::milliseconds pull_timeout) {
     auto channel = grpc::CreateChannel(server_addr,
                                        grpc::InsecureChannelCredentials());
-    auto stub = pmlmq_rpc::Broker::NewStub(channel);
+    auto stub = harbinger_rpc::Broker::NewStub(channel);
 
-    pmlmq_rpc::RegisterConsumerRequest  req;
-    pmlmq_rpc::RegisterConsumerResponse resp;
+    harbinger_rpc::RegisterConsumerRequest  req;
+    harbinger_rpc::RegisterConsumerResponse resp;
     grpc::ClientContext ctx;
 
     const auto status = stub->RegisterConsumer(&ctx, req, &resp);
@@ -64,12 +64,12 @@ void Consumer::stop() {
 void Consumer::run() {
     while (running_.load(std::memory_order_acquire)) {
         // ── Pull ─────────────────────────────────────────────────────────────
-        pmlmq_rpc::PullRequest pull_req;
+        harbinger_rpc::PullRequest pull_req;
         pull_req.set_consumer_id(id_);
         pull_req.set_timeout_ms(
             static_cast<int64_t>(pull_timeout_.count()));
 
-        pmlmq_rpc::PullResponse pull_resp;
+        harbinger_rpc::PullResponse pull_resp;
         grpc::ClientContext ctx;
         // Give the gRPC call a deadline slightly beyond the server-side wait
         // so the network round-trip doesn't cause spurious deadline exceeded errors.
@@ -120,12 +120,12 @@ void Consumer::run() {
 
         // ── Ack or Nack — always carry actual processing time (Phase 2 data) ─
         if (result == AckResult::SUCCESS) {
-            pmlmq_rpc::AckRequest ack_req;
+            harbinger_rpc::AckRequest ack_req;
             ack_req.set_consumer_id(id_);
             ack_req.set_message_id(msg.id);
             ack_req.set_processing_time_ms(processing_ms);
 
-            pmlmq_rpc::AckResponse  ack_resp;
+            harbinger_rpc::AckResponse  ack_resp;
             grpc::ClientContext     ack_ctx;
             ack_ctx.set_deadline(std::chrono::system_clock::now() +
                                  std::chrono::seconds{5});
@@ -137,13 +137,13 @@ void Consumer::run() {
             }
             acked_.fetch_add(1, std::memory_order_relaxed);
         } else {
-            pmlmq_rpc::NackRequest nack_req;
+            harbinger_rpc::NackRequest nack_req;
             nack_req.set_consumer_id(id_);
             nack_req.set_message_id(msg.id);
             nack_req.set_processing_time_ms(processing_ms);
             nack_req.set_reason(failure_reason);
 
-            pmlmq_rpc::NackResponse nack_resp;
+            harbinger_rpc::NackResponse nack_resp;
             grpc::ClientContext     nack_ctx;
             nack_ctx.set_deadline(std::chrono::system_clock::now() +
                                   std::chrono::seconds{5});
@@ -158,4 +158,4 @@ void Consumer::run() {
     }
 }
 
-} // namespace pmlmq
+} // namespace harbinger

@@ -1,47 +1,47 @@
-#include "pmlmq_service.hpp"
+#include "harbinger_service.hpp"
 
 #include <algorithm>
 #include <stdexcept>
 
-namespace pmlmq {
+namespace harbinger {
 
 namespace {
 
-PMLMQConfig validate_config(PMLMQConfig config) {
+HarbingerConfig validate_config(HarbingerConfig config) {
     if (config.num_levels == 0) {
-        throw std::invalid_argument("PMLMQConfig: num_levels must be >= 1");
+        throw std::invalid_argument("HarbingerConfig: num_levels must be >= 1");
     }
     if (config.default_priority >= config.num_levels) {
         throw std::invalid_argument(
-            "PMLMQConfig: default_priority must be < num_levels");
+            "HarbingerConfig: default_priority must be < num_levels");
     }
     if (config.default_max_retries == 0) {
         throw std::invalid_argument(
-            "PMLMQConfig: default_max_retries must be >= 1");
+            "HarbingerConfig: default_max_retries must be >= 1");
     }
     if (config.default_ttl.count() < 0) {
-        throw std::invalid_argument("PMLMQConfig: default_ttl must be >= 0");
+        throw std::invalid_argument("HarbingerConfig: default_ttl must be >= 0");
     }
     if (config.max_pull_wait <= std::chrono::milliseconds::zero()) {
         throw std::invalid_argument(
-            "PMLMQConfig: max_pull_wait must be positive");
+            "HarbingerConfig: max_pull_wait must be positive");
     }
     if (config.ttl_sweep_interval.count() < 0) {
         throw std::invalid_argument(
-            "PMLMQConfig: ttl_sweep_interval must be >= 0");
+            "HarbingerConfig: ttl_sweep_interval must be >= 0");
     }
     if (config.aging &&
         (config.aging->threshold <= std::chrono::milliseconds::zero() ||
          config.aging->interval <= std::chrono::milliseconds::zero())) {
         throw std::invalid_argument(
-            "PMLMQConfig: aging threshold and interval must be positive");
+            "HarbingerConfig: aging threshold and interval must be positive");
     }
     return config;
 }
 
 } // namespace
 
-PMLMQService::PMLMQService(PMLMQConfig config)
+HarbingerService::HarbingerService(HarbingerConfig config)
     : config_(validate_config(std::move(config))),
       queue_(config_.num_levels, config_.aging),
       dlq_(),
@@ -51,7 +51,7 @@ PMLMQService::PMLMQService(PMLMQConfig config)
     }
 }
 
-PMLMQService::~PMLMQService() {
+HarbingerService::~HarbingerService() {
     stop_sweeper_.store(true, std::memory_order_release);
     sweeper_cv_.notify_all();
     if (sweeper_thread_.joinable()) {
@@ -59,7 +59,7 @@ PMLMQService::~PMLMQService() {
     }
 }
 
-void PMLMQService::run_ttl_sweeper() {
+void HarbingerService::run_ttl_sweeper() {
     while (!stop_sweeper_.load(std::memory_order_acquire)) {
         std::unique_lock lock{sweeper_mutex_};
         sweeper_cv_.wait_for(lock, config_.ttl_sweep_interval, [this] {
@@ -71,29 +71,29 @@ void PMLMQService::run_ttl_sweeper() {
     }
 }
 
-void PMLMQService::dlq_swept(std::vector<Message> expired,
+void HarbingerService::dlq_swept(std::vector<Message> expired,
                              std::string details) {
     for (auto& msg : expired) {
         dlq_.push(std::move(msg), DLQReason::TTL_EXPIRED, details);
     }
 }
 
-bool PMLMQService::is_registered_producer(const std::string& id) const {
+bool HarbingerService::is_registered_producer(const std::string& id) const {
     std::lock_guard lock{producers_mutex_};
     return registered_producers_.contains(id);
 }
 
-bool PMLMQService::is_registered_consumer(const std::string& id) const {
+bool HarbingerService::is_registered_consumer(const std::string& id) const {
     std::lock_guard lock{consumers_mutex_};
     return registered_consumers_.contains(id);
 }
 
-std::size_t PMLMQService::in_flight_count() const {
+std::size_t HarbingerService::in_flight_count() const {
     std::lock_guard lock{in_flight_mutex_};
     return in_flight_.size();
 }
 
-void PMLMQService::route_message(Message msg) {
+void HarbingerService::route_message(Message msg) {
     msg.priority          = config_.default_priority;
     msg.original_priority = config_.default_priority;
     msg.max_retries       = config_.default_max_retries;
@@ -103,10 +103,10 @@ void PMLMQService::route_message(Message msg) {
     queue_.enqueue(std::move(msg));
 }
 
-grpc::Status PMLMQService::RegisterProducer(
+grpc::Status HarbingerService::RegisterProducer(
     grpc::ServerContext*,
-    const pmlmq_rpc::RegisterProducerRequest*,
-    pmlmq_rpc::RegisterProducerResponse* resp) {
+    const harbinger_rpc::RegisterProducerRequest*,
+    harbinger_rpc::RegisterProducerResponse* resp) {
     const std::string id =
         "producer-" +
         std::to_string(producer_counter_.fetch_add(1, std::memory_order_relaxed));
@@ -118,9 +118,9 @@ grpc::Status PMLMQService::RegisterProducer(
     return grpc::Status::OK;
 }
 
-grpc::Status PMLMQService::Submit(grpc::ServerContext*,
-                                   const pmlmq_rpc::SubmitRequest* req,
-                                   pmlmq_rpc::SubmitResponse* resp) {
+grpc::Status HarbingerService::Submit(grpc::ServerContext*,
+                                   const harbinger_rpc::SubmitRequest* req,
+                                   harbinger_rpc::SubmitResponse* resp) {
     if (!is_registered_producer(req->producer_id())) {
         return {grpc::StatusCode::PERMISSION_DENIED,
                 "Unknown producer: " + req->producer_id()};
@@ -146,10 +146,10 @@ grpc::Status PMLMQService::Submit(grpc::ServerContext*,
     return grpc::Status::OK;
 }
 
-grpc::Status PMLMQService::RegisterConsumer(
+grpc::Status HarbingerService::RegisterConsumer(
     grpc::ServerContext*,
-    const pmlmq_rpc::RegisterConsumerRequest*,
-    pmlmq_rpc::RegisterConsumerResponse* resp) {
+    const harbinger_rpc::RegisterConsumerRequest*,
+    harbinger_rpc::RegisterConsumerResponse* resp) {
     const std::string id =
         "consumer-" +
         std::to_string(consumer_counter_.fetch_add(1, std::memory_order_relaxed));
@@ -161,9 +161,9 @@ grpc::Status PMLMQService::RegisterConsumer(
     return grpc::Status::OK;
 }
 
-grpc::Status PMLMQService::Pull(grpc::ServerContext* ctx,
-                                 const pmlmq_rpc::PullRequest* req,
-                                 pmlmq_rpc::PullResponse* resp) {
+grpc::Status HarbingerService::Pull(grpc::ServerContext* ctx,
+                                 const harbinger_rpc::PullRequest* req,
+                                 harbinger_rpc::PullResponse* resp) {
     if (!is_registered_consumer(req->consumer_id())) {
         return {grpc::StatusCode::PERMISSION_DENIED,
                 "Unknown consumer: " + req->consumer_id()};
@@ -228,9 +228,9 @@ grpc::Status PMLMQService::Pull(grpc::ServerContext* ctx,
     return grpc::Status::OK;
 }
 
-grpc::Status PMLMQService::Ack(grpc::ServerContext*,
-                                const pmlmq_rpc::AckRequest* req,
-                                pmlmq_rpc::AckResponse*) {
+grpc::Status HarbingerService::Ack(grpc::ServerContext*,
+                                const harbinger_rpc::AckRequest* req,
+                                harbinger_rpc::AckResponse*) {
     if (!is_registered_consumer(req->consumer_id())) {
         return {grpc::StatusCode::PERMISSION_DENIED,
                 "Unknown consumer: " + req->consumer_id()};
@@ -262,9 +262,9 @@ grpc::Status PMLMQService::Ack(grpc::ServerContext*,
     return grpc::Status::OK;
 }
 
-grpc::Status PMLMQService::Nack(grpc::ServerContext*,
-                                 const pmlmq_rpc::NackRequest* req,
-                                 pmlmq_rpc::NackResponse*) {
+grpc::Status HarbingerService::Nack(grpc::ServerContext*,
+                                 const harbinger_rpc::NackRequest* req,
+                                 harbinger_rpc::NackResponse*) {
     if (!is_registered_consumer(req->consumer_id())) {
         return {grpc::StatusCode::PERMISSION_DENIED,
                 "Unknown consumer: " + req->consumer_id()};
@@ -314,23 +314,23 @@ grpc::Status PMLMQService::Nack(grpc::ServerContext*,
 
 namespace {
 
-pmlmq_rpc::DlqReason to_proto_reason(DLQReason reason) {
+harbinger_rpc::DlqReason to_proto_reason(DLQReason reason) {
     switch (reason) {
         case DLQReason::MAX_RETRIES_EXCEEDED:
-            return pmlmq_rpc::DLQ_MAX_RETRIES_EXCEEDED;
+            return harbinger_rpc::DLQ_MAX_RETRIES_EXCEEDED;
         case DLQReason::TTL_EXPIRED:
-            return pmlmq_rpc::DLQ_TTL_EXPIRED;
+            return harbinger_rpc::DLQ_TTL_EXPIRED;
         case DLQReason::PROCESSING_ERROR:
-            return pmlmq_rpc::DLQ_PROCESSING_ERROR;
+            return harbinger_rpc::DLQ_PROCESSING_ERROR;
     }
-    return pmlmq_rpc::DLQ_UNKNOWN;
+    return harbinger_rpc::DLQ_UNKNOWN;
 }
 
 } // namespace
 
-grpc::Status PMLMQService::InspectDlq(grpc::ServerContext*,
-                                      const pmlmq_rpc::InspectDlqRequest* req,
-                                      pmlmq_rpc::InspectDlqResponse* resp) {
+grpc::Status HarbingerService::InspectDlq(grpc::ServerContext*,
+                                      const harbinger_rpc::InspectDlqRequest* req,
+                                      harbinger_rpc::InspectDlqResponse* resp) {
     constexpr int kDefaultLimit = 10;
     constexpr int kMaxLimit = 100;
     const int limit =
@@ -363,4 +363,4 @@ grpc::Status PMLMQService::InspectDlq(grpc::ServerContext*,
     return grpc::Status::OK;
 }
 
-} // namespace pmlmq
+} // namespace harbinger

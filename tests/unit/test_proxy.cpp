@@ -5,7 +5,7 @@
 #include <set>
 #include <string>
 
-using namespace pmlmq;
+using namespace harbinger;
 
 namespace {
 
