@@ -26,6 +26,10 @@ message SubmitRequest {
     string              producer_id = 1;
     bytes               payload     = 2;
     map<string, string> headers     = 3;
+    // Per-message TTL in milliseconds.
+    // Unset = use the server default; 0 = explicitly disable expiry;
+    // >0 = expire that long after arrival. Negative is rejected.
+    optional int64      ttl_ms      = 4;
 }
 
 message SubmitResponse {
@@ -73,6 +77,39 @@ message NackRequest {
 
 message NackResponse {}
 
+// ── DLQ inspection (operator endpoint, no registration required) ────────────
+
+enum DlqReason {
+    DLQ_UNKNOWN              = 0;
+    DLQ_MAX_RETRIES_EXCEEDED = 1;
+    DLQ_TTL_EXPIRED          = 2;
+    DLQ_PROCESSING_ERROR     = 3;
+}
+
+message DlqEntry {
+    string              message_id  = 1;
+    bytes               payload     = 2;
+    map<string, string> headers     = 3;
+    DlqReason           reason      = 4;
+    string              details     = 5;
+    // Milliseconds since the entry landed in the DLQ. Reported as an age
+    // because dlq_time is a steady-clock timestamp with no wall-clock form.
+    int64               dlq_age_ms  = 6;
+    uint32              retry_count = 7;
+}
+
+message InspectDlqRequest {
+    // Page size; <=0 selects the default (10), capped at 100.
+    int32 limit  = 1;
+    // Entries to skip from the front (FIFO order); negative clamps to 0.
+    int32 offset = 2;
+}
+
+message InspectDlqResponse {
+    repeated DlqEntry entries    = 1;
+    uint64            total_size = 2;
+}
+
 // ── Broker service ────────────────────────────────────────────────────────────
 
 service Broker {
@@ -89,4 +126,8 @@ service Broker {
     // Ack/Nack carry actual processing time for the Phase 2 feedback loop.
     rpc Ack              (AckRequest)                returns (AckResponse);
     rpc Nack             (NackRequest)               returns (NackResponse);
+
+    // Read-only DLQ inspection for operators and tests. No registration
+    // required; the DLQ never redelivers.
+    rpc InspectDlq       (InspectDlqRequest)         returns (InspectDlqResponse);
 }

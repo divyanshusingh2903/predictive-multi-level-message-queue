@@ -93,3 +93,51 @@ TEST(DeadLetterQueue, MessagePreservedInEntry) {
     EXPECT_EQ(entry->message.retry_count, 3u);
     EXPECT_EQ(entry->message.headers.at("key"), "value");
 }
+
+TEST(DeadLetterQueue, SnapshotDoesNotDrain) {
+    DeadLetterQueue dlq;
+    dlq.push(make_msg("m1"), DLQReason::TTL_EXPIRED);
+
+    auto snap1 = dlq.snapshot(0, 10);
+    auto snap2 = dlq.snapshot(0, 10);
+
+    ASSERT_EQ(snap1.size(), 1u);
+    ASSERT_EQ(snap2.size(), 1u);
+    EXPECT_EQ(snap1[0].message.id, "m1");
+    EXPECT_EQ(snap2[0].message.id, "m1");
+    EXPECT_EQ(dlq.size(), 1u);
+}
+
+TEST(DeadLetterQueue, SnapshotPreservesOrderAndReasons) {
+    DeadLetterQueue dlq;
+    dlq.push(make_msg("first"),  DLQReason::MAX_RETRIES_EXCEEDED);
+    dlq.push(make_msg("second"), DLQReason::TTL_EXPIRED);
+
+    const auto snap = dlq.snapshot(0, 10);
+
+    ASSERT_EQ(snap.size(), 2u);
+    EXPECT_EQ(snap[0].message.id, "first");
+    EXPECT_EQ(snap[0].reason, DLQReason::MAX_RETRIES_EXCEEDED);
+    EXPECT_EQ(snap[1].message.id, "second");
+    EXPECT_EQ(snap[1].reason, DLQReason::TTL_EXPIRED);
+}
+
+TEST(DeadLetterQueue, SnapshotPagination) {
+    DeadLetterQueue dlq;
+    dlq.push(make_msg("a"), DLQReason::TTL_EXPIRED);
+    dlq.push(make_msg("b"), DLQReason::TTL_EXPIRED);
+    dlq.push(make_msg("c"), DLQReason::TTL_EXPIRED);
+
+    const auto page1 = dlq.snapshot(0, 2);
+    const auto page2 = dlq.snapshot(2, 2);
+    const auto past_end = dlq.snapshot(5, 2);
+    const auto zero_limit = dlq.snapshot(0, 0);
+
+    ASSERT_EQ(page1.size(), 2u);
+    EXPECT_EQ(page1[0].message.id, "a");
+    EXPECT_EQ(page1[1].message.id, "b");
+    ASSERT_EQ(page2.size(), 1u);
+    EXPECT_EQ(page2[0].message.id, "c");
+    EXPECT_TRUE(past_end.empty());
+    EXPECT_TRUE(zero_limit.empty());
+}

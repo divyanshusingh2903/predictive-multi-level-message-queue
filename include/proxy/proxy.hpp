@@ -5,6 +5,7 @@
 #include <atomic>
 #include <cstdint>
 #include <functional>
+#include <optional>
 #include <string>
 #include <unordered_map>
 #include <vector>
@@ -30,12 +31,16 @@ public:
     /// @param payload Opaque message bytes (moved into the Message).
     /// @param headers Key-value metadata (moved; producer ID is added under "__producer_id").
     /// @param producer_id Originating producer, stored in headers.
+    /// @param ttl Optional per-message TTL; nullopt leaves kTtlUnset for
+    ///   route_message to resolve. Passed through untouched — the proxy
+    ///   applies no defaults and reads no queue config.
     /// @return The generated unique message ID.
     /// @side_effects Sets arrival_time to now, increments the accepted
     ///   counter, and invokes the sink with the finished Message.
     [[nodiscard]] std::string accept(std::vector<uint8_t> payload,
-                                     std::unordered_map<std::string, std::string> headers,
-                                     const std::string& producer_id);
+                                      std::unordered_map<std::string, std::string> headers,
+                                      const std::string& producer_id,
+                                      std::optional<std::chrono::milliseconds> ttl = std::nullopt);
 
     /// Generate a unique message ID.
     /// @return String of the form "<ns-timestamp>-<monotonic-counter>".

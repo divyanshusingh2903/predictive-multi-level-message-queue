@@ -95,6 +95,10 @@ cmake -B build -DCMAKE_BUILD_TYPE=Release
 cmake --build build -j$(nproc)
 ```
 
+The build expects Protobuf and gRPC CMake CONFIG packages from a compatible
+installation. For sanitizer verification, configure with
+`-DPMLMQ_SANITIZER=address`, `undefined`, or `thread`.
+
 **Targets**
 
 | Binary | Description |
@@ -127,6 +131,8 @@ cmake --build build -j$(nproc)
 ```bash
 ./build/tests/pmlmq_unit_tests
 ./build/tests/pmlmq_integration_tests
+# or, when configured with CMake testing
+ctest --test-dir build --output-on-failure
 ```
 
 ---
@@ -166,6 +172,21 @@ consumer->stop();
 | `default_ttl` | `0` (off) | TTL from arrival; `0` = no expiry |
 | `default_priority` | `1` (medium) | Static priority for Phase 1; ML classifier overrides in Phase 2 |
 | `max_pull_wait` | `5000 ms` | Server-side cap on consumer pull timeout |
+| `ttl_sweep_interval` | `100 ms` | Background TTL sweep interval; `0` disables it |
+
+Configuration is validated at broker construction. Levels and retry count must
+be positive, durations must use their documented non-negative/off semantics,
+and an enabled aging policy requires positive threshold and interval values.
+
+### Current production boundary
+
+The broker is currently an in-memory research prototype. Before deployment
+beyond a trusted local network, add in-flight lease recovery, queue/DLQ/payload
+limits and backpressure, TLS/authentication, idempotent mutation retries,
+operator authorization, and metrics/tracing. A consumer stops its polling loop
+when an Ack/Nack RPC fails so it does not report a successful local outcome for
+an unconfirmed broker mutation; the message remains subject to future broker
+lease recovery once that feature is implemented.
 
 ---
 

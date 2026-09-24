@@ -3,8 +3,10 @@
 #include <pmlmq.grpc.pb.h>
 
 #include <atomic>
+#include <chrono>
 #include <cstdint>
 #include <memory>
+#include <optional>
 #include <string>
 #include <unordered_map>
 #include <vector>
@@ -28,11 +30,15 @@ public:
     /// @param payload Opaque bytes sent as the message body.
     /// @param headers Optional metadata forwarded to consumers and used
     ///   for future ML feature extraction.
+    /// @param ttl Optional per-message TTL; nullopt uses the server default,
+    ///   zero disables expiry for this message.
     /// @return Message ID assigned by the server, useful for tracing.
     /// @side_effects Performs a Submit RPC and increments the sent counter.
     /// @throws std::runtime_error if the Submit RPC fails.
+    /// @throws std::invalid_argument if ttl is negative.
     std::string send(std::vector<uint8_t> payload,
-                     std::unordered_map<std::string, std::string> headers = {});
+                      std::unordered_map<std::string, std::string> headers = {},
+                      std::optional<std::chrono::milliseconds> ttl = std::nullopt);
 
     /// Server-assigned producer ID from registration.
     /// @return Opaque ID string (e.g. "producer-0").

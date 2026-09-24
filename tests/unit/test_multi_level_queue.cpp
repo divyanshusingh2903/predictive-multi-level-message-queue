@@ -208,3 +208,68 @@ TEST(MultiLevelQueue, AgingPromotesLowPriorityMessage) {
     EXPECT_EQ(msg->id, "aged-msg");
     EXPECT_EQ(msg->priority, 0u);
 }
+
+// ── TTL expiry ────────────────────────────────────────────────────────────────
+
+namespace {
+
+Message make_ttl_msg(uint8_t priority, std::string id,
+                     std::chrono::milliseconds age,
+                     std::chrono::milliseconds ttl = 100ms) {
+    Message m;
+    m.priority = priority;
+    m.original_priority = priority;
+    m.id = std::move(id);
+    m.arrival_time =
+        std::chrono::steady_clock::now() - age; // backdate to control expiry
+    m.ttl = ttl;
+    return m;
+}
+
+} // namespace
+
+TEST(MultiLevelQueue, SweepExpiredRemovesOnlyExpired) {
+    MultiLevelQueue q{3};
+
+    q.enqueue(make_ttl_msg(2, "expired-low", 500ms));
+    q.enqueue(make_ttl_msg(0, "live-high", 0ms));
+    q.enqueue(make_ttl_msg(1, "expired-mid", 500ms, 50ms));
+    ASSERT_EQ(q.size(), 3u);
+
+    const auto expired = q.sweep_expired();
+
+    ASSERT_EQ(expired.size(), 2u);
+    EXPECT_EQ(expired[0].id, "expired-mid"); // level order: 1 before 2
+    EXPECT_EQ(expired[1].id, "expired-low");
+    EXPECT_EQ(q.size(), 1u);
+    const auto rest = q.try_dequeue();
+    ASSERT_TRUE(rest.has_value());
+    EXPECT_EQ(rest->id, "live-high");
+}
+
+TEST(MultiLevelQueue, SweepExpiredEmptyWhenAllLive) {
+    MultiLevelQueue q{3};
+    q.enqueue(make_ttl_msg(0, "live", 0ms, 0ms)); // ttl=0 never expires
+
+    EXPECT_TRUE(q.sweep_expired().empty());
+    EXPECT_EQ(q.size(), 1u);
+}
+
+TEST(MultiLevelQueue, AgingSkipsExpiredMessages) {
+    AgingConfig aging{.threshold = 50ms, .interval = 10ms};
+    MultiLevelQueue q{3, aging};
+
+    q.enqueue(make_ttl_msg(2, "dead-msg", 500ms)); // already expired
+
+    // Wait past several aging scans: a live message would reach level 0.
+    std::this_thread::sleep_for(200ms);
+
+    EXPECT_EQ(q.size(0), 0u); // never promoted toward level 0
+    EXPECT_EQ(q.size(2), 1u);
+
+    // The sweeper path still reclaims it.
+    const auto expired = q.sweep_expired();
+    ASSERT_EQ(expired.size(), 1u);
+    EXPECT_EQ(expired[0].id, "dead-msg");
+    EXPECT_TRUE(q.empty());
+}

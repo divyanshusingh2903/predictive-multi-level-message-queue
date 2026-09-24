@@ -93,7 +93,10 @@ int main() {
     for (int i = 0; i < 4; ++i) {
         const std::string id_b = producer_b->send(
             {static_cast<uint8_t>(0x80 + i)},
-            {{"job_type", "transcode"}, {"source", "service-b"}});
+            {{"job_type", "transcode"}, {"source", "service-b"}},
+            // Per-message TTL example: generous enough to never fire here;
+            // the broker DLQs as TTL_EXPIRED only when the deadline passes.
+            60s);
         std::cout << "  B sent: " << id_b << "\n";
     }
     std::cout << "\n";

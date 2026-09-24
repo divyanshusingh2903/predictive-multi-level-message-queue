@@ -13,6 +13,11 @@ MultiLevelQueue::MultiLevelQueue(uint8_t num_levels,
         throw std::invalid_argument("MultiLevelQueue: num_levels must be >= 1");
     }
     if (aging_cfg_) {
+        if (aging_cfg_->threshold <= std::chrono::milliseconds::zero() ||
+            aging_cfg_->interval <= std::chrono::milliseconds::zero()) {
+            throw std::invalid_argument(
+                "MultiLevelQueue: aging threshold and interval must be positive");
+        }
         aging_thread_ = std::thread([this] { run_aging(); });
     }
 }
@@ -62,6 +67,27 @@ std::optional<Message> MultiLevelQueue::try_dequeue() {
     return dequeue_locked();
 }
 
+std::vector<Message> MultiLevelQueue::sweep_expired() {
+    std::vector<Message> expired;
+    std::lock_guard lock{mutex_};
+    for (auto& q : queues_) {
+        std::deque<Message> remaining;
+        while (!q.empty()) {
+            auto& msg = q.front();
+            if (msg.is_expired()) {
+                expired.push_back(std::move(msg));
+                q.pop_front();
+                total_size_.fetch_sub(1, std::memory_order_relaxed);
+            } else {
+                remaining.push_back(std::move(msg));
+                q.pop_front();
+            }
+        }
+        q = std::move(remaining);
+    }
+    return expired;
+}
+
 std::optional<Message> MultiLevelQueue::dequeue(
     std::chrono::milliseconds timeout) {
     std::unique_lock lock{mutex_};
@@ -90,8 +116,12 @@ std::size_t MultiLevelQueue::size(uint8_t level) const {
 
 void MultiLevelQueue::run_aging() {
     while (!shutdown_.load(std::memory_order_acquire)) {
-        std::this_thread::sleep_for(aging_cfg_->interval);
+        std::unique_lock lock{mutex_};
+        cv_.wait_for(lock, aging_cfg_->interval, [this] {
+            return shutdown_.load(std::memory_order_acquire);
+        });
         if (shutdown_.load(std::memory_order_acquire)) break;
+        lock.unlock();
 
         const auto now = std::chrono::steady_clock::now();
         bool promoted_any = false;
@@ -108,7 +138,12 @@ void MultiLevelQueue::run_aging() {
                     const auto age =
                         std::chrono::duration_cast<std::chrono::milliseconds>(
                             now - msg.enqueue_time);
-                    if (age >= aging_cfg_->threshold) {
+                    if (msg.is_expired()) {
+                        // Leave expired messages for sweep_expired()/Pull to
+                        // DLQ; never promote dead messages toward level 0.
+                        remaining.push_back(std::move(msg));
+                        q.pop_front();
+                    } else if (age >= aging_cfg_->threshold) {
                         // Promote: move to next higher level.
                         msg.priority = static_cast<uint8_t>(lvl - 1);
                         msg.enqueue_time = now; // reset so it doesn't re-promote immediately

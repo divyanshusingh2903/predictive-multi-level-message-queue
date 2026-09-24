@@ -92,3 +92,25 @@ TEST(Proxy, GenerateIdIsUnique) {
     }
     EXPECT_EQ(static_cast<int>(ids.size()), kCount);
 }
+
+TEST(Proxy, AcceptLeavesTtlUnsetByDefault) {
+    SinkCapture cap;
+    Proxy proxy{cap.sink()};
+
+    proxy.accept({}, {}, "p1");
+
+    ASSERT_EQ(cap.messages.size(), 1u);
+    EXPECT_EQ(cap.messages[0].ttl, kTtlUnset);
+}
+
+TEST(Proxy, AcceptForwardsExplicitTtl) {
+    SinkCapture cap;
+    Proxy proxy{cap.sink()};
+
+    proxy.accept({}, {}, "p1", std::chrono::milliseconds{0});
+    proxy.accept({}, {}, "p1", std::chrono::milliseconds{250});
+
+    ASSERT_EQ(cap.messages.size(), 2u);
+    EXPECT_EQ(cap.messages[0].ttl, std::chrono::milliseconds{0});
+    EXPECT_EQ(cap.messages[1].ttl, std::chrono::milliseconds{250});
+}

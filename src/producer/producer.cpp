@@ -30,16 +30,25 @@ std::shared_ptr<Producer> Producer::connect(const std::string& server_addr) {
 }
 
 std::string Producer::send(std::vector<uint8_t> payload,
-                            std::unordered_map<std::string, std::string> headers) {
+                             std::unordered_map<std::string, std::string> headers,
+                             std::optional<std::chrono::milliseconds> ttl) {
+    if (ttl && ttl->count() < 0) {
+        throw std::invalid_argument("Producer::send: ttl must be >= 0");
+    }
     pmlmq_rpc::SubmitRequest req;
     req.set_producer_id(id_);
     req.set_payload(std::string(payload.begin(), payload.end()));
     for (const auto& [k, v] : headers) {
         (*req.mutable_headers())[k] = v;
     }
+    if (ttl) {
+        req.set_ttl_ms(ttl->count());
+    }
 
     pmlmq_rpc::SubmitResponse resp;
     grpc::ClientContext ctx;
+    ctx.set_deadline(std::chrono::system_clock::now() +
+                     std::chrono::seconds{5});
 
     const auto status = stub_->Submit(&ctx, req, &resp);
     if (!status.ok()) {

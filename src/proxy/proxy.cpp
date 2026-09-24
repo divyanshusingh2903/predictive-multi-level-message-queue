@@ -24,10 +24,12 @@ std::string Proxy::generate_id() {
 
 std::string Proxy::accept(std::vector<uint8_t> payload,
                           std::unordered_map<std::string, std::string> headers,
-                          const std::string& producer_id) {
+                          const std::string& producer_id,
+                          std::optional<std::chrono::milliseconds> ttl) {
     Message msg;
     msg.id                       = generate_id();
     msg.arrival_time             = std::chrono::steady_clock::now();
+    msg.ttl                      = ttl ? *ttl : kTtlUnset;
     msg.payload                  = std::move(payload);
     msg.headers                  = std::move(headers);
     msg.headers["__producer_id"] = producer_id;

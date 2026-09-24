@@ -3,6 +3,7 @@
 #include <grpcpp/grpcpp.h>
 
 #include <stdexcept>
+#include <utility>
 
 namespace pmlmq {
 
@@ -13,7 +14,14 @@ Consumer::Consumer(std::string id,
     : id_(std::move(id)),
       stub_(std::move(stub)),
       handler_(std::move(handler)),
-      pull_timeout_(pull_timeout) {}
+      pull_timeout_(pull_timeout) {
+    if (!handler_) {
+        throw std::invalid_argument("Consumer: handler must not be empty");
+    }
+    if (pull_timeout_ <= std::chrono::milliseconds::zero()) {
+        throw std::invalid_argument("Consumer: pull_timeout must be positive");
+    }
+}
 
 std::shared_ptr<Consumer> Consumer::connect(const std::string& server_addr,
                                              Handler handler,
@@ -96,7 +104,15 @@ void Consumer::run() {
         processed_.fetch_add(1, std::memory_order_relaxed);
 
         const auto t0 = std::chrono::steady_clock::now();
-        const AckResult result = handler_(msg);
+        AckResult result = AckResult::FAILURE;
+        std::string failure_reason = "handler_returned_failure";
+        try {
+            result = handler_(msg);
+        } catch (const std::exception& ex) {
+            failure_reason = std::string{"handler_exception: "} + ex.what();
+        } catch (...) {
+            failure_reason = "handler_exception: unknown exception";
+        }
         const auto processing_ms =
             std::chrono::duration_cast<std::chrono::milliseconds>(
                 std::chrono::steady_clock::now() - t0)
@@ -111,18 +127,32 @@ void Consumer::run() {
 
             pmlmq_rpc::AckResponse  ack_resp;
             grpc::ClientContext     ack_ctx;
-            stub_->Ack(&ack_ctx, ack_req, &ack_resp);
+            ack_ctx.set_deadline(std::chrono::system_clock::now() +
+                                 std::chrono::seconds{5});
+            const auto status = stub_->Ack(&ack_ctx, ack_req, &ack_resp);
+            if (!status.ok()) {
+                rpc_failures_.fetch_add(1, std::memory_order_relaxed);
+                running_.store(false, std::memory_order_release);
+                continue;
+            }
             acked_.fetch_add(1, std::memory_order_relaxed);
         } else {
             pmlmq_rpc::NackRequest nack_req;
             nack_req.set_consumer_id(id_);
             nack_req.set_message_id(msg.id);
             nack_req.set_processing_time_ms(processing_ms);
-            nack_req.set_reason("handler_returned_failure");
+            nack_req.set_reason(failure_reason);
 
             pmlmq_rpc::NackResponse nack_resp;
             grpc::ClientContext     nack_ctx;
-            stub_->Nack(&nack_ctx, nack_req, &nack_resp);
+            nack_ctx.set_deadline(std::chrono::system_clock::now() +
+                                  std::chrono::seconds{5});
+            const auto status = stub_->Nack(&nack_ctx, nack_req, &nack_resp);
+            if (!status.ok()) {
+                rpc_failures_.fetch_add(1, std::memory_order_relaxed);
+                running_.store(false, std::memory_order_release);
+                continue;
+            }
             nacked_.fetch_add(1, std::memory_order_relaxed);
         }
     }

@@ -1,17 +1,33 @@
 cmake_minimum_required(VERSION 3.20)
 project(pmlmq VERSION 0.1.0 LANGUAGES CXX)
 
+set(PMLMQ_SANITIZER "" CACHE STRING "Sanitizer to enable: address, undefined, or thread")
+
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
 add_compile_options(-Wall -Wextra -Wpedantic)
 
+if(PMLMQ_SANITIZER STREQUAL "address")
+    add_compile_options(-fsanitize=address -fno-omit-frame-pointer)
+    add_link_options(-fsanitize=address)
+elseif(PMLMQ_SANITIZER STREQUAL "undefined")
+    add_compile_options(-fsanitize=undefined -fno-omit-frame-pointer)
+    add_link_options(-fsanitize=undefined)
+elseif(PMLMQ_SANITIZER STREQUAL "thread")
+    add_compile_options(-fsanitize=thread -fno-omit-frame-pointer)
+    add_link_options(-fsanitize=thread)
+elseif(NOT PMLMQ_SANITIZER STREQUAL "")
+    message(FATAL_ERROR "Unsupported PMLMQ_SANITIZER: ${PMLMQ_SANITIZER}")
+endif()
+
 # ── Dependencies ──────────────────────────────────────────────────────────────
-# Install on Ubuntu:  sudo apt install -y libgrpc++-dev protobuf-compiler-grpc libprotobuf-dev
-# Install on macOS:   brew install grpc protobuf
+# Requires CMake CONFIG packages for protobuf+gRPC from the same install
+# prefix (e.g. /usr/local from source). Do NOT mix apt libprotobuf-dev with
+# /usr/local gRPC — Module-mode FindProtobuf drops transitive absl deps.
 find_package(Threads  REQUIRED)
-find_package(Protobuf REQUIRED)
+find_package(Protobuf CONFIG REQUIRED)
 find_package(gRPC     CONFIG REQUIRED)
 
 # ── Proto code generation ─────────────────────────────────────────────────────

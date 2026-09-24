@@ -21,6 +21,20 @@ std::optional<DLQEntry> DeadLetterQueue::pop() {
     return entry;
 }
 
+std::vector<DLQEntry> DeadLetterQueue::snapshot(std::size_t offset,
+                                               std::size_t limit) const {
+    std::lock_guard lock{mutex_};
+    std::vector<DLQEntry> out;
+    if (offset >= entries_.size() || limit == 0) return out;
+    const auto end =
+        std::min(entries_.size(), offset + limit);
+    out.reserve(end - offset);
+    for (std::size_t i = offset; i < end; ++i) {
+        out.push_back(entries_[i]);
+    }
+    return out;
+}
+
 std::size_t DeadLetterQueue::size() const {
     std::lock_guard lock{mutex_};
     return entries_.size();

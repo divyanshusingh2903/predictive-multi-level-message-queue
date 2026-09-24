@@ -16,6 +16,9 @@ Predictive Multi-Level Message Queue: ML-predicted processing time + MLFQ routin
 - `original_priority` = submit-time priority; Nack re-queue resets `priority = original_priority`.
 - `enqueue_time` = last queue placement; reset on `enqueue()` and on aging promotion.
 - TTL measured from `arrival_time`; `0` = off. Expired-at-Pull → DLQ (`TTL_EXPIRED`), keep scanning.
+- Per-message TTL: `SubmitRequest.ttl_ms` unset → `default_ttl`, `0` = explicitly off, `>0` = TTL, `<0` → `INVALID_ARGUMENT`. `kTtlUnset` flows Proxy → `route_message` only, never stored; `route_message` is the sole resolver.
+- Expiry checkpoints: `Pull` scan, `sweep_expired()` (Pull-path + `ttl_sweep_interval` sweeper, `0` = off), `Nack`/`Ack` after ownership checks. `Nack`-after-expiry DLQs `TTL_EXPIRED` without touching `retry_count`; `Ack`-after-expiry DLQs but still returns OK. Aging never promotes expired messages.
+- DLQ: `snapshot(offset, limit)` is non-destructive; `InspectDlq` RPC is read-only, paginated (limit `<=0` → 10, cap 100), no-auth operator endpoint; `dlq_age_ms` (steady clock, no wall-time form). DLQ never redelivers.
 - In-flight: owned by one consumer (`Pull` → map, `Ack` deletes, `Nack` re-queues or DLQs). Wrong owner → `PERMISSION_DENIED`; unknown ID → `NOT_FOUND`/`PERMISSION_DENIED`.
 - Aging: only levels `≥1` promote one step per scan; `enqueue_time` resets so threshold is per-entry. `shutdown()` unblocks `dequeue()` + joins thread.
 - `Pull`: `wait = min(requested>0 ? requested : max_pull_wait, max_pull_wait)`; polls in 100 ms chunks checking `IsCancelled()`. No message → `timed_out=true`.
@@ -25,7 +28,15 @@ Predictive Multi-Level Message Queue: ML-predicted processing time + MLFQ routin
 
 ## Config defaults (`PMLMQConfig`)
 
-`num_levels=3`, `aging={5000 ms, 500 ms}` (`nullopt` = strict-priority), `default_max_retries=3`, `default_ttl=0`, `default_priority=1`, `max_pull_wait=5000 ms`.
+`num_levels=3`, `aging=nullopt` (strict-priority; use `{5000 ms, 500 ms}` to enable aging), `default_max_retries=3`, `default_ttl=0`, `default_priority=1`, `max_pull_wait=5000 ms`, `ttl_sweep_interval=100 ms` (`0` = off).
+
+## Phase 2 contract
+
+- Start in shadow mode: calculate and record a prediction, but keep static-priority routing until benchmarked against the baseline.
+- Version the feature schema and exclude raw payloads by default; headers must be explicitly allowlisted before they are recorded or sent to a classifier.
+- Persist feedback keyed by message ID with the routing version, predicted bucket, measured `processing_time_ms`, and terminal outcome (Ack, retry, or DLQ reason).
+- Bound classifier calls with a short deadline. Any timeout, unavailable classifier, invalid prediction, or priority outside `[0, num_levels)` falls back to `default_priority`.
+- Compare prediction error, P50/P95/P99, throughput, and starvation against FIFO, static-priority, and round-robin workloads before enabling predictive routing.
 
 ## Build / Run / Test
 

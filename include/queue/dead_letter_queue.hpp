@@ -6,6 +6,7 @@
 #include <mutex>
 #include <optional>
 #include <string>
+#include <vector>
 
 namespace pmlmq {
 
@@ -25,6 +26,13 @@ public:
     /// @return The front entry, or std::nullopt when the DLQ is empty.
     /// @side_effects Pops the front entry when present.
     [[nodiscard]] std::optional<DLQEntry> pop();
+
+    /// Copy a page of entries without removing them.
+    /// @param offset Entries to skip from the front (FIFO order).
+    /// @param limit Maximum entries to return.
+    /// @return Up to limit entries starting at offset; empty past the end.
+    [[nodiscard]] std::vector<DLQEntry> snapshot(std::size_t offset,
+                                                std::size_t limit) const;
 
     /// Number of retained entries.
     /// @return Current FIFO depth.

@@ -8,6 +8,10 @@
 
 namespace pmlmq {
 
+/// Sentinel TTL meaning "unset — apply the server default in route_message".
+/// Flows only from Proxy to route_message; never stored in queue/DLQ/in-flight.
+inline constexpr std::chrono::milliseconds kTtlUnset{-1};
+
 /// Aging policy for starvation prevention.
 /// Messages waiting longer than threshold are promoted one level per scan.
 struct AgingConfig {
@@ -35,7 +39,7 @@ struct Message {
     /// @return True if ttl > 0 and now - arrival_time >= ttl, else false.
     /// @side_effects None; reads steady_clock.
     [[nodiscard]] bool is_expired() const noexcept {
-        if (ttl.count() == 0) return false;
+        if (ttl.count() <= 0) return false;
         return (std::chrono::steady_clock::now() - arrival_time) >= ttl;
     }
 };

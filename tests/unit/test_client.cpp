@@ -7,6 +7,7 @@
 
 #include <atomic>
 #include <chrono>
+#include <stdexcept>
 #include <thread>
 
 using namespace pmlmq;
@@ -77,6 +78,14 @@ TEST_F(ClientTest, ProducerSendIncreasesQueueSize) {
     EXPECT_EQ(service_.queue_size(), 0u);
     p->send({});
     EXPECT_EQ(service_.queue_size(), 1u);
+}
+
+TEST_F(ClientTest, ProducerSendNegativeTtlThrows) {
+    auto p = Producer::connect(addr_);
+    EXPECT_THROW(p->send({0x01}, {}, std::chrono::milliseconds{-5}),
+                 std::invalid_argument);
+    EXPECT_EQ(service_.queue_size(), 0u);
+    EXPECT_EQ(p->messages_sent(), 0u);
 }
 
 // ── Consumer client ───────────────────────────────────────────────────────────
@@ -176,6 +185,28 @@ TEST_F(ClientTest, NackCausesRetryThenAck) {
 
     EXPECT_EQ(consumer->messages_acked(), 1u);
     EXPECT_EQ(consumer->messages_nacked(), 2u);
+    EXPECT_EQ(service_.dlq_size(), 0u);
+}
+
+TEST_F(ClientTest, HandlerExceptionIsNackedAndRetried) {
+    std::atomic<int> attempts{0};
+
+    auto producer = Producer::connect(addr_);
+    auto consumer = Consumer::connect(addr_, [&](const ReceivedMessage&) {
+        if (attempts.fetch_add(1) == 0) {
+            throw std::runtime_error("transient handler failure");
+        }
+        return AckResult::SUCCESS;
+    }, 500ms);
+
+    consumer->start();
+    producer->send({0x02});
+
+    EXPECT_TRUE(wait_for([&] { return attempts.load() == 2; }));
+    consumer->stop();
+
+    EXPECT_EQ(consumer->messages_acked(), 1u);
+    EXPECT_EQ(consumer->messages_nacked(), 1u);
     EXPECT_EQ(service_.dlq_size(), 0u);
 }
 

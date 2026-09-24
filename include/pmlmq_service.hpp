@@ -10,11 +10,14 @@
 
 #include <atomic>
 #include <chrono>
+#include <condition_variable>
 #include <mutex>
 #include <optional>
 #include <string>
+#include <thread>
 #include <unordered_map>
 #include <unordered_set>
+#include <vector>
 
 namespace pmlmq {
 
@@ -38,6 +41,10 @@ struct PMLMQConfig {
 
     /// Upper bound on how long a Pull handler blocks waiting for a message.
     std::chrono::milliseconds max_pull_wait{5000};
+
+    /// Interval of the background TTL sweeper that reclaims expired messages
+    /// nobody pulls; zero disables the sweeper (Pull still expires on scan).
+    std::chrono::milliseconds ttl_sweep_interval{100};
 };
 
 /// gRPC Broker service and system orchestrator.
@@ -55,6 +62,11 @@ public:
     // Non-copyable, non-movable (owns threads).
     PMLMQService(const PMLMQService&) = delete;
     PMLMQService& operator=(const PMLMQService&) = delete;
+
+    /// Stop the TTL sweeper and release queue resources.
+    /// @side_effects Signals the sweeper to stop and joins it before the
+    ///   queue shuts down.
+    ~PMLMQService();
 
     /// Register a producer and assign its ID.
     /// @param req Empty registration request (reserved for future fields).
@@ -100,7 +112,9 @@ public:
     /// @param req Carries consumer_id, message_id, and measured processing_time_ms.
     /// @return OK on delete; PERMISSION_DENIED for unknown consumer or wrong
     ///   owner; NOT_FOUND when the message is not in flight.
-    /// @side_effects Removes the entry from the in-flight map.
+    /// @side_effects Removes the entry from the in-flight map. When the
+    ///   message expired mid-processing it is also retained in the DLQ as
+    ///   TTL_EXPIRED; the caller still sees OK.
     grpc::Status Ack(grpc::ServerContext* ctx,
                      const pmlmq_rpc::AckRequest* req,
                      pmlmq_rpc::AckResponse* resp) override;
@@ -109,12 +123,23 @@ public:
     /// @param req Carries consumer_id, message_id, processing_time_ms, and reason.
     /// @return OK on re-queue/DLQ; PERMISSION_DENIED for unknown consumer or
     ///   wrong owner; NOT_FOUND when the message is not in flight.
-    /// @side_effects Removes the in-flight entry, increments retry_count,
-    ///   then re-queues at original_priority or DLQs on max-retries with
-    ///   the caller reason appended to the DLQ details.
+    /// @side_effects Removes the in-flight entry. An already-expired message
+    ///   DLQs as TTL_EXPIRED without touching retry_count; otherwise
+    ///   increments retry_count, then re-queues at original_priority or DLQs
+    ///   on max-retries with the caller reason appended to the DLQ details.
     grpc::Status Nack(grpc::ServerContext* ctx,
                       const pmlmq_rpc::NackRequest* req,
                       pmlmq_rpc::NackResponse* resp) override;
+
+    /// Inspect retained DLQ entries without removing them.
+    /// @param req Carries limit (<=0 selects 10, capped at 100) and offset
+    ///   (negative clamps to 0) for FIFO pagination.
+    /// @param resp Receives up to limit entries plus the total DLQ depth.
+    /// @return OK; no registration required (operator endpoint).
+    /// @side_effects None; takes a consistent snapshot under the DLQ lock.
+    grpc::Status InspectDlq(grpc::ServerContext* ctx,
+                            const pmlmq_rpc::InspectDlqRequest* req,
+                            pmlmq_rpc::InspectDlqResponse* resp) override;
 
     // Observability
     /// Queued (not in-flight, not DLQ) message count.
@@ -123,6 +148,12 @@ public:
     /// Retained DLQ entry count.
     /// @return Current DLQ depth.
     [[nodiscard]] std::size_t dlq_size()   const { return dlq_.size();   }
+    /// Copy a page of DLQ entries without removing them.
+    /// @return Up to limit entries starting at offset, in FIFO order.
+    [[nodiscard]] std::vector<DLQEntry> dlq_snapshot(
+        std::size_t offset, std::size_t limit) const {
+        return dlq_.snapshot(offset, limit);
+    }
     /// Messages pulled but not yet acked/nacked.
     /// @return Current in-flight map size.
     [[nodiscard]] std::size_t in_flight_count() const;
@@ -166,6 +197,23 @@ private:
     mutable std::mutex                consumers_mutex_;
     std::unordered_set<std::string>   registered_consumers_;
     std::atomic<uint64_t>             consumer_counter_{0};
+
+    // Background TTL sweeper (declared last: joined first on destruction,
+    // before the queue shuts down).
+    std::atomic<bool> stop_sweeper_{false};
+    std::mutex        sweeper_mutex_;
+    std::condition_variable sweeper_cv_;
+    std::thread       sweeper_thread_;
+
+    /// Periodically move TTL-expired messages from the queue to the DLQ.
+    /// @side_effects Sweeps every ttl_sweep_interval until stop_sweeper_.
+    void run_ttl_sweeper();
+
+    /// Move already-swept messages into the DLQ with a TTL_EXPIRED reason.
+    /// @param expired Messages removed by MultiLevelQueue::sweep_expired.
+    /// @param details Human-readable context stored on each DLQ entry.
+    /// @side_effects Pushes one DLQ entry per message.
+    void dlq_swept(std::vector<Message> expired, std::string details);
 };
 
 } // namespace pmlmq

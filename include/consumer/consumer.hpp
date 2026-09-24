@@ -82,6 +82,10 @@ public:
     [[nodiscard]] uint64_t messages_nacked() const noexcept {
         return nacked_.load(std::memory_order_relaxed);
     }
+    /// Total Ack/Nack RPCs that failed after local processing.
+    [[nodiscard]] uint64_t rpc_failures() const noexcept {
+        return rpc_failures_.load(std::memory_order_relaxed);
+    }
 
 private:
     Consumer(std::string id,
@@ -102,6 +106,7 @@ private:
     std::atomic<uint64_t> processed_{0};
     std::atomic<uint64_t> acked_{0};
     std::atomic<uint64_t> nacked_{0};
+    std::atomic<uint64_t> rpc_failures_{0};
 };
 
 } // namespace pmlmq

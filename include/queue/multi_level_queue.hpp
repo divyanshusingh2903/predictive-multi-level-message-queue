@@ -55,6 +55,14 @@ public:
     [[nodiscard]] std::optional<Message> dequeue(
         std::chrono::milliseconds timeout = std::chrono::milliseconds{100});
 
+    /// Remove all TTL-expired messages from every level.
+    /// @return Expired messages in highest-to-lowest level order; the queue
+    ///   never touches the DLQ — the caller owns disposal.
+    /// @side_effects Locks once, splices expired out of each level,
+    ///   decrements total size per removal. Reads only is_expired()
+    ///   (arrival_time clock), never the aging (enqueue_time) clock.
+    [[nodiscard]] std::vector<Message> sweep_expired();
+
     /// Stop the queue permanently.
     /// @side_effects Sets the shutdown flag, wakes all blocked dequeue
     ///   callers (they return nullopt), and joins the aging thread.
