@@ -47,17 +47,50 @@ Pull → no settlement before lease deadline → retry at original priority, or 
 
 A non-expired Nack or lease timeout consumes **one** failure from the broker's `default_max_retries` budget (default **3**). `max_retries=1` means the first failed delivery goes to DLQ; it does not mean one extra attempt. Retried work retains the same message ID and original arrival time, but receives a **new attempt token**. Queue aging time restarts on re-enqueue. A message whose TTL has passed goes to `TTL_EXPIRED` instead of consuming another retry, including at lease expiry. Ack after TTL still returns OK and records TTL expiry **only if that delivery lease is still valid**. A stale Ack after lease expiry fails.
 
-If an Ack/Nack RPC reports `UNAVAILABLE` or `DEADLINE_EXCEEDED`, the client retries the **same request and attempt token** up to **three total calls** with a fresh 5-second RPC deadline per call and 100/200 ms backoffs. It never reruns the callback just to retry settlement. Accepted same-operation retries return OK from the broker's bounded completion history without repeating effects; conflicting operations fail. If settlement still fails, or a permanent error occurs, the client stops polling. The broker may later recover the in-flight message on lease expiry.
+If an Ack/Nack RPC reports `UNAVAILABLE` or `DEADLINE_EXCEEDED`, the client retries the **same request and attempt token** up to **three total calls** with a fresh 5-second RPC deadline per call and 100/200 ms backoffs. It never reruns the callback just to retry settlement. Accepted same-operation retries return OK from the broker's bounded completion history without repeating effects; conflicting operations fail. A settlement `FAILED_PRECONDITION` counts as a lost delivery attempt: the client stops settling that attempt and continues polling, without recording a confirmed Ack/Nack. Other settlement errors, including exhausted transient retries, stop polling. The broker may later recover an unsettled in-flight message on lease expiry.
 
 | Method | What it counts or reports |
 |---|---|
 | `messages_processed()` | Callback invocations, including redeliveries; not unique messages |
 | `messages_acked()` / `messages_nacked()` | One confirmed Ack/Nack outcome each, not each RPC attempt |
 | `rpc_failures()` | Failed Ack/Nack RPC calls, including calls subsequently recovered by retry |
+| `leases_lost()` | Delivery attempts rejected with settlement `FAILED_PRECONDITION`, counted once per attempt; includes expired, stale, or conflicting attempts |
 | `last_rpc_status()` | Terminal RPC error, or OK since the latest `start()`; a transient error followed by success does not become terminal |
 | `is_running()` | Whether polling is currently requested; a running callback can still be finishing after `stop()` clears the flag |
 
 Broker errors on direct Ack/Nack calls distinguish missing or invalid tokens (`INVALID_ARGUMENT`), wrong owner (`PERMISSION_DENIED`), stale/expired or conflicting attempts (`FAILED_PRECONDITION`), and unknown deliveries (`NOT_FOUND`). Once completion history expires or reaches its capacity limit, a duplicate settled attempt may instead return `NOT_FOUND`. Do not interpret `NOT_FOUND` as confirmation of success.
+
+Lost attempts leave `last_rpc_status()` unchanged because they are recoverable, but their failed RPC calls still count toward `rpc_failures()`. Pull errors retain the polling policy above, including terminal `FAILED_PRECONDITION`.
+
+## System boundary: delivery safety and consumer recovery
+
+**Harbinger fences stale deliveries, but does not guarantee that a consumer automatically continues after every late settlement.** Delivery ownership, settlement replay, and consumer availability are separate guarantees:
+
+- **Broker ownership:** a late Ack/Nack cannot settle a different live attempt, even after completion-history eviction. Lease expiry requeues the message or sends it to DLQ according to TTL and the failure budget; it does not cancel the original handler.
+- **Bounded history:** the broker retains accepted Ack/Nack and expired-attempt records for up to `completion_retention` (**60 seconds** by default), subject to `completion_cache_max_entries` (**10,000 records**). Retention starts when the broker records settlement or lease reclamation, not when the message is submitted or pulled. Capacity pressure can evict a record before its retention period ends. This is not a guaranteed 60-second replay window.
+- **Bundled-client recovery:** settlement `FAILED_PRECONDITION` increments `leases_lost()` and permits continued polling. The client does not claim the handler's outcome was accepted. Other final settlement errors stop the worker and appear in `last_rpc_status()`; there is no automatic restart or re-registration.
+
+For a late request from the original registered consumer with a syntactically valid token:
+
+| Broker state when the late Ack/Nack arrives | Result | Bundled consumer behavior |
+|---|---|---|
+| Expired-attempt record still retained | `FAILED_PRECONDITION` | Count one lost attempt and continue polling |
+| Accepted matching Ack/Nack record still retained | OK | Count one confirmed outcome for the local delivery; broker mutation is not repeated |
+| History gone; no current in-flight delivery (message queued, completed, or in DLQ) | `NOT_FOUND` | Stop; outcome is not confirmed |
+| History gone; a different consumer owns the current delivery | `PERMISSION_DENIED` | Stop; outcome is not confirmed |
+| History gone; the same consumer owns a newer attempt | `FAILED_PRECONDITION` | Count one lost attempt and continue polling |
+
+After history is gone, the broker cannot reliably distinguish a forgotten authentic attempt from an unknown delivery or a wrong-owner request using the current protocol. The client therefore keeps `NOT_FOUND` and `PERMISSION_DENIED` terminal rather than treating them as success or ignoring all ownership errors. `leases_lost()` counts observed settlement `FAILED_PRECONDITION` results, including stale/conflicting attempts; it is not a count of every broker lease expiry.
+
+### Application and operator responsibilities
+
+1. **Size the fixed lease for handler duration plus delivery/network and settlement overhead.** There is no lease renewal or handler preemption. An overlong handler may overlap a redelivery and consume the retry budget even if its application work eventually succeeds.
+2. **Make external effects duplicate-safe.** Use an application-appropriate durable idempotency key or transaction. Attempt-token fencing protects broker state, not database writes, payments, or other handler effects; handler success alone is not confirmed settlement.
+3. **Size completion history for expected settlement delays and peak completion volume.** Increasing retention without enough cache capacity does not preserve replay history. Larger settings reduce eviction risk but do not provide durable or indefinite history. Set `HarbingerConfig` fields for an embedded broker, or use the [standalone server recovery options](../README.md#standalone-server-recovery-options), such as `--completion-retention-ms` and `--completion-cache-max-entries`. Settings apply at startup.
+4. **Monitor both availability and delivery outcomes.** Observe `is_running()`, `last_rpc_status()`, `rpc_failures()`, and `leases_lost()`. On a terminal error, investigate the status and decide whether to restart the worker; do not blindly reinterpret permission/argument errors as expired leases. `start()` resets terminal status, retains counters, and does not rerun the previous handler merely to settle it.
+5. **Treat broker restart as loss of process-local state.** Queued messages, DLQ entries, leases, completion records, and registrations are not persisted. Reconnect/register clients after restart; reconnecting does not recover lost messages.
+
+These boundaries apply to the current Phase 1 implementation. Persistent delivery, exactly-once external effects, lease renewal, and automatic consumer-session recovery are not provided. See [broker guarantees and limits](internals.md#delivery-guarantees-and-limits) for the wider system boundary.
 
 ## Lifecycle and duplicate work
 

@@ -108,6 +108,14 @@ void Consumer::fail(grpc::Status status) {
     running_.store(false);
 }
 
+void Consumer::settlement_failed(grpc::Status status) {
+    if (status.error_code() == grpc::StatusCode::FAILED_PRECONDITION) {
+        leases_lost_.fetch_add(1, std::memory_order_relaxed);
+        return;
+    }
+    fail(std::move(status));
+}
+
 namespace {
 bool transient(const grpc::Status& status) {
     return status.error_code() == grpc::StatusCode::UNAVAILABLE ||
@@ -215,7 +223,7 @@ void Consumer::run() {
                 return stub_->Ack(&ack_ctx, ack_req, &ack_resp);
             }, rpc_failures_);
             if (!status.ok()) {
-                fail(status);
+                settlement_failed(status);
                 continue;
             }
             acked_.fetch_add(1, std::memory_order_relaxed);
@@ -232,7 +240,7 @@ void Consumer::run() {
                 return stub_->Nack(&nack_ctx, nack_req, &nack_resp);
             }, rpc_failures_);
             if (!status.ok()) {
-                fail(status);
+                settlement_failed(status);
                 continue;
             }
             nacked_.fetch_add(1, std::memory_order_relaxed);
