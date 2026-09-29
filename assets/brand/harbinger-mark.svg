@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64" role="img" aria-label="Harbinger">
+  <title>Harbinger</title>
+  <line x1="10" y1="19" x2="22" y2="19" stroke="#15171C" stroke-width="8" stroke-linecap="round"/>
+  <line x1="10" y1="33" x2="36" y2="33" stroke="#15171C" stroke-width="8" stroke-linecap="round"/>
+  <line x1="10" y1="47" x2="54" y2="47" stroke="#15171C" stroke-width="8" stroke-linecap="round"/>
+  <circle cx="53" cy="19" r="5" fill="#E4572E"/>
+</svg>

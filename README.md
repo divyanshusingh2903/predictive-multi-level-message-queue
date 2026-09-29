@@ -1,3 +1,10 @@
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="assets/brand/harbinger-lockup-dark.svg">
+    <img alt="Harbinger" src="assets/brand/harbinger-lockup.svg" height="64">
+  </picture>
+</p>
+
 # Harbinger — Predictive Multi-Level Message Queue
 
 *Harbinger (formerly PMLMQ) — the queue that knows what's coming: it predicts each message's cost, then prioritizes.*
@@ -21,7 +28,7 @@ Producer::send()
       │
       ▼  gRPC Submit
  ┌─────────────────────────────────────────────────────────────────┐
- │  HarbingerService (Broker)                                          │
+ │  HarbingerService (Broker)                                      │
  │                                                                 │
  │  Proxy::accept()  →  route_message()  →  MultiLevelQueue        │
  │    stamp ID              ▲                  Level 0 (HIGH)      │
@@ -31,7 +38,7 @@ Producer::send()
  │                                            aging thread         │
  │                                            (promotes stale msgs)│
  │                                                  │              │
- │  Consumer Pull() ◄───────────────────────────────┘             │
+ │  Consumer Pull() ◄───────────────────────────────┘              │
  │  (tier-blind)                                                   │
  │       │                                                         │
  │  Ack / Nack  ──  processing_time_ms  ──►  (Phase 2 ML feedback) │
@@ -54,6 +61,7 @@ Producer::send()
 
 ```
 harbinger/
+├── assets/brand/              # Logo, icon, social preview, usage guide
 ├── proto/harbinger.proto          # Broker service definition (package harbinger_rpc)
 ├── include/
 │   ├── harbinger_service.hpp      # HarbingerService : harbinger_rpc::Broker::Service
