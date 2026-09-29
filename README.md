@@ -57,11 +57,21 @@ Producer::send()
 
 ---
 
+## Documentation
+
+- [Documentation index](docs/README.md) — choose a guide by role.
+- [Producer guide](docs/producers.md) — connect, send messages, set TTL, and understand Submit outcomes.
+- [Consumer guide](docs/consumers.md) — handlers, delivery leases, acknowledgements, retries, and shutdown.
+- [Broker and queue internals](docs/internals.md) — state transitions, priority ordering, aging, expiry, and recovery.
+
+---
+
 ## Repository layout
 
 ```
 harbinger/
 ├── assets/brand/              # Logo, icon, social preview, usage guide
+├── docs/                      # Producer, consumer, and broker internals guides
 ├── proto/harbinger.proto          # Broker service definition (package harbinger_rpc)
 ├── include/
 │   ├── harbinger_service.hpp      # HarbingerService : harbinger_rpc::Broker::Service
