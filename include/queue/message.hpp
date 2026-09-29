@@ -40,7 +40,19 @@ struct Message {
     /// @side_effects None; reads steady_clock.
     [[nodiscard]] bool is_expired() const noexcept {
         if (ttl.count() <= 0) return false;
-        return (std::chrono::steady_clock::now() - arrival_time) >= ttl;
+        return std::chrono::steady_clock::now() >= expiry_time();
+    }
+
+    /// Saturate deadlines before converting very large millisecond durations.
+    [[nodiscard]] std::chrono::steady_clock::time_point expiry_time() const noexcept {
+        using Clock = std::chrono::steady_clock;
+        const auto max_ms = std::chrono::duration_cast<std::chrono::milliseconds>(
+            Clock::duration::max());
+        if (ttl >= max_ms) return Clock::time_point::max();
+        const auto duration = std::chrono::duration_cast<Clock::duration>(ttl);
+        if (arrival_time > Clock::time_point::max() - duration)
+            return Clock::time_point::max();
+        return arrival_time + duration;
     }
 };
 

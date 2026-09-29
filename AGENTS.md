@@ -19,16 +19,24 @@ Predictive Multi-Level Message Queue: ML-predicted processing time + MLFQ routin
 - Per-message TTL: `SubmitRequest.ttl_ms` unset → `default_ttl`, `0` = explicitly off, `>0` = TTL, `<0` → `INVALID_ARGUMENT`. `kTtlUnset` flows Proxy → `route_message` only, never stored; `route_message` is the sole resolver.
 - Expiry checkpoints: `Pull` scan, `sweep_expired()` (Pull-path + `ttl_sweep_interval` sweeper, `0` = off), `Nack`/`Ack` after ownership checks. `Nack`-after-expiry DLQs `TTL_EXPIRED` without touching `retry_count`; `Ack`-after-expiry DLQs but still returns OK. Aging never promotes expired messages.
 - DLQ: `snapshot(offset, limit)` is non-destructive; `InspectDlq` RPC is read-only, paginated (limit `<=0` → 10, cap 100), no-auth operator endpoint; `dlq_age_ms` (steady clock, no wall-time form). DLQ never redelivers.
-- In-flight: owned by one consumer (`Pull` → map, `Ack` deletes, `Nack` re-queues or DLQs). Wrong owner → `PERMISSION_DENIED`; unknown ID → `NOT_FOUND`/`PERMISSION_DENIED`.
+- In-flight: each Pull issues a new opaque `attempt_token` and fixed lease. Ack/Nack must echo that token; no legacy-client compatibility. Wrong owner → `PERMISSION_DENIED`, stale/conflicting attempt → `FAILED_PRECONDITION`, unknown delivery → `NOT_FOUND`, invalid token → `INVALID_ARGUMENT`.
+- Lease expiry reclaims abandoned deliveries even with the queue TTL sweeper off. Expired TTL wins without incrementing retries; otherwise expiry consumes the same failure budget as Nack and requeues at original priority or DLQs. Ack-after-TTL is OK only while its lease remains valid. No lease renewal; size leases for handler duration plus settlement overhead.
+- Settlement is serialized under the in-flight mutex (lock order: settlement → queue/DLQ). A bounded completion map/list replays identical accepted Ack/Nack as OK, including after redelivery. Opposite operations fail. Replay lasts until retention expiry or capacity eviction; tokens still fence stale attempts after eviction. This is at-least-once delivery, not exactly-once side effects; no state survives broker restart.
+- TTL index contains only queued positive-TTL messages; stable FIFO nodes retain index handles through aging. Pull/background cleanup uses `sweep_expired_batch(maintenance_batch_size)` in deadline order; the full `sweep_expired()` API preserves level/FIFO order. Live/TTL-off messages are not scanned on Pull. Aging remains a full scan.
 - Aging: only levels `≥1` promote one step per scan; `enqueue_time` resets so threshold is per-entry. `shutdown()` unblocks `dequeue()` + joins thread.
 - `Pull`: `wait = min(requested>0 ? requested : max_pull_wait, max_pull_wait)`; polls in 100 ms chunks checking `IsCancelled()`. No message → `timed_out=true`.
-- Consumer poll deadline = `pull_timeout + 500 ms`; transient Pull errors back off 200 ms.
+- Consumer poll deadline = `pull_timeout + 500 ms`; UNAVAILABLE/DEADLINE_EXCEEDED Pull errors back off 200 ms (interruptible), permanent errors stop polling. Registration has a 5-second deadline.
+- Consumer destructor stops/joins, restart joins an exited worker, concurrent stop has one join owner. Handler-thread stop only requests stop; never destroy the consumer from its own handler. External stop cancels pending Pull but waits for a running handler and its settlement. Arbitrary handlers cannot be interrupted.
+- Ack/Nack retries echo the identical attempt/request, at most three calls with 5-second deadlines and 100/200 ms backoff on UNAVAILABLE/DEADLINE_EXCEEDED. Counters record one confirmed outcome; `rpc_failures` counts failed settlement calls; `last_rpc_status()` exposes the terminal error. No handler rerun merely to retry settlement.
+- Server blocks SIGINT/SIGTERM before spawning threads, waits with sigwait, and shuts down with a 5-second grace deadline outside signal context.
 - ID format: `<ns-timestamp>-<counter>`. Producer key stored as `__producer_id` header.
 - Proto package `harbinger_rpc` ≠ C++ namespace `harbinger` (avoids collisions).
 
 ## Config defaults (`HarbingerConfig`)
 
 `num_levels=3`, `aging=nullopt` (strict-priority; use `{5000 ms, 500 ms}` to enable aging), `default_max_retries=3`, `default_ttl=0`, `default_priority=1`, `max_pull_wait=5000 ms`, `ttl_sweep_interval=100 ms` (`0` = off).
+
+Recovery defaults: `delivery_lease=30000 ms`, `lease_sweep_interval=100 ms`, `completion_retention=60000 ms`, `completion_cache_max_entries=10000`, `maintenance_batch_size=256`. All must be positive; extreme maintenance durations are rejected before clock conversion. Lease, queue TTL, and completion-history maintenance use bounded batches; reclamation delay grows with backlog.
 
 ## Phase 2 contract
 

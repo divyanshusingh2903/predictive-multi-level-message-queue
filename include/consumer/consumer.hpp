@@ -9,6 +9,8 @@
 #include <memory>
 #include <string>
 #include <thread>
+#include <mutex>
+#include <condition_variable>
 #include <unordered_map>
 #include <vector>
 
@@ -33,6 +35,8 @@ struct ReceivedMessage {
 /// Ack/Nack for the ML feedback loop.
 class Consumer {
 public:
+    /// Stop and join; must not be destroyed from its own handler.
+    ~Consumer();
     using Handler = std::function<AckResult(const ReceivedMessage&)>;
 
     /// Register with the broker and obtain a consumer ID.
@@ -53,12 +57,11 @@ public:
     /// @throws std::runtime_error if already running.
     void start();
 
-    /// Stop the polling loop and wait for it to exit.
-    /// @side_effects Clears the running flag and joins the worker thread.
+    /// Cancel polling and join; handler-thread calls only request stop.
     void stop();
 
     /// Check whether the polling thread is active.
-    /// @return True between start and stop.
+    /// False after stop or a terminal RPC error.
     [[nodiscard]] bool is_running() const noexcept {
         return running_.load(std::memory_order_acquire);
     }
@@ -86,6 +89,8 @@ public:
     [[nodiscard]] uint64_t rpc_failures() const noexcept {
         return rpc_failures_.load(std::memory_order_relaxed);
     }
+    /// Last terminal RPC error, or OK since the latest start.
+    [[nodiscard]] grpc::Status last_rpc_status() const;
 
 private:
     Consumer(std::string id,
@@ -94,6 +99,7 @@ private:
              std::chrono::milliseconds pull_timeout);
 
     void run();
+    void fail(grpc::Status status);
 
     std::string                              id_;
     std::unique_ptr<harbinger_rpc::Broker::Stub> stub_;
@@ -102,6 +108,12 @@ private:
 
     std::atomic<bool>     running_{false};
     std::thread           worker_;
+    mutable std::mutex lifecycle_mutex_;
+    std::condition_variable lifecycle_cv_;
+    bool joining_{false};
+    std::thread::id worker_id_;
+    grpc::ClientContext* active_pull_{nullptr};
+    grpc::Status last_status_;
 
     std::atomic<uint64_t> processed_{0};
     std::atomic<uint64_t> acked_{0};

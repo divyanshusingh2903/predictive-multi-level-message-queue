@@ -9,6 +9,15 @@
 using namespace harbinger;
 using namespace std::chrono_literals;
 
+namespace harbinger {
+struct QueueTestAccess {
+    static std::size_t expiry_size(MultiLevelQueue& q) {
+        std::lock_guard lock{q.mutex_};
+        return q.expiry_.size();
+    }
+};
+}
+
 namespace {
 
 Message make_msg(uint8_t priority, std::string id = {}) {
@@ -272,4 +281,70 @@ TEST(MultiLevelQueue, AgingSkipsExpiredMessages) {
     ASSERT_EQ(expired.size(), 1u);
     EXPECT_EQ(expired[0].id, "dead-msg");
     EXPECT_TRUE(q.empty());
+}
+
+TEST(MultiLevelQueue, IndexedSweepIsBoundedAndPreservesLiveFifo) {
+    MultiLevelQueue q;
+    for (int i = 0; i < 10000; ++i) q.enqueue(make_msg(1, std::to_string(i)));
+    EXPECT_EQ(QueueTestAccess::expiry_size(q), 0u);
+    for (int i = 0; i < 5; ++i) q.enqueue(make_ttl_msg(1, "expired", 1s));
+    EXPECT_TRUE(q.sweep_expired_batch(0).empty());
+    EXPECT_EQ(q.sweep_expired_batch(2).size(), 2u);
+    EXPECT_EQ(QueueTestAccess::expiry_size(q), 3u);
+    EXPECT_EQ(q.sweep_expired_batch(10).size(), 3u);
+    EXPECT_EQ(QueueTestAccess::expiry_size(q), 0u);
+    for (int i = 0; i < 10000; ++i) {
+        auto msg = q.try_dequeue();
+        ASSERT_TRUE(msg);
+        EXPECT_EQ(msg->id, std::to_string(i));
+    }
+}
+
+TEST(MultiLevelQueue, ExpiryIndexSurvivesPromotionAndRequeue) {
+    MultiLevelQueue q{3, AgingConfig{10ms, 5ms}};
+    q.enqueue(make_ttl_msg(2, "moving", 0ms, 30s));
+    const auto deadline = std::chrono::steady_clock::now() + 2s;
+    while (q.size(0) == 0 && std::chrono::steady_clock::now() < deadline)
+        std::this_thread::sleep_for(5ms);
+    EXPECT_EQ(q.size(0), 1u);
+    EXPECT_EQ(QueueTestAccess::expiry_size(q), 1u);
+    auto msg = q.try_dequeue();
+    ASSERT_TRUE(msg);
+    EXPECT_EQ(QueueTestAccess::expiry_size(q), 0u);
+    msg->priority = msg->original_priority;
+    msg->arrival_time -= 60s;
+    q.enqueue(std::move(*msg));
+    EXPECT_EQ(q.sweep_expired_batch(1).size(), 1u);
+    EXPECT_EQ(QueueTestAccess::expiry_size(q), 0u);
+}
+
+TEST(MultiLevelQueue, HugeTtlDoesNotOverflow) {
+    MultiLevelQueue q;
+    auto msg = make_ttl_msg(1, "forever", 0ms, std::chrono::milliseconds::max());
+    EXPECT_FALSE(msg.is_expired());
+    q.enqueue(msg);
+    EXPECT_TRUE(q.sweep_expired_batch(10).empty());
+    EXPECT_TRUE(q.try_dequeue());
+    EXPECT_EQ(QueueTestAccess::expiry_size(q), 0u);
+}
+
+TEST(MultiLevelQueue, AgingDoesNotStealEnqueueWakeup) {
+    MultiLevelQueue q{3, AgingConfig{10s, 10s}};
+    for (int i = 0; i < 20; ++i) {
+        auto pending = std::async(std::launch::async, [&] { return q.dequeue(2s); });
+        std::this_thread::sleep_for(2ms);
+        q.enqueue(make_msg(1));
+        EXPECT_EQ(pending.wait_for(500ms), std::future_status::ready);
+        EXPECT_TRUE(pending.get());
+    }
+}
+
+TEST(MultiLevelQueue, ConcurrentShutdownWakesAllWaiters) {
+    MultiLevelQueue q{3, AgingConfig{10s, 10s}};
+    auto waiter = std::async(std::launch::async, [&] { return q.dequeue(10s); });
+    auto first = std::async(std::launch::async, [&] { q.shutdown(); });
+    auto second = std::async(std::launch::async, [&] { q.shutdown(); });
+    EXPECT_EQ(first.wait_for(1s), std::future_status::ready);
+    EXPECT_EQ(second.wait_for(1s), std::future_status::ready);
+    EXPECT_FALSE(waiter.get());
 }

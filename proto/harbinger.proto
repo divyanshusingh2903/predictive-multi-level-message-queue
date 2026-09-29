@@ -49,6 +49,10 @@ message PulledMessage {
     string              message_id = 1;
     bytes               payload    = 2;
     map<string, string> headers    = 3;
+    // Required on settlement; unique to this delivery, not the message.
+    string attempt_token = 4;
+    // Fixed lease starts at broker dispatch, not client receipt. No renewal.
+    int64 lease_duration_ms = 5;
 }
 
 message PullResponse {
@@ -64,6 +68,8 @@ message AckRequest {
     string consumer_id        = 1;
     string message_id         = 2;
     int64  processing_time_ms = 3;
+    // Echo the token from Pull; clients without tokens must upgrade.
+    string attempt_token = 4;
 }
 
 message AckResponse {}
@@ -73,6 +79,8 @@ message NackRequest {
     string message_id         = 2;
     int64  processing_time_ms = 3;
     string reason             = 4;
+    // Echo the token from Pull; duplicate accepted Nacks do not repeat retries.
+    string attempt_token      = 5;
 }
 
 message NackResponse {}

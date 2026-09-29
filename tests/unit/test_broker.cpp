@@ -6,9 +6,38 @@
 #include <chrono>
 #include <optional>
 #include <thread>
+#include <barrier>
+#include <future>
 
 using namespace harbinger;
 using namespace std::chrono_literals;
+
+namespace harbinger {
+struct BrokerTestAccess {
+    static void expire(HarbingerService& service, const std::string& id, bool ttl = false) {
+        std::lock_guard lock{service.in_flight_mutex_};
+        auto& entry = service.in_flight_.at(id);
+        service.deadlines_.erase(entry.deadline);
+        entry.deadline = service.deadlines_.emplace(
+            HarbingerService::Clock::now() - 1s, id);
+        if (ttl) {
+            entry.message.ttl = 1ms;
+            entry.message.arrival_time = HarbingerService::Clock::now() - 1s;
+        }
+    }
+    static void maintain(HarbingerService& service) { service.maintain_deliveries(); }
+    static void expire_history(HarbingerService& service) {
+        std::lock_guard lock{service.in_flight_mutex_};
+        for (auto& c : service.completions_) c.time -= service.config_.completion_retention;
+    }
+    static void check_indexes(HarbingerService& service, std::size_t expected_history) {
+        std::lock_guard lock{service.in_flight_mutex_};
+        EXPECT_EQ(service.in_flight_.size(), service.deadlines_.size());
+        EXPECT_EQ(service.completions_.size(), expected_history);
+        EXPECT_EQ(service.completed_.size(), expected_history);
+    }
+};
+}
 
 TEST(ConfigValidationTest, RejectsInvalidServiceConfiguration) {
     EXPECT_THROW(
@@ -217,6 +246,7 @@ TEST_F(BrokerTest, AckRemovesFromInFlight) {
     harbinger_rpc::AckRequest ack;
     ack.set_consumer_id(cons);
     ack.set_message_id(pull_resp.message().message_id());
+    ack.set_attempt_token(pull_resp.message().attempt_token());
     ack.set_processing_time_ms(5);
 
     harbinger_rpc::AckResponse ack_resp;
@@ -232,6 +262,7 @@ TEST_F(BrokerTest, AckForUnknownMessageReturnsNotFound) {
     harbinger_rpc::AckRequest ack;
     ack.set_consumer_id(cons);
     ack.set_message_id("nonexistent");
+    ack.set_attempt_token("unknown-token");
 
     harbinger_rpc::AckResponse ack_resp;
     grpc::ClientContext ctx;
@@ -250,6 +281,7 @@ TEST_F(BrokerTest, AckByDifferentConsumerIsDeniedWithoutReleasingMessage) {
     harbinger_rpc::AckRequest ack;
     ack.set_consumer_id(other);
     ack.set_message_id(pulled.message().message_id());
+    ack.set_attempt_token(pulled.message().attempt_token());
     harbinger_rpc::AckResponse ack_resp;
     grpc::ClientContext ctx;
     EXPECT_EQ(stub_->Ack(&ctx, ack, &ack_resp).error_code(),
@@ -274,6 +306,7 @@ TEST_F(BrokerTest, NackRequeuesMessage) {
     harbinger_rpc::NackRequest nack;
     nack.set_consumer_id(cons);
     nack.set_message_id(pull_resp.message().message_id());
+    nack.set_attempt_token(pull_resp.message().attempt_token());
     nack.set_processing_time_ms(10);
     nack.set_reason("test_nack");
 
@@ -296,6 +329,7 @@ TEST_F(BrokerTest, NackByDifferentConsumerIsDeniedWithoutRequeuingMessage) {
     harbinger_rpc::NackRequest nack;
     nack.set_consumer_id(other);
     nack.set_message_id(pulled.message().message_id());
+    nack.set_attempt_token(pulled.message().attempt_token());
     nack.set_reason("not the owner");
     harbinger_rpc::NackResponse nack_resp;
     grpc::ClientContext ctx;
@@ -338,6 +372,7 @@ TEST_F(BrokerTest, NackExceedingMaxRetriesSendsToDLQ) {
     // Nack once → retry_count becomes 1 ≥ max_retries=1 → DLQ.
     harbinger_rpc::NackRequest nq; nq.set_consumer_id(cid);
     nq.set_message_id(presp.message().message_id());
+    nq.set_attempt_token(presp.message().attempt_token());
     harbinger_rpc::NackResponse nr; grpc::ClientContext c5;
     st->Nack(&c5, nq, &nr);
 
@@ -355,6 +390,7 @@ struct LocalBroker {
     std::unique_ptr<harbinger_rpc::Broker::Stub> stub;
     std::string producer_id;
     std::string consumer_id;
+    ~LocalBroker() { if (server) server->Shutdown(); }
 
     explicit LocalBroker(HarbingerConfig config) : service(std::move(config)) {
         int port = 0;
@@ -402,25 +438,29 @@ struct LocalBroker {
         return presp;
     }
 
-    void ack(const std::string& message_id) {
+    grpc::Status ack(const harbinger_rpc::PulledMessage& delivery) {
         harbinger_rpc::AckRequest aq;
         aq.set_consumer_id(consumer_id);
-        aq.set_message_id(message_id);
+        aq.set_message_id(delivery.message_id());
+        aq.set_attempt_token(delivery.attempt_token());
         aq.set_processing_time_ms(5);
         harbinger_rpc::AckResponse aresp;
         grpc::ClientContext c;
-        EXPECT_TRUE(stub->Ack(&c, aq, &aresp).ok());
+        c.set_deadline(std::chrono::system_clock::now() + 3s);
+        return stub->Ack(&c, aq, &aresp);
     }
 
-    void nack(const std::string& message_id, const std::string& reason = "t") {
+    grpc::Status nack(const harbinger_rpc::PulledMessage& delivery, const std::string& reason = "t") {
         harbinger_rpc::NackRequest nq;
         nq.set_consumer_id(consumer_id);
-        nq.set_message_id(message_id);
+        nq.set_message_id(delivery.message_id());
+        nq.set_attempt_token(delivery.attempt_token());
         nq.set_processing_time_ms(5);
         nq.set_reason(reason);
         harbinger_rpc::NackResponse nresp;
         grpc::ClientContext c;
-        EXPECT_TRUE(stub->Nack(&c, nq, &nresp).ok());
+        c.set_deadline(std::chrono::system_clock::now() + 3s);
+        return stub->Nack(&c, nq, &nresp);
     }
 
     harbinger_rpc::InspectDlqResponse inspect(int32_t limit = 0,
@@ -534,7 +574,7 @@ TEST_F(BrokerTest, NackAfterExpiryGoesToDlq) {
     ASSERT_FALSE(pulled.timed_out());
 
     std::this_thread::sleep_for(300ms); // expire mid-processing
-    b.nack(pulled.message().message_id(), "late-failure");
+    EXPECT_TRUE(b.nack(pulled.message(), "late-failure").ok());
 
     EXPECT_EQ(b.service.queue_size(), 0u); // not requeued
     EXPECT_EQ(b.service.in_flight_count(), 0u);
@@ -551,7 +591,7 @@ TEST_F(BrokerTest, AckAfterExpiryGoesToDlq) {
     ASSERT_FALSE(pulled.timed_out());
 
     std::this_thread::sleep_for(300ms);
-    b.ack(pulled.message().message_id()); // still OK to the caller
+    EXPECT_TRUE(b.ack(pulled.message()).ok()); // still OK to the caller
 
     EXPECT_EQ(b.service.in_flight_count(), 0u);
     EXPECT_EQ(b.service.queue_size(), 0u);
@@ -567,7 +607,7 @@ TEST_F(BrokerTest, NackBeforeExpiryStillRetries) {
     const auto pulled = b.pull(1000);
     ASSERT_FALSE(pulled.timed_out());
 
-    b.nack(pulled.message().message_id(), "transient");
+    EXPECT_TRUE(b.nack(pulled.message(), "transient").ok());
 
     EXPECT_EQ(b.service.queue_size(), 1u); // requeued, not expired
     EXPECT_EQ(b.service.dlq_size(), 0u);
@@ -671,4 +711,174 @@ TEST_F(BrokerTest, InspectDlqPagination) {
     EXPECT_EQ(b.inspect(0, 0).entries_size(), 3);
     EXPECT_EQ(b.inspect(1000, 0).entries_size(), 3);
     EXPECT_EQ(b.inspect(2, 10).entries_size(), 0);
+}
+
+TEST(DeliveryRecovery, DuplicateSettlementIsIdempotentAcrossRedelivery) {
+    LocalBroker b{HarbingerConfig{}};
+    b.submit();
+    const auto first = b.pull().message();
+    ASSERT_TRUE(b.nack(first).ok());
+    const auto second = b.pull().message();
+    EXPECT_EQ(first.message_id(), second.message_id());
+    EXPECT_NE(first.attempt_token(), second.attempt_token());
+    for (int i = 0; i < 20; ++i) EXPECT_TRUE(b.nack(first).ok());
+    EXPECT_EQ(b.ack(first).error_code(), grpc::StatusCode::FAILED_PRECONDITION);
+    EXPECT_EQ(b.service.in_flight_count(), 1u);
+    EXPECT_TRUE(b.ack(second).ok());
+    EXPECT_TRUE(b.ack(second).ok());
+    EXPECT_EQ(b.nack(second).error_code(), grpc::StatusCode::FAILED_PRECONDITION);
+    EXPECT_EQ(b.service.queue_size(), 0u);
+    EXPECT_EQ(b.service.dlq_size(), 0u);
+    BrokerTestAccess::check_indexes(b.service, 2);
+}
+
+TEST(DeliveryRecovery, BackgroundLeaseRecoveryWorksWithTtlSweeperDisabled) {
+    LocalBroker b{HarbingerConfig{.ttl_sweep_interval = 0ms, .delivery_lease = 50ms,
+                                .lease_sweep_interval = 10ms}};
+    b.submit();
+    const auto first = b.pull().message();
+    ASSERT_EQ(first.lease_duration_ms(), 50);
+    const auto deadline = std::chrono::steady_clock::now() + 3s;
+    while (b.service.in_flight_count() && std::chrono::steady_clock::now() < deadline)
+        std::this_thread::sleep_for(5ms);
+    ASSERT_EQ(b.service.in_flight_count(), 0u);
+    ASSERT_EQ(b.service.queue_size(), 1u);
+    const auto second = b.pull().message();
+    EXPECT_EQ(second.message_id(), first.message_id());
+    EXPECT_NE(second.attempt_token(), first.attempt_token());
+    EXPECT_EQ(b.ack(first).error_code(), grpc::StatusCode::FAILED_PRECONDITION);
+    EXPECT_EQ(b.nack(first).error_code(), grpc::StatusCode::FAILED_PRECONDITION);
+    EXPECT_TRUE(b.ack(second).ok());
+}
+
+TEST(DeliveryRecovery, DeadlineCheckedWithoutMaintenanceAndFailuresExhaustBudget) {
+    LocalBroker b{HarbingerConfig{.default_max_retries = 2, .lease_sweep_interval = 1h}};
+    b.submit();
+    auto first = b.pull().message();
+    BrokerTestAccess::expire(b.service, first.message_id());
+    EXPECT_EQ(b.ack(first).error_code(), grpc::StatusCode::FAILED_PRECONDITION);
+    auto second = b.pull().message();
+    BrokerTestAccess::expire(b.service, second.message_id());
+    BrokerTestAccess::maintain(b.service);
+    const auto entries = b.service.dlq_snapshot(0, 10);
+    ASSERT_EQ(entries.size(), 1u);
+    EXPECT_EQ(entries[0].reason, DLQReason::MAX_RETRIES_EXCEEDED);
+    EXPECT_EQ(entries[0].message.retry_count, 2u);
+    EXPECT_EQ(b.service.in_flight_count(), 0u);
+    EXPECT_EQ(b.service.queue_size(), 0u);
+}
+
+TEST(DeliveryRecovery, ExpiredTtlWinsOverLeaseFailureAccounting) {
+    LocalBroker b{HarbingerConfig{.default_max_retries = 1, .lease_sweep_interval = 1h}};
+    b.submit();
+    auto delivery = b.pull().message();
+    BrokerTestAccess::expire(b.service, delivery.message_id(), true);
+    BrokerTestAccess::maintain(b.service);
+    const auto entries = b.service.dlq_snapshot(0, 10);
+    ASSERT_EQ(entries.size(), 1u);
+    EXPECT_EQ(entries[0].reason, DLQReason::TTL_EXPIRED);
+    EXPECT_EQ(entries[0].message.retry_count, 0u);
+    EXPECT_EQ(b.ack(delivery).error_code(), grpc::StatusCode::FAILED_PRECONDITION);
+}
+
+TEST(DeliveryRecovery, ConcurrentDuplicatesAndOppositeOperationsHaveOneOutcome) {
+    LocalBroker b{HarbingerConfig{.default_max_retries = 1}};
+    b.submit();
+    auto delivery = b.pull().message();
+    std::barrier start{3};
+    auto a = std::async(std::launch::async, [&] { start.arrive_and_wait(); return b.nack(delivery); });
+    auto c = std::async(std::launch::async, [&] { start.arrive_and_wait(); return b.nack(delivery); });
+    start.arrive_and_wait();
+    EXPECT_TRUE(a.get().ok());
+    EXPECT_TRUE(c.get().ok());
+    ASSERT_EQ(b.service.dlq_size(), 1u);
+    EXPECT_EQ(b.service.dlq_snapshot(0, 1)[0].message.retry_count, 1u);
+    b.submit();
+    delivery = b.pull().message();
+    std::barrier conflict{3};
+    auto ack = std::async(std::launch::async, [&] { conflict.arrive_and_wait(); return b.ack(delivery); });
+    auto nack = std::async(std::launch::async, [&] { conflict.arrive_and_wait(); return b.nack(delivery); });
+    conflict.arrive_and_wait();
+    const auto ack_status = ack.get();
+    const auto nack_status = nack.get();
+    EXPECT_NE(ack_status.ok(), nack_status.ok());
+    EXPECT_EQ((ack_status.ok() ? nack_status : ack_status).error_code(), grpc::StatusCode::FAILED_PRECONDITION);
+    EXPECT_EQ(b.service.dlq_size(), ack_status.ok() ? 1u : 2u);
+}
+
+TEST(DeliveryRecovery, ExpiryRacingSettlementCannotDuplicateDisposition) {
+    LocalBroker b{HarbingerConfig{.default_max_retries = 1, .lease_sweep_interval = 1h}};
+    b.submit();
+    auto delivery = b.pull().message();
+    BrokerTestAccess::expire(b.service, delivery.message_id());
+    std::barrier start{3};
+    auto sweep = std::async(std::launch::async, [&] { start.arrive_and_wait(); BrokerTestAccess::maintain(b.service); });
+    auto ack = std::async(std::launch::async, [&] { start.arrive_and_wait(); return b.ack(delivery); });
+    start.arrive_and_wait();
+    sweep.get();
+    EXPECT_EQ(ack.get().error_code(), grpc::StatusCode::FAILED_PRECONDITION);
+    EXPECT_EQ(b.service.dlq_size(), 1u);
+    EXPECT_EQ(b.service.dlq_snapshot(0, 1)[0].message.retry_count, 1u);
+}
+
+TEST(DeliveryRecovery, CompletionCacheIsBoundedAndEvictionDoesNotAuthorizeOldAttempts) {
+    LocalBroker b{HarbingerConfig{.lease_sweep_interval = 1h, .completion_cache_max_entries = 2}};
+    b.submit();
+    const auto old = b.pull().message();
+    ASSERT_TRUE(b.nack(old).ok());
+    const auto current = b.pull().message();
+    for (int i = 0; i < 4; ++i) {
+        b.submit();
+        const auto d = b.pull().message();
+        EXPECT_TRUE(b.ack(d).ok());
+        BrokerTestAccess::check_indexes(b.service, 2);
+    }
+    EXPECT_EQ(b.ack(old).error_code(), grpc::StatusCode::FAILED_PRECONDITION);
+    EXPECT_EQ(b.nack(old).error_code(), grpc::StatusCode::FAILED_PRECONDITION);
+    EXPECT_TRUE(b.ack(current).ok());
+    BrokerTestAccess::expire_history(b.service);
+    EXPECT_EQ(b.ack(current).error_code(), grpc::StatusCode::NOT_FOUND);
+    BrokerTestAccess::maintain(b.service);
+    BrokerTestAccess::check_indexes(b.service, 0);
+}
+
+TEST(DeliveryRecovery, MaintenanceBatchBoundsRecoveryAndHistoryOwnerIsChecked) {
+    LocalBroker b{HarbingerConfig{.lease_sweep_interval = 1h, .maintenance_batch_size = 1}};
+    for (int i = 0; i < 3; ++i) {
+        b.submit();
+        auto d = b.pull().message();
+        BrokerTestAccess::expire(b.service, d.message_id());
+    }
+    BrokerTestAccess::maintain(b.service);
+    EXPECT_EQ(b.service.in_flight_count(), 2u);
+    EXPECT_EQ(b.service.queue_size(), 1u);
+    auto d = b.pull().message();
+    EXPECT_TRUE(b.ack(d).ok());
+    harbinger_rpc::RegisterConsumerRequest req;
+    harbinger_rpc::RegisterConsumerResponse resp;
+    grpc::ClientContext ctx;
+    ASSERT_TRUE(b.stub->RegisterConsumer(&ctx, req, &resp).ok());
+    b.consumer_id = resp.consumer_id();
+    EXPECT_EQ(b.ack(d).error_code(), grpc::StatusCode::PERMISSION_DENIED);
+}
+
+TEST(DeliveryRecovery, MissingAndOversizedTokensAreRejected) {
+    LocalBroker b{HarbingerConfig{}};
+    b.submit();
+    auto d = b.pull().message();
+    auto bad = d;
+    bad.clear_attempt_token();
+    EXPECT_EQ(b.ack(bad).error_code(), grpc::StatusCode::INVALID_ARGUMENT);
+    bad.set_attempt_token(std::string(129, 'x'));
+    EXPECT_EQ(b.nack(bad).error_code(), grpc::StatusCode::INVALID_ARGUMENT);
+    EXPECT_EQ(b.service.in_flight_count(), 1u);
+    EXPECT_TRUE(b.ack(d).ok());
+}
+
+TEST(ConfigValidationTest, RejectsInvalidRecoveryConfiguration) {
+    EXPECT_THROW((HarbingerService{HarbingerConfig{.delivery_lease = 0ms}}), std::invalid_argument);
+    EXPECT_THROW((HarbingerService{HarbingerConfig{.lease_sweep_interval = 0ms}}), std::invalid_argument);
+    EXPECT_THROW((HarbingerService{HarbingerConfig{.completion_retention = 0ms}}), std::invalid_argument);
+    EXPECT_THROW((HarbingerService{HarbingerConfig{.completion_cache_max_entries = 0}}), std::invalid_argument);
+    EXPECT_THROW((HarbingerService{HarbingerConfig{.maintenance_batch_size = 0}}), std::invalid_argument);
 }

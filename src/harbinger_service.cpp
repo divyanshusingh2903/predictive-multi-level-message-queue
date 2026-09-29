@@ -2,6 +2,8 @@
 
 #include <algorithm>
 #include <stdexcept>
+#include <cctype>
+#include <random>
 
 namespace harbinger {
 
@@ -30,6 +32,16 @@ HarbingerConfig validate_config(HarbingerConfig config) {
         throw std::invalid_argument(
             "HarbingerConfig: ttl_sweep_interval must be >= 0");
     }
+    if (config.delivery_lease.count() <= 0 || config.lease_sweep_interval.count() <= 0 ||
+        config.completion_retention.count() <= 0 || !config.completion_cache_max_entries ||
+        !config.maintenance_batch_size) {
+        throw std::invalid_argument("delivery maintenance settings must be positive");
+    }
+    const auto max_duration = std::chrono::duration_cast<std::chrono::milliseconds>(
+        std::chrono::steady_clock::duration::max() / 2);
+    if (config.delivery_lease > max_duration || config.lease_sweep_interval > max_duration ||
+        config.completion_retention > max_duration || config.ttl_sweep_interval > max_duration)
+        throw std::invalid_argument("maintenance duration too large");
     if (config.aging &&
         (config.aging->threshold <= std::chrono::milliseconds::zero() ||
          config.aging->interval <= std::chrono::milliseconds::zero())) {
@@ -45,29 +57,43 @@ HarbingerService::HarbingerService(HarbingerConfig config)
     : config_(validate_config(std::move(config))),
       queue_(config_.num_levels, config_.aging),
       dlq_(),
-      proxy_([this](Message msg) { route_message(std::move(msg)); }) {
-    if (config_.ttl_sweep_interval.count() > 0) {
-        sweeper_thread_ = std::thread([this] { run_ttl_sweeper(); });
-    }
+      proxy_([this](Message msg) { route_message(std::move(msg)); }),
+      instance_token_(std::to_string(std::random_device{}()) + "-" + Proxy::generate_id()) {
+    sweeper_thread_ = std::thread([this] { run_maintenance(); });
 }
 
 HarbingerService::~HarbingerService() {
-    stop_sweeper_.store(true, std::memory_order_release);
+    {
+        std::lock_guard lock{sweeper_mutex_};
+        stop_sweeper_.store(true, std::memory_order_release);
+    }
     sweeper_cv_.notify_all();
     if (sweeper_thread_.joinable()) {
         sweeper_thread_.join();
     }
 }
 
-void HarbingerService::run_ttl_sweeper() {
+void HarbingerService::run_maintenance() {
+    auto next_lease = Clock::now() + config_.lease_sweep_interval;
+    auto next_ttl = config_.ttl_sweep_interval.count() > 0
+        ? Clock::now() + config_.ttl_sweep_interval : Clock::time_point::max();
     while (!stop_sweeper_.load(std::memory_order_acquire)) {
         std::unique_lock lock{sweeper_mutex_};
-        sweeper_cv_.wait_for(lock, config_.ttl_sweep_interval, [this] {
+        sweeper_cv_.wait_until(lock, std::min(next_lease, next_ttl), [this] {
             return stop_sweeper_.load(std::memory_order_acquire);
         });
         if (stop_sweeper_.load(std::memory_order_acquire)) break;
         lock.unlock();
-        dlq_swept(queue_.sweep_expired(), "TTL expired in queue (sweeper)");
+        const auto now = Clock::now();
+        if (now >= next_lease) {
+            maintain_deliveries();
+            next_lease = Clock::now() + config_.lease_sweep_interval;
+        }
+        if (now >= next_ttl) {
+            dlq_swept(queue_.sweep_expired_batch(config_.maintenance_batch_size),
+                      "TTL expired in queue (sweeper)");
+            next_ttl = Clock::now() + config_.ttl_sweep_interval;
+        }
     }
 }
 
@@ -185,7 +211,9 @@ grpc::Status HarbingerService::Pull(grpc::ServerContext* ctx,
 
         // Reclaim expired messages in bulk so a backlog of dead messages
         // cannot burn the whole Pull deadline one dequeue at a time.
-        dlq_swept(queue_.sweep_expired(), "TTL expired in queue");
+        dlq_swept(queue_.sweep_expired_batch(config_.maintenance_batch_size), "TTL expired in queue");
+        if (ctx->IsCancelled()) return grpc::Status::CANCELLED;
+        if (Clock::now() >= deadline) break;
 
         const auto remaining = std::chrono::duration_cast<std::chrono::milliseconds>(
             deadline - std::chrono::steady_clock::now());
@@ -204,18 +232,24 @@ grpc::Status HarbingerService::Pull(grpc::ServerContext* ctx,
         const std::string            msg_id  = msg.id;
         const std::vector<uint8_t>   payload = msg.payload;
         const auto                   headers = msg.headers;
+        const auto token = instance_token_ + "-" + Proxy::generate_id();
 
         {
             std::lock_guard lock{in_flight_mutex_};
+            auto lease = deadlines_.emplace(Clock::now() + config_.delivery_lease, msg_id);
             in_flight_.emplace(msg_id, InFlightEntry{
                 .message     = std::move(msg),
                 .consumer_id = req->consumer_id(),
                 .pull_time   = std::chrono::steady_clock::now(),
+                .attempt_token = token,
+                .deadline = lease,
             });
         }
 
         auto* pulled = resp->mutable_message();
         pulled->set_message_id(msg_id);
+        pulled->set_attempt_token(token);
+        pulled->set_lease_duration_ms(config_.delivery_lease.count());
         pulled->set_payload(std::string(payload.begin(), payload.end()));
         for (const auto& [k, v] : headers) {
             (*pulled->mutable_headers())[k] = v;
@@ -231,85 +265,100 @@ grpc::Status HarbingerService::Pull(grpc::ServerContext* ctx,
 grpc::Status HarbingerService::Ack(grpc::ServerContext*,
                                 const harbinger_rpc::AckRequest* req,
                                 harbinger_rpc::AckResponse*) {
-    if (!is_registered_consumer(req->consumer_id())) {
-        return {grpc::StatusCode::PERMISSION_DENIED,
-                "Unknown consumer: " + req->consumer_id()};
-    }
-
-    // TTL guards queue wait, but the message expired mid-processing: the
-    // work completed, so report success while retaining DLQ accounting.
-    std::optional<Message> expired;
-    {
-        std::lock_guard lock{in_flight_mutex_};
-        auto it = in_flight_.find(req->message_id());
-        if (it == in_flight_.end()) {
-            return {grpc::StatusCode::NOT_FOUND,
-                    "Message not in flight: " + req->message_id()};
-        }
-        if (it->second.consumer_id != req->consumer_id()) {
-            return {grpc::StatusCode::PERMISSION_DENIED,
-                    "Message owned by a different consumer"};
-        }
-        if (it->second.message.is_expired()) {
-            expired = std::move(it->second.message);
-        }
-        in_flight_.erase(it);
-    }
-    if (expired) {
-        dlq_.push(std::move(*expired), DLQReason::TTL_EXPIRED,
-                  "TTL expired before Ack");
-    }
-    return grpc::Status::OK;
+    return settle(req->consumer_id(), req->message_id(), req->attempt_token(),
+                  Settlement::Ack, "Ack");
 }
 
 grpc::Status HarbingerService::Nack(grpc::ServerContext*,
                                  const harbinger_rpc::NackRequest* req,
                                  harbinger_rpc::NackResponse*) {
-    if (!is_registered_consumer(req->consumer_id())) {
-        return {grpc::StatusCode::PERMISSION_DENIED,
-                "Unknown consumer: " + req->consumer_id()};
+    return settle(req->consumer_id(), req->message_id(), req->attempt_token(),
+                  Settlement::Nack, req->reason());
+}
+
+void HarbingerService::prune_completions_locked(std::size_t budget) {
+    const auto now = Clock::now();
+    while (budget-- && !completions_.empty() &&
+           (completions_.size() > config_.completion_cache_max_entries ||
+            now - completions_.front().time >= config_.completion_retention)) {
+        completed_.erase(completions_.front().token);
+        completions_.pop_front();
     }
+}
 
-    std::optional<Message> msg_to_handle;
-    {
-        std::lock_guard lock{in_flight_mutex_};
-        auto it = in_flight_.find(req->message_id());
-        if (it == in_flight_.end()) {
-            return {grpc::StatusCode::NOT_FOUND,
-                    "Message not in flight: " + req->message_id()};
-        }
-        if (it->second.consumer_id != req->consumer_id()) {
-            return {grpc::StatusCode::PERMISSION_DENIED,
-                    "Message owned by a different consumer"};
-        }
-        msg_to_handle = std::move(it->second.message);
-        in_flight_.erase(it);
-    }
-
-    auto& msg = *msg_to_handle;
-
-    // Expiry beats retry accounting: a dead message must not burn a retry
-    // round-trip, inflate retry_count, or misreport as MAX_RETRIES_EXCEEDED.
+void HarbingerService::finish_locked(const std::string& id, Settlement kind,
+                                    const std::string& reason) {
+    auto it = in_flight_.find(id);
+    auto& entry = it->second;
+    // Lock order is settlement -> queue/DLQ; no queue operation takes settlement.
+    auto& msg = entry.message;
     if (msg.is_expired()) {
-        const auto retries = msg.retry_count;
-        dlq_.push(std::move(msg), DLQReason::TTL_EXPIRED,
-                  "TTL expired before Nack; retry_count=" +
-                      std::to_string(retries) +
-                      "; last reason: " + req->reason());
-        return grpc::Status::OK;
+        dlq_.push(std::move(msg), DLQReason::TTL_EXPIRED, "TTL expired; " + reason);
+    } else if (kind != Settlement::Ack) {
+        ++msg.retry_count;
+        if (msg.retry_count >= msg.max_retries) {
+            const auto details = "Exceeded max_retries=" + std::to_string(msg.max_retries) +
+                                 "; last reason: " + reason;
+            dlq_.push(std::move(msg), DLQReason::MAX_RETRIES_EXCEEDED, details);
+        } else {
+            msg.priority = msg.original_priority;
+            queue_.enqueue(std::move(msg));
+        }
     }
-    msg.retry_count++;
+    completions_.push_back({id, entry.attempt_token, entry.consumer_id, kind, Clock::now()});
+    completed_.emplace(entry.attempt_token, std::prev(completions_.end()));
+    deadlines_.erase(entry.deadline);
+    in_flight_.erase(it);
+    prune_completions_locked(1);
+}
 
-    if (msg.retry_count >= msg.max_retries) {
-        dlq_.push(std::move(msg), DLQReason::MAX_RETRIES_EXCEEDED,
-                  "Exceeded max_retries=" + std::to_string(msg.max_retries) +
-                      "; last reason: " + req->reason());
-    } else {
-        msg.priority = msg.original_priority;
-        queue_.enqueue(std::move(msg));
+grpc::Status HarbingerService::settle(const std::string& owner, const std::string& id,
+                                    const std::string& token, Settlement kind,
+                                    const std::string& reason) {
+    if (!is_registered_consumer(owner))
+        return {grpc::StatusCode::PERMISSION_DENIED, "Unknown consumer"};
+    if (token.empty() || token.size() > 128 ||
+        !std::all_of(token.begin(), token.end(), [](unsigned char c) {
+            return std::isalnum(c) || c == '-';
+        })) return {grpc::StatusCode::INVALID_ARGUMENT, "Invalid attempt token"};
+    std::lock_guard lock{in_flight_mutex_};
+    auto prior = completed_.find(token);
+    if (prior != completed_.end()) {
+        const auto& record = *prior->second;
+        if (Clock::now() - record.time >= config_.completion_retention) {
+            completions_.erase(prior->second);
+            completed_.erase(prior);
+        } else if (record.message_id == id) {
+            if (record.owner != owner)
+                return {grpc::StatusCode::PERMISSION_DENIED, "Different delivery owner"};
+            return record.kind == kind ? grpc::Status::OK
+                : grpc::Status{grpc::StatusCode::FAILED_PRECONDITION, "Attempt already settled or expired"};
+        }
     }
-
+    const auto live = in_flight_.find(id);
+    if (live == in_flight_.end())
+        return {grpc::StatusCode::NOT_FOUND, "Unknown delivery"};
+    if (live->second.consumer_id != owner)
+        return {grpc::StatusCode::PERMISSION_DENIED, "Different delivery owner"};
+    if (live->second.attempt_token != token)
+        return {grpc::StatusCode::FAILED_PRECONDITION, "Stale attempt token"};
+    if (Clock::now() >= live->second.deadline->first) {
+        finish_locked(id, Settlement::Expired, "Delivery lease expired");
+        return {grpc::StatusCode::FAILED_PRECONDITION, "Delivery lease expired"};
+    }
+    finish_locked(id, kind, reason);
     return grpc::Status::OK;
+}
+
+void HarbingerService::maintain_deliveries() {
+    std::lock_guard lock{in_flight_mutex_};
+    std::size_t budget = config_.maintenance_batch_size;
+    const auto now = Clock::now();
+    while (budget-- && !deadlines_.empty() && deadlines_.begin()->first <= now) {
+        const auto id = deadlines_.begin()->second;
+        finish_locked(id, Settlement::Expired, "Delivery lease expired");
+    }
+    prune_completions_locked(config_.maintenance_batch_size);
 }
 
 namespace {

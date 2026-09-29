@@ -6,18 +6,21 @@
 #include <cstdlib>
 #include <iostream>
 #include <string>
+#include <pthread.h>
 
 // ── Graceful shutdown ─────────────────────────────────────────────────────────
-
-static grpc::Server* g_server = nullptr;
-
-static void signal_handler(int /*sig*/) {
-    if (g_server) g_server->Shutdown();
-}
 
 // ── Entry point ───────────────────────────────────────────────────────────────
 
 int main(int argc, char* argv[]) {
+    sigset_t signals;
+    sigemptyset(&signals);
+    sigaddset(&signals, SIGINT);
+    sigaddset(&signals, SIGTERM);
+    if (pthread_sigmask(SIG_BLOCK, &signals, nullptr) != 0) {
+        std::cerr << "Cannot block termination signals\n";
+        return EXIT_FAILURE;
+    }
     const std::string addr =
         (argc > 1) ? argv[1] : "0.0.0.0:50051";
 
@@ -34,20 +37,23 @@ int main(int argc, char* argv[]) {
     }};
 
     grpc::ServerBuilder builder;
-    builder.AddListeningPort(addr, grpc::InsecureServerCredentials());
+    int port = 0;
+    builder.AddListeningPort(addr, grpc::InsecureServerCredentials(), &port);
     builder.RegisterService(&service);
 
     auto server = builder.BuildAndStart();
-    g_server = server.get();
-
-    std::signal(SIGINT,  signal_handler);
-    std::signal(SIGTERM, signal_handler);
-
-    std::cout << "[harbinger] Broker listening on " << addr << "\n";
+    if (!server || port == 0) {
+        std::cerr << "Cannot listen on " << addr << "\n";
+        return EXIT_FAILURE;
+    }
+    std::cout << "[harbinger] Ready port=" << port << std::endl;
     std::cout << "[harbinger] Send SIGINT or SIGTERM to shut down gracefully.\n";
 
+    int signal = 0;
+    const int result = sigwait(&signals, &signal);
+    server->Shutdown(std::chrono::system_clock::now() + std::chrono::seconds{5});
     server->Wait();
 
     std::cout << "[harbinger] Server stopped.\n";
-    return EXIT_SUCCESS;
+    return result == 0 ? EXIT_SUCCESS : EXIT_FAILURE;
 }

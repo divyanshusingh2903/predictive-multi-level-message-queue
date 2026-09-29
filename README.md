@@ -105,9 +105,14 @@ cmake -B build -DCMAKE_BUILD_TYPE=Release
 cmake --build build -j$(nproc)
 ```
 
-The build expects Protobuf and gRPC CMake CONFIG packages from a compatible
-installation. For sanitizer verification, configure with
+The build prefers Protobuf and gRPC CMake CONFIG packages from a compatible
+installation, with FindProtobuf fallback for the matching Ubuntu packages.
+Do not mix dependency installations. For sanitizer verification, configure with
 `-DHARBINGER_SANITIZER=address`, `undefined`, or `thread`.
+
+CI runs the full suite under ASan/UBSan and queue tests under TSan. Transport
+tests under TSan require a compatible, TSan-instrumented gRPC/Protobuf stack;
+prebuilt libraries can hide synchronization and produce unusable reports.
 
 **Targets**
 
@@ -183,20 +188,58 @@ consumer->stop();
 | `default_priority` | `1` (medium) | Static priority for Phase 1; ML classifier overrides in Phase 2 |
 | `max_pull_wait` | `5000 ms` | Server-side cap on consumer pull timeout |
 | `ttl_sweep_interval` | `100 ms` | Background TTL sweep interval; `0` disables it |
+| `delivery_lease` | `30000 ms` | Fixed ownership lease per delivery; no renewal |
+| `lease_sweep_interval` | `100 ms` | Reclaims abandoned deliveries, independent of queue TTL sweeping |
+| `completion_retention` | `60000 ms` | Maximum retention for replayable Ack/Nack outcomes |
+| `completion_cache_max_entries` | `10000` | Hard cap on retained delivery outcomes |
+| `maintenance_batch_size` | `256` | Maximum messages reclaimed per TTL/lease batch |
 
 Configuration is validated at broker construction. Levels and retry count must
 be positive, durations must use their documented non-negative/off semantics,
 and an enabled aging policy requires positive threshold and interval values.
 
+### Delivery and shutdown semantics
+
+Every Pull returns a fresh `attempt_token`; Ack/Nack must echo it. Upgrade the
+broker and clients together. The bundled consumer handles tokens internally.
+Expired leases recover messages abandoned by crashes or lost Pull responses.
+Lease expiry counts as a failed delivery, just like Nack; an expired TTL instead
+sends the message to the DLQ without incrementing its retry count. With
+`default_max_retries=1`, the first failure goes to the DLQ.
+
+Duplicate accepted Ack/Nack requests replay OK without repeating the mutation.
+This guarantee lasts until completion retention expires or the cache evicts the
+record, whichever happens first. Stale attempt tokens cannot settle a newer
+delivery, even after cache eviction. Conflicting or expired attempts return
+`FAILED_PRECONDITION`; an unknown delivery returns `NOT_FOUND`.
+
+The consumer retries transient settlement errors up to three times, using
+5-second RPC deadlines and 100/200 ms backoff, without rerunning the handler.
+On permanent failure or retry exhaustion it stops; `last_rpc_status()` exposes
+the error and `rpc_failures()` counts failed settlement calls. Ack/Nack counters
+count only confirmed outcomes. Pull retries use interruptible 200 ms backoff.
+
+Consumer destruction joins the worker; restart after a stopped worker is safe.
+`stop()` cancels pending Pull, but waits for an active handler and settlement.
+A handler may call `stop()` to request shutdown, but must not destroy its own
+consumer. Handlers cannot be forcibly interrupted. Set the delivery lease above
+the expected handler duration plus settlement overhead; lease renewal is not
+implemented. Handlers must tolerate duplicate processing after lease expiry.
+
+TTL reclamation uses a deadline index and bounded batches, avoiding full-backlog
+scans on delivery. Large expired backlogs take multiple passes to reclaim;
+aging still scans the queue. The standalone POSIX server handles SIGINT/SIGTERM
+using `sigwait` and shuts down with a five-second grace deadline.
+
 ### Current production boundary
 
 The broker is currently an in-memory research prototype. Before deployment
-beyond a trusted local network, add in-flight lease recovery, queue/DLQ/payload
-limits and backpressure, TLS/authentication, idempotent mutation retries,
-operator authorization, and metrics/tracing. A consumer stops its polling loop
-when an Ack/Nack RPC fails so it does not report a successful local outcome for
-an unconfirmed broker mutation; the message remains subject to future broker
-lease recovery once that feature is implemented.
+beyond a trusted local network, add queue/DLQ/payload
+limits and backpressure, TLS/authentication, idempotent Submit retries,
+operator authorization, and metrics/tracing. All queue, lease, and completion
+state is in memory and lost on restart. Delivery recovery provides at-least-once
+processing while the broker runs, not exactly-once application effects. Submit
+idempotency and durable storage are not implemented.
 
 ---
 

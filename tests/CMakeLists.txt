@@ -22,5 +22,14 @@ target_link_libraries(harbinger_integration_tests
 )
 
 include(GoogleTest)
-gtest_discover_tests(harbinger_unit_tests)
-gtest_discover_tests(harbinger_integration_tests)
+gtest_discover_tests(harbinger_unit_tests PROPERTIES TIMEOUT 60 DISCOVERY_MODE PRE_TEST)
+gtest_discover_tests(harbinger_integration_tests PROPERTIES TIMEOUT 60 DISCOVERY_MODE PRE_TEST)
+
+if(UNIX)
+    add_executable(harbinger_server_shutdown_tests integration/test_server_shutdown.cpp)
+    target_link_libraries(harbinger_server_shutdown_tests PRIVATE harbinger_proto GTest::gtest_main)
+    target_compile_definitions(harbinger_server_shutdown_tests PRIVATE
+        SERVER_EXECUTABLE="$<TARGET_FILE:harbinger_server>")
+    add_dependencies(harbinger_server_shutdown_tests harbinger_server)
+    gtest_discover_tests(harbinger_server_shutdown_tests PROPERTIES TIMEOUT 30 DISCOVERY_MODE PRE_TEST)
+endif()

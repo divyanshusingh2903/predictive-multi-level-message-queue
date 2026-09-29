@@ -23,11 +23,13 @@ elseif(NOT HARBINGER_SANITIZER STREQUAL "")
 endif()
 
 # ── Dependencies ──────────────────────────────────────────────────────────────
-# Requires CMake CONFIG packages for protobuf+gRPC from the same install
-# prefix (e.g. /usr/local from source). Do NOT mix apt libprotobuf-dev with
-# /usr/local gRPC — Module-mode FindProtobuf drops transitive absl deps.
+# Prefer upstream configs; Ubuntu's matching protobuf/gRPC packages use
+# FindProtobuf instead. Do not mix dependencies from different installations.
 find_package(Threads  REQUIRED)
-find_package(Protobuf CONFIG REQUIRED)
+find_package(Protobuf CONFIG QUIET)
+if(NOT Protobuf_FOUND)
+    find_package(Protobuf MODULE REQUIRED)
+endif()
 find_package(gRPC     CONFIG REQUIRED)
 
 # ── Proto code generation ─────────────────────────────────────────────────────
@@ -81,10 +83,12 @@ target_link_libraries(harbinger_server PRIVATE harbinger_server_lib gRPC::grpc++
 
 # ── Tests ────────────────────────────────────────────────────────────────────
 include(FetchContent)
+if(POLICY CMP0135)
+    cmake_policy(SET CMP0135 NEW)
+endif()
 FetchContent_Declare(
     googletest
     URL https://github.com/google/googletest/archive/refs/tags/v1.14.0.tar.gz
-    DOWNLOAD_EXTRACT_TIMESTAMP TRUE
 )
 set(INSTALL_GTEST OFF CACHE BOOL "" FORCE)
 FetchContent_MakeAvailable(googletest)
