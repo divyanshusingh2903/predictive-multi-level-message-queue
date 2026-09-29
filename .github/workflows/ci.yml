@@ -6,7 +6,7 @@ on:
 
 jobs:
   build-and-test:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
@@ -20,7 +20,7 @@ jobs:
         run: ctest --test-dir build-ci --output-on-failure
 
   sanitizers:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 20
     env:
       UBSAN_OPTIONS: halt_on_error=1:print_stacktrace=1
@@ -39,7 +39,7 @@ jobs:
         run: ctest --test-dir build-ci --output-on-failure
 
   thread-sanitizer:
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
@@ -49,6 +49,9 @@ jobs:
         run: cmake -S . -B build-ci -G Ninja -DCMAKE_BUILD_TYPE=Debug -DHARBINGER_SANITIZER=thread
       - name: Build
         run: cmake --build build-ci --parallel
+      # 24.04 runners use 32-bit mmap ASLR, which GCC's TSan rejects as an unexpected mapping.
+      - name: Reduce ASLR entropy for TSan
+        run: sudo sysctl vm.mmap_rnd_bits=28
       # Transport TSan tests require instrumented gRPC/Protobuf, not distro binaries.
       - name: Test queue concurrency
         run: ./build-ci/tests/harbinger_unit_tests --gtest_filter='MultiLevelQueue.*'
