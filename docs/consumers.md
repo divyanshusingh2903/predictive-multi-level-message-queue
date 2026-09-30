@@ -37,6 +37,8 @@ The client sets `PullRequest.timeout_ms` to its `pull_timeout` (default **1000 m
 
 The broker assigns an opaque **attempt token** and a fixed delivery lease (default **30 seconds**) when it installs ownership, before the Pull response is returned. The bundled client echoes the token on Ack/Nack; application callbacks need not manage it. Raw gRPC clients **must** echo the `PulledMessage.attempt_token` along with `consumer_id` and `message_id`. The wire `lease_duration_ms` is informational; it is not a renewable timer starting when the client reads the response.
 
+If the broker observes Pull cancellation after selecting live work but before installing ownership, it restores that message to the front of its current level without consuming a retry or resetting its aging time. This also applies to cancellation requested by `stop()`. Work already expired at the selected-message TTL check still goes to DLQ. Front restoration cannot undo concurrent deliveries or promise historical FIFO across multiple cancelled Pulls.
+
 ## Settlement and failures
 
 ```text
@@ -67,6 +69,7 @@ Lost attempts leave `last_rpc_status()` unchanged because they are recoverable, 
 **Harbinger fences stale deliveries, but does not guarantee that a consumer automatically continues after every late settlement.** Delivery ownership, settlement replay, and consumer availability are separate guarantees:
 
 - **Broker ownership:** a late Ack/Nack cannot settle a different live attempt, even after completion-history eviction. Lease expiry requeues the message or sends it to DLQ according to TTL and the failure budget; it does not cancel the original handler.
+- **Receipt uncertainty:** cancellation or response loss after the broker's final cancellation check can still create an in-flight delivery that the client never receives. There is no separate receipt-confirmation handshake; ordinary lease recovery applies, including its retry charge unless TTL wins. A cancelled Pull therefore does not guarantee immediate availability or an unchanged retry budget in every timing window.
 - **Bounded history:** the broker retains accepted Ack/Nack and expired-attempt records for up to `completion_retention` (**60 seconds** by default), subject to `completion_cache_max_entries` (**10,000 records**). Retention starts when the broker records settlement or lease reclamation, not when the message is submitted or pulled. Capacity pressure can evict a record before its retention period ends. This is not a guaranteed 60-second replay window.
 - **Bundled-client recovery:** settlement `FAILED_PRECONDITION` increments `leases_lost()` and permits continued polling. The client does not claim the handler's outcome was accepted. Other final settlement errors stop the worker and appear in `last_rpc_status()`; there is no automatic restart or re-registration.
 

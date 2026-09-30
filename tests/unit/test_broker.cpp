@@ -14,6 +14,14 @@ using namespace std::chrono_literals;
 
 namespace harbinger {
 struct BrokerTestAccess {
+    static std::unique_lock<std::mutex> gate_delivery(HarbingerService& service) {
+        return std::unique_lock{service.in_flight_mutex_};
+    }
+    static std::optional<Message> queued_front(HarbingerService& service) {
+        auto message = service.queue_.try_dequeue();
+        if (message) service.queue_.requeue_front(*message);
+        return message;
+    }
     static void expire(HarbingerService& service, const std::string& id, bool ttl = false) {
         std::lock_guard lock{service.in_flight_mutex_};
         auto& entry = service.in_flight_.at(id);
@@ -476,6 +484,120 @@ struct LocalBroker {
 };
 
 } // namespace
+
+namespace {
+// Keep context inspection synchronized with the forwarding handler's lifetime.
+class ObservedPull final : public harbinger_rpc::Broker::Service {
+public:
+    explicit ObservedPull(HarbingerService& broker) : broker_(broker) {}
+    std::promise<grpc::Status> finished;
+    bool cancelled() {
+        std::lock_guard lock{mutex_};
+        return context_ && context_->IsCancelled();
+    }
+    grpc::Status Pull(grpc::ServerContext* ctx, const harbinger_rpc::PullRequest* req,
+                      harbinger_rpc::PullResponse* resp) override {
+        {
+            std::lock_guard lock{mutex_};
+            context_ = ctx;
+        }
+        const auto status = broker_.Pull(ctx, req, resp);
+        {
+            std::lock_guard lock{mutex_};
+            context_ = nullptr;
+        }
+        finished.set_value(status);
+        return status;
+    }
+private:
+    HarbingerService& broker_;
+    std::mutex mutex_;
+    grpc::ServerContext* context_{nullptr};
+};
+
+template <typename Pred>
+bool wait_until(Pred pred) {
+    const auto deadline = std::chrono::steady_clock::now() + 3s;
+    while (!pred() && std::chrono::steady_clock::now() < deadline)
+        std::this_thread::sleep_for(5ms);
+    return pred();
+}
+}
+
+TEST(DeliveryRecovery, CancelledSelectedPullRestoresFrontWithoutLeaseOrRetry) {
+    LocalBroker b{HarbingerConfig{
+        .default_max_retries = 2, .ttl_sweep_interval = 0ms,
+        .delivery_lease = 30s, .lease_sweep_interval = 30s}};
+    const auto first_id = b.submit("A");
+    const auto second_id = b.submit("B");
+    const auto before = BrokerTestAccess::queued_front(b.service);
+    ASSERT_TRUE(before);
+    ObservedPull observed{b.service};
+    auto finished = observed.finished.get_future();
+    grpc::ServerBuilder builder;
+    int port = 0;
+    builder.AddListeningPort("127.0.0.1:0", grpc::InsecureServerCredentials(), &port);
+    builder.RegisterService(&observed);
+    auto server = builder.BuildAndStart();
+    ASSERT_TRUE(server);
+    struct ServerGuard {
+        grpc::Server& server;
+        ~ServerGuard() { server.Shutdown(); server.Wait(); }
+    } server_guard{*server};
+    auto stub = harbinger_rpc::Broker::NewStub(grpc::CreateChannel(
+        "127.0.0.1:" + std::to_string(port), grpc::InsecureChannelCredentials()));
+    grpc::ClientContext ctx;
+    ctx.set_deadline(std::chrono::system_clock::now() + 10s);
+    harbinger_rpc::PullRequest req;
+    req.set_consumer_id(b.consumer_id);
+    req.set_timeout_ms(5000);
+    harbinger_rpc::PullResponse resp;
+    auto gate = BrokerTestAccess::gate_delivery(b.service);
+    auto pending = std::async(std::launch::async, [&] { return stub->Pull(&ctx, req, &resp); });
+    // No fatal assertions while holding the gate: always release before joining.
+    EXPECT_TRUE(wait_until([&] { return b.service.queue_size() == 1; }));
+    ctx.TryCancel();
+    EXPECT_TRUE(wait_until([&] { return observed.cancelled(); }));
+    gate.unlock();
+    EXPECT_EQ(pending.get().error_code(), grpc::StatusCode::CANCELLED);
+    ASSERT_EQ(finished.wait_for(3s), std::future_status::ready);
+    EXPECT_EQ(finished.get().error_code(), grpc::StatusCode::CANCELLED);
+    EXPECT_EQ(b.service.queue_size(), 2u);
+    EXPECT_EQ(b.service.in_flight_count(), 0u);
+    EXPECT_EQ(b.service.dlq_size(), 0u);
+    BrokerTestAccess::check_indexes(b.service, 0);
+    const auto restored = BrokerTestAccess::queued_front(b.service);
+    ASSERT_TRUE(restored);
+    EXPECT_EQ(restored->id, first_id);
+    EXPECT_EQ(restored->priority, before->priority);
+    EXPECT_EQ(restored->original_priority, before->original_priority);
+    EXPECT_EQ(restored->retry_count, before->retry_count);
+    EXPECT_EQ(restored->enqueue_time, before->enqueue_time);
+    EXPECT_EQ(restored->arrival_time, before->arrival_time);
+
+    // Register a different receiver, then prove both FIFO and the remaining budget.
+    grpc::ClientContext registration;
+    registration.set_deadline(std::chrono::system_clock::now() + 3s);
+    harbinger_rpc::RegisterConsumerRequest registration_req;
+    harbinger_rpc::RegisterConsumerResponse registration_resp;
+    ASSERT_TRUE(b.stub->RegisterConsumer(&registration, registration_req, &registration_resp).ok());
+    b.consumer_id = registration_resp.consumer_id();
+    const auto start = std::chrono::steady_clock::now();
+    const auto first = b.pull(200);
+    ASSERT_FALSE(first.timed_out());
+    EXPECT_EQ(first.message().message_id(), first_id);
+    EXPECT_TRUE(b.nack(first.message()).ok());
+    EXPECT_EQ(b.service.dlq_size(), 0u);
+    const auto second = b.pull(200);
+    ASSERT_FALSE(second.timed_out());
+    EXPECT_EQ(second.message().message_id(), second_id);
+    EXPECT_TRUE(b.ack(second.message()).ok());
+    const auto retry = b.pull(200);
+    ASSERT_FALSE(retry.timed_out());
+    EXPECT_EQ(retry.message().message_id(), first_id);
+    EXPECT_TRUE(b.ack(retry.message()).ok());
+    EXPECT_LT(std::chrono::steady_clock::now() - start, 3s);
+}
 
 TEST_F(BrokerTest, PullCapsRequestedWaitAtServerMaximum) {
     LocalBroker b{HarbingerConfig{.max_pull_wait = 100ms}};

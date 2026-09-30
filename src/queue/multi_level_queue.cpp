@@ -27,12 +27,21 @@ void MultiLevelQueue::shutdown() {
 }
 
 void MultiLevelQueue::enqueue(Message msg) {
+    place_message(std::move(msg), false);
+}
+
+void MultiLevelQueue::requeue_front(Message msg) {
+    place_message(std::move(msg), true);
+}
+
+void MultiLevelQueue::place_message(Message msg, bool restore_front) {
     if (msg.priority >= num_levels_) throw std::out_of_range("priority out of range");
-    msg.enqueue_time = Clock::now();
+    if (!restore_front) msg.enqueue_time = Clock::now();
     {
         std::lock_guard lock{mutex_};
         auto& level = queues_[msg.priority];
-        auto it = level.emplace(level.end(), Node{std::move(msg), std::nullopt});
+        auto it = level.emplace(restore_front ? level.begin() : level.end(),
+                                Node{std::move(msg), std::nullopt});
         try {
             if (it->message.ttl.count() > 0)
                 it->expiry = expiry_.emplace(it->message.expiry_time(), it);

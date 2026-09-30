@@ -1,6 +1,8 @@
 cmake_minimum_required(VERSION 3.20)
 project(harbinger VERSION 0.1.0 LANGUAGES CXX)
 
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON CACHE BOOL "Export compiler commands for editor tooling")
+
 set(HARBINGER_SANITIZER "" CACHE STRING "Sanitizer to enable: address, undefined, or thread")
 
 set(CMAKE_CXX_STANDARD 20)

@@ -236,6 +236,10 @@ grpc::Status HarbingerService::Pull(grpc::ServerContext* ctx,
 
         {
             std::lock_guard lock{in_flight_mutex_};
+            if (ctx->IsCancelled()) {
+                queue_.requeue_front(std::move(msg));
+                return grpc::Status::CANCELLED;
+            }
             auto lease = deadlines_.emplace(Clock::now() + config_.delivery_lease, msg_id);
             in_flight_.emplace(msg_id, InFlightEntry{
                 .message     = std::move(msg),

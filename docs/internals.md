@@ -45,7 +45,7 @@ SUBMITTED → QUEUED → IN_FLIGHT ── Ack ──→ DONE
 - `payload`, `headers`: opaque bytes and copied string metadata. Proxy overwrites the reserved `__producer_id` header.
 - `arrival_time`: set once at ingress; all TTL decisions use this steady-clock time, including after retries.
 - `priority`: current level, where **0 is highest** and `num_levels - 1` lowest. `original_priority` records submit-time priority and is restored on requeue.
-- `enqueue_time`: when the message most recently entered its level; reset on enqueue and aging promotion. Unlike `arrival_time`, this measures wait time *at the current placement*.
+- `enqueue_time`: when the message most recently entered its level; reset on enqueue and aging promotion. Unlike `arrival_time`, this measures wait time *at the current placement*. Cancelled-selection restoration preserves it, so rolling back a dequeue does not restart aging.
 - `ttl`: 0 disables expiry; positive durations expire at `arrival_time + ttl`. Unset requests use the server default. Negative TTL on Submit is rejected.
 - `retry_count`, `max_retries`: failure accounting; successful delivery does not increase `retry_count`. The first failed delivery increments it to 1.
 
@@ -85,7 +85,13 @@ TTL counts from original arrival rather than from requeue or promotion. Queue sw
 
 `RegisterConsumer` creates `consumer-<counter>`. The Pull wait is `min(requested_timeout > 0 ? requested_timeout : max_pull_wait, max_pull_wait)`; the default cap is 5000 ms. Pull checks `ServerContext::IsCancelled()` around its loop, waits in up-to-100 ms chunks, and returns `timed_out=true` if no deliverable message arrives by its deadline.
 
+After selecting a message and checking TTL, Pull rechecks cancellation under the in-flight mutex immediately before installing ownership. If cancellation is already observed, it returns `CANCELLED` and restores the live message through `MultiLevelQueue::requeue_front()`: no lease, completion record, or retry increment is created. A deadline-expired client may observe `DEADLINE_EXCEEDED` instead of the server's cancellation status. Selected work already expired at the TTL check still goes to `TTL_EXPIRED` rather than being restored.
+
+Restoration inserts at the **front of the current priority level**, retaining original priority, retry count, arrival/TTL, and enqueue time; it rebuilds the positive-TTL index entry and wakes a dequeuer. It differs from ordinary Nack/lease requeue, which appends at original priority and resets aging time. Time spent temporarily selected still counts toward aging, and TTL keeps its original deadline even if it expires during restoration. FIFO is preserved relative to remaining work in that level, but restoration cannot undo messages already selected by other consumers, concurrent aging, or reordered concurrent restorations.
+
 On a live selected message, the service issues an opaque attempt token, installs an in-flight entry keyed by message ID (message, consumer owner, token, lease deadline), and returns payload/headers/ID/token plus the configured lease duration. The lease begins when the broker records the delivery; losing the Pull response does **not** undo it. The deadline-ordered in-flight index has an entry per delivery. `queue_size()` excludes in-flight messages; `in_flight_count()` measures current owned deliveries.
+
+Cancellation can still occur after the final check and before response delivery. There is no separate consumer receipt-confirmation handshake, so the broker cannot distinguish a delivery never received from one received by a stalled/crashed handler. This residual window uses ordinary lease recovery: the message is temporarily in-flight, and lease expiry consumes a retry unless TTL expiry takes precedence. The cancellation check narrows this window; it does not guarantee that every abandoned Pull avoids a lease or retry charge.
 
 The bundled client makes one Pull per worker at a time, invokes a callback, and sends Ack/Nack. It reports `processing_time_ms` for the callback duration. The broker currently **does not use or persist** that measurement: feedback collection and predictive routing are Phase 2 work.
 
