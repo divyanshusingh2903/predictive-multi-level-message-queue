@@ -50,6 +50,17 @@ Standalone server startup overrides: `--delivery-lease-ms`, `--lease-sweep-inter
 - Bound classifier calls with a short deadline. Any timeout, unavailable classifier, invalid prediction, or priority outside `[0, num_levels)` falls back to `default_priority`.
 - Compare prediction error, P50/P95/P99, throughput, and starvation against FIFO, static-priority, and round-robin workloads before enabling predictive routing.
 
+Planned implementation details live in [ADR 0001](docs/adr/0001-phase2-ml-contract.md), the [ML contract](docs/ml-contract.md), and the [validation plan](docs/phase2-validation.md). These documents do not describe implemented ML behavior; proposed numeric resource defaults and performance budgets require validation.
+
+- Modes: disabled/static by default, shadow for initial prediction experiments, predictive only by explicit opt-in after the gate. Feedback collection is separately configured so static-mode collection works without Python.
+- Predict successful handler duration, then let C++ map it to fixed versioned boundaries. Current `uint8_t` levels support 1–255; exactly `num_levels - 1` positive increasing boundaries, equality enters the next bucket. One level requires default priority 0 and no boundaries.
+- Store immutable ingress features and routing context internally; never put predictions/priorities into client headers. Disabled/shadow assign both priority fields to `default_priority`; predictive assigns both to the validated bucket or fallback. Retry/aging do not reclassify.
+- Separate protocol/feature-schema/model/routing-policy versions. Changing allowlists or encodings changes the schema; changing boundaries changes the policy. No silent compatibility migration.
+- Capture actual outcome events, keyed by broker instance/message/event and internal attempt identity, before moving message state. Never export opaque settlement tokens or arbitrary failure text. Accepted replay emits no second training event; rejected requests supply no labels. Actual lease reclamation still emits its own event.
+- Zero duration is valid; missing duration is null. Train initially on valid successful Ack labels only, evaluating the stored prediction before learning. Ack-after-TTL is DLQ feedback; lease/queued expiry has no handler runtime.
+- Telemetry admission and retention are bounded. No classifier/filesystem I/O under broker locks. Overflow/disk failure preserves settlement and reports telemetry loss. Persistent feedback is neither durable broker delivery nor an atomic settlement/log transaction.
+- The Phase 2 synthetic gate precedes predictive activation; Phase 3 expands to real traces/external brokers. Freeze final numerical budgets and experiment configuration before predictive comparisons.
+
 ## Build / Run / Test
 
 ```bash
@@ -67,7 +78,7 @@ Targets: `harbinger_server`, `harbinger_unit_tests`, `harbinger_integration_test
 
 ## Layout
 
-`proto/harbinger.proto` · `include/{harbinger_service,proxy,queue/{message,multi_level_queue,dead_letter_queue},producer,consumer}.hpp` · `src/` mirrors `include/` · `server/main.cpp` · `demo/main.cpp` · `tests/unit/` · `ml_engine/` (Phase 2, planned) · `benchmarks/` (Phase 1 cleanup harness; scheduler comparisons planned)
+`proto/harbinger.proto` · `include/{harbinger_service,proxy,queue/{message,multi_level_queue,dead_letter_queue},producer,consumer}.hpp` · `src/` mirrors `include/` · `server/main.cpp` · `demo/main.cpp` · `tests/unit/` · `docs/adr/` · `ml_engine/` (Phase 2, planned) · `benchmarks/` (Phase 2 gate + Phase 3 expansion, planned)
 
 ## Conventions
 
