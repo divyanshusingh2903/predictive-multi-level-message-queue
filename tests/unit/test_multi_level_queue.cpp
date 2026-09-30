@@ -119,6 +119,79 @@ TEST(MultiLevelQueue, EnqueueTimestampIsSet) {
     EXPECT_LE(msg->enqueue_time, after);
 }
 
+TEST(MultiLevelQueue, RestoreFrontPreservesMetadataAndLevelOrder) {
+    MultiLevelQueue q;
+    q.enqueue(make_msg(1, "A"));
+    q.enqueue(make_msg(1, "B"));
+    auto selected = q.try_dequeue();
+    ASSERT_TRUE(selected);
+    selected->original_priority = 2;
+    selected->retry_count = 1;
+    selected->max_retries = 5;
+    selected->enqueue_time = std::chrono::steady_clock::now() - 10s;
+    selected->arrival_time = std::chrono::steady_clock::now() - 20s;
+    selected->headers = {{"job", "test"}};
+    const auto expected = *selected;
+    q.requeue_front(std::move(*selected));
+    EXPECT_EQ(q.size(), 2u);
+    EXPECT_EQ(q.size(1), 2u);
+    EXPECT_EQ(q.size(2), 0u);
+    EXPECT_EQ(QueueTestAccess::expiry_size(q), 0u);
+    q.enqueue(make_msg(0, "higher"));
+    auto higher = q.try_dequeue();
+    ASSERT_TRUE(higher);
+    EXPECT_EQ(higher->id, "higher");
+    auto restored = q.try_dequeue();
+    ASSERT_TRUE(restored);
+    EXPECT_EQ(restored->id, "A");
+    EXPECT_EQ(restored->priority, expected.priority);
+    EXPECT_EQ(restored->original_priority, expected.original_priority);
+    EXPECT_EQ(restored->retry_count, expected.retry_count);
+    EXPECT_EQ(restored->max_retries, expected.max_retries);
+    EXPECT_EQ(restored->enqueue_time, expected.enqueue_time);
+    EXPECT_EQ(restored->arrival_time, expected.arrival_time);
+    EXPECT_EQ(restored->ttl, expected.ttl);
+    EXPECT_EQ(restored->payload, expected.payload);
+    EXPECT_EQ(restored->headers, expected.headers);
+    auto next = q.try_dequeue();
+    ASSERT_TRUE(next);
+    EXPECT_EQ(next->id, "B");
+    EXPECT_TRUE(q.empty());
+}
+
+TEST(MultiLevelQueue, RestoreFrontRejectsInvalidPriority) {
+    MultiLevelQueue q;
+    EXPECT_THROW(q.requeue_front(make_msg(3)), std::out_of_range);
+    EXPECT_TRUE(q.empty());
+    EXPECT_EQ(QueueTestAccess::expiry_size(q), 0u);
+}
+
+TEST(MultiLevelQueue, RestoreFrontNotifiesDequeuerAndRemainsDrainableAfterShutdown) {
+    MultiLevelQueue q;
+    q.enqueue(make_msg(1, "restored"));
+    auto selected = q.try_dequeue();
+    ASSERT_TRUE(selected);
+    std::promise<void> started;
+    auto ready = started.get_future();
+    auto pending = std::async(std::launch::async, [&] {
+        started.set_value();
+        return q.dequeue(5s);
+    });
+    ready.wait();
+    EXPECT_EQ(pending.wait_for(50ms), std::future_status::timeout);
+    q.requeue_front(std::move(*selected));
+    EXPECT_EQ(pending.wait_for(2s), std::future_status::ready);
+    auto received = pending.get();
+    ASSERT_TRUE(received);
+    EXPECT_EQ(received->id, "restored");
+    q.shutdown();
+    q.requeue_front(std::move(*received));
+    auto drained = q.dequeue(1s);
+    ASSERT_TRUE(drained);
+    EXPECT_EQ(drained->id, "restored");
+    EXPECT_FALSE(q.dequeue(1s));
+}
+
 // ── Blocking dequeue ──────────────────────────────────────────────────────────
 
 TEST(MultiLevelQueue, BlockingDequeueTimesOut) {
@@ -325,6 +398,31 @@ TEST(MultiLevelQueue, HugeTtlDoesNotOverflow) {
     q.enqueue(msg);
     EXPECT_TRUE(q.sweep_expired_batch(10).empty());
     EXPECT_TRUE(q.try_dequeue());
+    EXPECT_EQ(QueueTestAccess::expiry_size(q), 0u);
+}
+
+TEST(MultiLevelQueue, RestoreFrontRebuildsExpiryIndexWithoutExtendingTtl) {
+    MultiLevelQueue q;
+    q.enqueue(make_ttl_msg(1, "live", 0ms, 30s));
+    EXPECT_EQ(QueueTestAccess::expiry_size(q), 1u);
+    auto selected = q.try_dequeue();
+    ASSERT_TRUE(selected);
+    const auto deadline = selected->expiry_time();
+    EXPECT_EQ(QueueTestAccess::expiry_size(q), 0u);
+    q.requeue_front(std::move(*selected));
+    EXPECT_EQ(QueueTestAccess::expiry_size(q), 1u);
+    selected = q.try_dequeue();
+    ASSERT_TRUE(selected);
+    EXPECT_EQ(selected->expiry_time(), deadline);
+    EXPECT_EQ(QueueTestAccess::expiry_size(q), 0u);
+    selected->arrival_time -= 60s;
+    q.requeue_front(std::move(*selected));
+    EXPECT_EQ(QueueTestAccess::expiry_size(q), 1u);
+    auto expired = q.sweep_expired_batch(1);
+    ASSERT_EQ(expired.size(), 1u);
+    EXPECT_EQ(expired.front().id, "live");
+    EXPECT_EQ(expired.front().ttl, 30s);
+    EXPECT_TRUE(q.empty());
     EXPECT_EQ(QueueTestAccess::expiry_size(q), 0u);
 }
 

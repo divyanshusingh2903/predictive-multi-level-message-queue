@@ -21,6 +21,8 @@ public:
     MultiLevelQueue& operator=(const MultiLevelQueue&) = delete;
     /// Append at priority and reset enqueue_time.
     void enqueue(Message msg);
+    /// Restore an uncommitted dequeue at its level's front, preserving all message metadata.
+    void requeue_front(Message msg);
     /// Remove the highest-priority available message.
     [[nodiscard]] std::optional<Message> try_dequeue();
     /// Wait for a message or shutdown; queued messages remain drainable after shutdown.
@@ -48,6 +50,7 @@ private:
         std::optional<ExpiryIndex::iterator> expiry;
     };
     void run_aging();
+    void place_message(Message msg, bool restore_front);
     std::optional<Message> dequeue_locked();
     Message remove_locked(uint8_t level, Level::iterator it);
 
