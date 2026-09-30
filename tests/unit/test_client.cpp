@@ -118,6 +118,95 @@ TEST_F(ClientTest, ConsumerStartStop) {
     EXPECT_FALSE(c->is_running());
 }
 
+TEST_F(ClientTest, BinaryPayloadsAndManyHeadersSurviveRetry) {
+    auto producer = Producer::connect(addr_);
+    for (const std::size_t size : {0u, 4u, 65536u}) {
+        SCOPED_TRACE(size);
+        std::vector<uint8_t> payload(size);
+        for (std::size_t i = 0; i < size; ++i) payload[i] = static_cast<uint8_t>(i);
+        std::unordered_map<std::string, std::string> headers;
+        for (int i = 0; i < 128; ++i) headers["header-" + std::to_string(i)] = i % 2 ? "value" : "";
+        std::atomic<int> calls{0};
+        auto consumer = Consumer::connect(addr_, [&](const ReceivedMessage& msg) {
+            EXPECT_EQ(msg.payload, payload);
+            EXPECT_EQ(msg.headers.size(), headers.size() + 1);
+            EXPECT_EQ(msg.headers.at("__producer_id"), producer->id());
+            for (const auto& [key, value] : headers) EXPECT_EQ(msg.headers.at(key), value);
+            return calls++ == 0 ? AckResult::FAILURE : AckResult::SUCCESS;
+        }, 100ms);
+        (void)producer->send(payload, headers);
+        consumer->start();
+        EXPECT_TRUE(wait_for([&] { return consumer->messages_acked() == 1; }));
+        consumer->stop();
+        EXPECT_EQ(calls, 2);
+        EXPECT_EQ(consumer->messages_nacked(), 1u);
+        EXPECT_EQ(consumer->leases_lost(), 0u);
+    }
+}
+
+namespace {
+class StalledRegistration final : public harbinger_rpc::Broker::Service {
+public:
+    std::promise<std::pair<std::chrono::system_clock::time_point,
+                           std::chrono::system_clock::time_point>> entered;
+    std::atomic<bool> release{false};
+    std::atomic<bool> cancelled{false};
+    grpc::Status RegisterProducer(grpc::ServerContext* ctx,
+                                  const harbinger_rpc::RegisterProducerRequest*,
+                                  harbinger_rpc::RegisterProducerResponse*) override {
+        entered.set_value({ctx->deadline(), std::chrono::system_clock::now()});
+        const auto watchdog = std::chrono::steady_clock::now() + 8s;
+        while (!release && !ctx->IsCancelled() && std::chrono::steady_clock::now() < watchdog)
+            std::this_thread::sleep_for(10ms);
+        cancelled = ctx->IsCancelled();
+        return {grpc::StatusCode::UNAVAILABLE, "registration deliberately stalled"};
+    }
+};
+}
+
+TEST(ProducerDeadline, StalledRegistrationUsesActualFiveSecondDeadline) {
+    StalledRegistration service;
+    auto entered = service.entered.get_future();
+    grpc::ServerBuilder builder;
+    int port = 0;
+    builder.AddListeningPort("127.0.0.1:0", grpc::InsecureServerCredentials(), &port);
+    builder.RegisterService(&service);
+    auto server = builder.BuildAndStart();
+    ASSERT_TRUE(server);
+    struct Guard {
+        StalledRegistration& service;
+        grpc::Server& server;
+        ~Guard() { service.release = true; server.Shutdown(); server.Wait(); }
+    } guard{service, *server};
+    const auto start = std::chrono::steady_clock::now();
+    auto connect = std::async(std::launch::async, [&] {
+        try {
+            (void)Producer::connect("127.0.0.1:" + std::to_string(port));
+            return false;
+        } catch (const std::runtime_error&) {
+            return true;
+        }
+    });
+    const bool handler_entered = entered.wait_for(3s) == std::future_status::ready;
+    EXPECT_TRUE(handler_entered);
+    if (handler_entered) {
+        const auto [deadline, arrival] = entered.get();
+        EXPECT_NE(deadline, std::chrono::system_clock::time_point::max());
+        EXPECT_GT(deadline - arrival, 4s);
+        EXPECT_LT(deadline - arrival, 6s);
+    }
+    EXPECT_EQ(connect.wait_for(7s), std::future_status::ready);
+    const auto elapsed = std::chrono::steady_clock::now() - start;
+    const auto observe_until = std::chrono::steady_clock::now() + 1s;
+    while (!service.cancelled && std::chrono::steady_clock::now() < observe_until)
+        std::this_thread::sleep_for(10ms);
+    EXPECT_TRUE(service.cancelled);
+    service.release = true; // Always unblock before joining, including pre-fix failures.
+    EXPECT_TRUE(connect.get());
+    EXPECT_GE(elapsed, 4s);
+    EXPECT_LT(elapsed, 8s);
+}
+
 // ── End-to-end: Producer → Harbinger → Consumer ──────────────────────────────────
 
 TEST_F(ClientTest, EndToEndAck) {

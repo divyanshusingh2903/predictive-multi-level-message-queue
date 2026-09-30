@@ -1,4 +1,5 @@
 #include "queue/dead_letter_queue.hpp"
+#include <algorithm>
 
 namespace harbinger {
 
@@ -26,9 +27,9 @@ std::vector<DLQEntry> DeadLetterQueue::snapshot(std::size_t offset,
     std::lock_guard lock{mutex_};
     std::vector<DLQEntry> out;
     if (offset >= entries_.size() || limit == 0) return out;
-    const auto end =
-        std::min(entries_.size(), offset + limit);
-    out.reserve(end - offset);
+    const auto count = std::min(limit, entries_.size() - offset);
+    const auto end = offset + count;
+    out.reserve(count);
     for (std::size_t i = offset; i < end; ++i) {
         out.push_back(entries_[i]);
     }

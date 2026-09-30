@@ -25,7 +25,7 @@ std::string id = producer->send(
 // A successful send returns the broker-assigned message ID.
 ```
 
-`Producer::connect(address)` creates an insecure gRPC channel, calls `RegisterProducer`, and returns a client holding a broker-assigned ID such as `producer-0`. Registration happens once per `connect()` call; registration failures throw `std::runtime_error`. **This client does not set a registration deadline**, so a failed connection may wait according to gRPC behavior. The client does not reconnect or re-register automatically.
+`Producer::connect(address)` creates an insecure gRPC channel, calls `RegisterProducer` with a **5-second client deadline**, and returns a client holding a broker-assigned ID such as `producer-0`. Registration happens once per `connect()` call; registration failures, including deadline expiry, throw `std::runtime_error`. The client does not reconnect or re-register automatically.
 
 `send(payload, headers, ttl)` performs a synchronous `Submit` RPC with a **5-second client deadline**. It returns the server-generated message ID only when the RPC reports success. `messages_sent()` counts successful responses from this `Producer` instance; it is not a measure of acknowledged jobs. Failed Submit calls throw `std::runtime_error`. Negative TTL passed through the C++ API throws `std::invalid_argument` before any RPC.
 

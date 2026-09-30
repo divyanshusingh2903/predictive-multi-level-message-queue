@@ -3,6 +3,8 @@
 #include <gtest/gtest.h>
 
 #include <future>
+#include <limits>
+#include <random>
 #include <thread>
 #include <vector>
 
@@ -11,6 +13,30 @@ using namespace std::chrono_literals;
 
 namespace harbinger {
 struct QueueTestAccess {
+    static std::size_t age(MultiLevelQueue& q, std::chrono::steady_clock::time_point now) {
+        std::lock_guard lock{q.mutex_};
+        return q.age_once_locked(now);
+    }
+    static std::vector<std::vector<Message>> contents(MultiLevelQueue& q) {
+        std::lock_guard lock{q.mutex_};
+        std::vector<std::vector<Message>> levels(q.num_levels_);
+        for (std::size_t i = 0; i < levels.size(); ++i)
+            for (const auto& node : q.queues_[i]) levels[i].push_back(node.message);
+        return levels;
+    }
+    static void check_cache(MultiLevelQueue& q) {
+        std::lock_guard lock{q.mutex_};
+        for (uint8_t level = 1; level < q.num_levels_; ++level) {
+            for (const auto& node : q.queues_[level]) {
+                if (node.message.is_expired()) continue;
+                const auto due = q.aging_deadline(node.message.enqueue_time);
+                if (due) {
+                    ASSERT_TRUE(q.next_aging_[level]);
+                    EXPECT_LE(*q.next_aging_[level], *due);
+                }
+            }
+        }
+    }
     static std::size_t expiry_size(MultiLevelQueue& q) {
         std::lock_guard lock{q.mutex_};
         return q.expiry_.size();
@@ -104,7 +130,7 @@ TEST(MultiLevelQueue, SizePerlevel) {
 
 TEST(MultiLevelQueue, SizePerLevelOutOfRangeThrows) {
     MultiLevelQueue q{3};
-    EXPECT_THROW(q.size(3), std::out_of_range);
+    EXPECT_THROW((void)q.size(3), std::out_of_range);
 }
 
 TEST(MultiLevelQueue, EnqueueTimestampIsSet) {
@@ -445,4 +471,178 @@ TEST(MultiLevelQueue, ConcurrentShutdownWakesAllWaiters) {
     EXPECT_EQ(first.wait_for(1s), std::future_status::ready);
     EXPECT_EQ(second.wait_for(1s), std::future_status::ready);
     EXPECT_FALSE(waiter.get());
+}
+
+TEST(MultiLevelQueue, AgingSkipsYoungLevelsButFindsOldWorkBehindYoungHead) {
+    MultiLevelQueue q{3, AgingConfig{100ms, 1h}};
+    q.shutdown(); // Controlled passes without a racing background thread.
+    const auto now = std::chrono::steady_clock::now();
+    auto old = make_msg(2, "old");
+    old.enqueue_time = now - 100ms;
+    q.requeue_front(old);
+    auto young = make_msg(2, "young-front");
+    young.enqueue_time = now;
+    q.requeue_front(young);
+    q.enqueue(make_msg(1, "young-level"));
+    EXPECT_EQ(QueueTestAccess::age(q, now - 1ms), 0u);
+    EXPECT_EQ(QueueTestAccess::age(q, now), 2u);
+    auto levels = QueueTestAccess::contents(q);
+    ASSERT_EQ(levels[1].size(), 2u);
+    EXPECT_EQ(levels[1][0].id, "young-level");
+    EXPECT_EQ(levels[1][1].id, "old");
+    EXPECT_EQ(levels[1][1].enqueue_time, now);
+    EXPECT_EQ(levels[1][1].original_priority, 2);
+    EXPECT_EQ(QueueTestAccess::age(q, now + 99ms), 0u);
+    QueueTestAccess::check_cache(q);
+}
+
+TEST(MultiLevelQueue, AgingRetainsFifoAcrossSourcesAndResetsDestinationDeadlines) {
+    MultiLevelQueue q{4, AgingConfig{100ms, 1h}};
+    q.shutdown();
+    const auto now = std::chrono::steady_clock::now();
+    for (uint8_t level = 1; level <= 3; ++level) {
+        auto older = make_msg(level, "older-" + std::to_string(level));
+        older.enqueue_time = now - 300ms;
+        q.requeue_front(older);
+        auto front = make_msg(level, "front-" + std::to_string(level));
+        front.enqueue_time = now - 100ms;
+        q.requeue_front(front);
+    }
+    q.enqueue(make_msg(0, "existing"));
+    EXPECT_EQ(QueueTestAccess::age(q, now), 10u); // Includes new, young destination nodes.
+    const auto levels = QueueTestAccess::contents(q);
+    ASSERT_EQ(levels[0].size(), 3u);
+    EXPECT_EQ(levels[0][0].id, "existing");
+    EXPECT_EQ(levels[0][1].id, "front-1");
+    EXPECT_EQ(levels[0][2].id, "older-1");
+    for (std::size_t level = 1; level <= 2; ++level) {
+        ASSERT_EQ(levels[level].size(), 2u);
+        EXPECT_EQ(levels[level][0].id, "front-" + std::to_string(level + 1));
+        EXPECT_EQ(levels[level][1].id, "older-" + std::to_string(level + 1));
+        EXPECT_EQ(levels[level][0].enqueue_time, now);
+    }
+    EXPECT_EQ(QueueTestAccess::age(q, now + 99ms), 0u);
+    EXPECT_GT(QueueTestAccess::age(q, now + 100ms), 0u);
+    QueueTestAccess::check_cache(q);
+}
+
+TEST(MultiLevelQueue, AgingCacheHandlesRemovedOldestExpiredWorkAndRefill) {
+    MultiLevelQueue q{3, AgingConfig{100ms, 1h}};
+    q.shutdown();
+    const auto now = std::chrono::steady_clock::now();
+    auto old = make_msg(1, "removed");
+    old.enqueue_time = now - 1s;
+    auto young = make_msg(1, "young");
+    young.enqueue_time = now;
+    q.requeue_front(young);
+    q.requeue_front(old);
+    ASSERT_TRUE(q.try_dequeue());
+    EXPECT_EQ(QueueTestAccess::age(q, now), 1u); // Conservative stale minimum costs one scan.
+    EXPECT_EQ(QueueTestAccess::age(q, now), 0u);
+    auto dead = make_ttl_msg(2, "expired", 1s);
+    dead.enqueue_time = now - 1s;
+    q.requeue_front(dead);
+    EXPECT_EQ(QueueTestAccess::age(q, now), 1u);
+    EXPECT_EQ(QueueTestAccess::age(q, now), 0u); // Expired node never becomes promotable.
+    EXPECT_EQ(QueueTestAccess::expiry_size(q), 1u);
+    ASSERT_EQ(q.sweep_expired_batch(1).size(), 1u);
+    ASSERT_TRUE(q.try_dequeue());
+    q.requeue_front(old);
+    EXPECT_GT(QueueTestAccess::age(q, now), 0u);
+    auto promoted = q.try_dequeue();
+    ASSERT_TRUE(promoted);
+    EXPECT_EQ(promoted->priority, 0);
+    EXPECT_TRUE(q.empty());
+    QueueTestAccess::check_cache(q);
+}
+
+TEST(MultiLevelQueue, AgingDeadlineArithmeticDoesNotWrap) {
+    using Clock = std::chrono::steady_clock;
+    MultiLevelQueue huge{3, AgingConfig{std::chrono::milliseconds::max(), 1h}};
+    huge.shutdown();
+    auto old = make_msg(2, "huge-threshold");
+    old.enqueue_time = Clock::now() - 1h;
+    huge.requeue_front(old);
+    EXPECT_EQ(QueueTestAccess::age(huge, Clock::now()), 0u);
+    MultiLevelQueue near_limit{3, AgingConfig{100ms, 1h}};
+    near_limit.shutdown();
+    auto future = make_msg(2, "future");
+    future.enqueue_time = Clock::time_point::max() - 1ms;
+    near_limit.requeue_front(future);
+    EXPECT_EQ(QueueTestAccess::age(near_limit, Clock::time_point::max()), 0u);
+    EXPECT_EQ(near_limit.size(2), 1u);
+}
+
+TEST(MultiLevelQueue, CachedAgingMatchesFullScanAfterMixedOperations) {
+    using Clock = std::chrono::steady_clock;
+    MultiLevelQueue q{4, AgingConfig{100ms, 1h}};
+    q.shutdown();
+    std::vector<std::vector<Message>> reference(4);
+    std::mt19937 random{42};
+    auto now = Clock::now();
+    for (int step = 0; step < 300; ++step) {
+        SCOPED_TRACE(step);
+        const auto op = random() % 5;
+        if (op <= 1) {
+            const auto level = static_cast<uint8_t>(random() % 4);
+            auto msg = make_msg(level, std::to_string(step));
+            msg.enqueue_time = now - std::chrono::milliseconds{static_cast<int>(random() % 200)};
+            if (op == 0) {
+                q.requeue_front(msg);
+                reference[level].insert(reference[level].begin(), msg);
+            } else {
+                q.enqueue(msg);
+                reference[level].push_back(QueueTestAccess::contents(q)[level].back());
+            }
+        } else if (op == 2) {
+            auto selected = q.try_dequeue();
+            std::optional<Message> expected;
+            for (auto& level : reference) {
+                if (!level.empty()) {
+                    expected = level.front();
+                    level.erase(level.begin());
+                    break;
+                }
+            }
+            ASSERT_EQ(selected.has_value(), expected.has_value());
+            if (selected) {
+                EXPECT_EQ(selected->id, expected->id);
+                q.requeue_front(*selected);
+                reference[selected->priority].insert(reference[selected->priority].begin(), *expected);
+            }
+        } else if (op == 3) {
+            auto expired = make_ttl_msg(2, "expired-" + std::to_string(step), 1s);
+            expired.enqueue_time = now - 1s;
+            q.requeue_front(expired);
+            reference[2].insert(reference[2].begin(), expired);
+            (void)q.sweep_expired_batch(1);
+            reference[2].erase(reference[2].begin());
+        } else {
+            now += 50ms;
+            (void)QueueTestAccess::age(q, now);
+            for (std::size_t level = 3; level >= 1; --level) {
+                auto& source = reference[level];
+                for (auto it = source.begin(); it != source.end();) {
+                    if (now - it->enqueue_time >= 100ms && !it->is_expired()) {
+                        auto msg = *it;
+                        it = source.erase(it);
+                        msg.priority = static_cast<uint8_t>(level - 1);
+                        msg.enqueue_time = now;
+                        reference[level - 1].push_back(std::move(msg));
+                    } else ++it;
+                }
+            }
+        }
+        const auto actual = QueueTestAccess::contents(q);
+        for (std::size_t level = 0; level < reference.size(); ++level) {
+            ASSERT_EQ(actual[level].size(), reference[level].size());
+            for (std::size_t i = 0; i < reference[level].size(); ++i) {
+                EXPECT_EQ(actual[level][i].id, reference[level][i].id);
+                EXPECT_EQ(actual[level][i].priority, reference[level][i].priority);
+                EXPECT_EQ(actual[level][i].original_priority, reference[level][i].original_priority);
+                EXPECT_EQ(actual[level][i].enqueue_time, reference[level][i].enqueue_time);
+            }
+        }
+        QueueTestAccess::check_cache(q);
+    }
 }

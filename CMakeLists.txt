@@ -4,12 +4,26 @@ project(harbinger VERSION 0.1.0 LANGUAGES CXX)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON CACHE BOOL "Export compiler commands for editor tooling")
 
 set(HARBINGER_SANITIZER "" CACHE STRING "Sanitizer to enable: address, undefined, or thread")
+option(HARBINGER_BUILD_BENCHMARKS "Build Phase 1 cleanup measurements" OFF)
+option(HARBINGER_WARNINGS_AS_ERRORS "Treat first-party compiler warnings as errors" OFF)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
-add_compile_options(-Wall -Wextra -Wpedantic)
+function(harbinger_target_warnings target)
+    if(MSVC)
+        target_compile_options(${target} PRIVATE /W4)
+        if(HARBINGER_WARNINGS_AS_ERRORS)
+            target_compile_options(${target} PRIVATE /WX)
+        endif()
+    elseif(CMAKE_CXX_COMPILER_ID MATCHES "^(GNU|Clang|AppleClang)$")
+        target_compile_options(${target} PRIVATE -Wall -Wextra -Wpedantic)
+        if(HARBINGER_WARNINGS_AS_ERRORS)
+            target_compile_options(${target} PRIVATE -Werror)
+        endif()
+    endif()
+endfunction()
 
 if(HARBINGER_SANITIZER STREQUAL "address")
     add_compile_options(-fsanitize=address -fno-omit-frame-pointer)
@@ -70,6 +84,7 @@ add_library(harbinger_server_lib STATIC
 )
 target_include_directories(harbinger_server_lib PUBLIC include)
 target_link_libraries(harbinger_server_lib PUBLIC harbinger_proto Threads::Threads)
+harbinger_target_warnings(harbinger_server_lib)
 
 # ── Client library (Producer + Consumer gRPC clients) ─────────────────────────
 add_library(harbinger_client_lib STATIC
@@ -78,10 +93,12 @@ add_library(harbinger_client_lib STATIC
 )
 target_include_directories(harbinger_client_lib PUBLIC include)
 target_link_libraries(harbinger_client_lib PUBLIC harbinger_proto Threads::Threads)
+harbinger_target_warnings(harbinger_client_lib)
 
 # ── Server binary ─────────────────────────────────────────────────────────────
 add_executable(harbinger_server server/main.cpp)
 target_link_libraries(harbinger_server PRIVATE harbinger_server_lib gRPC::grpc++)
+harbinger_target_warnings(harbinger_server)
 
 # ── Tests ────────────────────────────────────────────────────────────────────
 include(FetchContent)
@@ -100,3 +117,6 @@ add_subdirectory(tests)
 
 # ── Demo ─────────────────────────────────────────────────────────────────────
 add_subdirectory(demo)
+if(HARBINGER_BUILD_BENCHMARKS)
+    add_subdirectory(benchmarks)
+endif()

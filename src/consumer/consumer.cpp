@@ -188,6 +188,7 @@ void Consumer::run() {
         msg.id      = pulled.message_id();
         msg.payload = std::vector<uint8_t>(pulled.payload().begin(),
                                            pulled.payload().end());
+        msg.headers.reserve(pulled.headers().size());
         for (const auto& [k, v] : pulled.headers()) {
             msg.headers[k] = v;
         }

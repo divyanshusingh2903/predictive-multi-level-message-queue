@@ -1,6 +1,7 @@
 #include "queue/dead_letter_queue.hpp"
 
 #include <gtest/gtest.h>
+#include <limits>
 
 using namespace harbinger;
 
@@ -140,4 +141,12 @@ TEST(DeadLetterQueue, SnapshotPagination) {
     EXPECT_EQ(page2[0].message.id, "c");
     EXPECT_TRUE(past_end.empty());
     EXPECT_TRUE(zero_limit.empty());
+    const auto maximum = std::numeric_limits<std::size_t>::max();
+    const auto remaining = dlq.snapshot(1, maximum);
+    ASSERT_EQ(remaining.size(), 2u);
+    EXPECT_EQ(remaining[0].message.id, "b");
+    EXPECT_EQ(remaining[1].message.id, "c");
+    EXPECT_EQ(dlq.snapshot(0, maximum).size(), 3u);
+    EXPECT_TRUE(dlq.snapshot(maximum, maximum).empty());
+    EXPECT_EQ(dlq.size(), 3u);
 }

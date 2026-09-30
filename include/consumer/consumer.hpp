@@ -29,10 +29,7 @@ struct ReceivedMessage {
     std::unordered_map<std::string, std::string> headers;
 };
 
-/// Tier-blind gRPC consumer client.
-/// The broker decides which message each Pull receives; the consumer never
-/// sees queue levels. Processing time is measured and reported on every
-/// Ack/Nack for the ML feedback loop.
+/// Tier-blind client reporting handler time on Ack/Nack for future, not yet stored, ML feedback.
 class Consumer {
 public:
     /// Stop and join; must not be destroyed from its own handler.

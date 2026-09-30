@@ -1,0 +1,3 @@
+add_executable(harbinger_cleanup_benchmark phase1_cleanup.cpp)
+target_link_libraries(harbinger_cleanup_benchmark PRIVATE harbinger_server_lib harbinger_client_lib)
+harbinger_target_warnings(harbinger_cleanup_benchmark)

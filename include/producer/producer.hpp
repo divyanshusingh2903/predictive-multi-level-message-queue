@@ -18,7 +18,7 @@ namespace harbinger {
 /// headers. Routing context (priority, TTL, retries) is assigned server-side.
 class Producer {
 public:
-    /// Register with the broker and obtain a producer ID.
+    /// Register with a five-second deadline and obtain a producer ID.
     /// @param server_addr gRPC target, e.g. "127.0.0.1:50051".
     /// @return Connected producer holding its server-assigned ID.
     /// @side_effects Opens a channel and performs a RegisterProducer RPC.

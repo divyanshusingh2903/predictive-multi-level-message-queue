@@ -14,7 +14,7 @@ jobs:
       - name: Install dependencies
         run: sudo apt-get update && sudo apt-get install -y cmake ninja-build g++ libgrpc++-dev protobuf-compiler-grpc libprotobuf-dev
       - name: Configure
-        run: cmake -S . -B build-ci -G Ninja -DCMAKE_BUILD_TYPE=Release
+        run: cmake -S . -B build-ci -G Ninja -DCMAKE_BUILD_TYPE=Release -DHARBINGER_WARNINGS_AS_ERRORS=ON
       - name: Build
         run: cmake --build build-ci --parallel
       - name: Test
@@ -33,7 +33,7 @@ jobs:
       - name: Install dependencies
         run: sudo apt-get update && sudo apt-get install -y cmake ninja-build g++ libgrpc++-dev protobuf-compiler-grpc libprotobuf-dev
       - name: Configure
-        run: cmake -S . -B build-ci -G Ninja -DCMAKE_BUILD_TYPE=Debug -DHARBINGER_SANITIZER=${{ matrix.sanitizer }}
+        run: cmake -S . -B build-ci -G Ninja -DCMAKE_BUILD_TYPE=Debug -DHARBINGER_SANITIZER=${{ matrix.sanitizer }} -DHARBINGER_WARNINGS_AS_ERRORS=ON
       - name: Build
         run: cmake --build build-ci --parallel
       - name: Test
@@ -47,7 +47,7 @@ jobs:
       - name: Install dependencies
         run: sudo apt-get update && sudo apt-get install -y cmake ninja-build g++ libgrpc++-dev protobuf-compiler-grpc libprotobuf-dev
       - name: Configure
-        run: cmake -S . -B build-ci -G Ninja -DCMAKE_BUILD_TYPE=Debug -DHARBINGER_SANITIZER=thread
+        run: cmake -S . -B build-ci -G Ninja -DCMAKE_BUILD_TYPE=Debug -DHARBINGER_SANITIZER=thread -DHARBINGER_WARNINGS_AS_ERRORS=ON
       - name: Build
         run: cmake --build build-ci --parallel
       # 24.04 runners use 32-bit mmap ASLR, which GCC's TSan rejects as an unexpected mapping.

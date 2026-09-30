@@ -19,6 +19,8 @@ std::shared_ptr<Producer> Producer::connect(const std::string& server_addr) {
     harbinger_rpc::RegisterProducerResponse resp;
     grpc::ClientContext ctx;
 
+    ctx.set_deadline(std::chrono::system_clock::now() + std::chrono::seconds{5});
+
     const auto status = stub->RegisterProducer(&ctx, req, &resp);
     if (!status.ok()) {
         throw std::runtime_error(
@@ -37,7 +39,8 @@ std::string Producer::send(std::vector<uint8_t> payload,
     }
     harbinger_rpc::SubmitRequest req;
     req.set_producer_id(id_);
-    req.set_payload(std::string(payload.begin(), payload.end()));
+    if (payload.empty()) req.clear_payload();
+    else req.set_payload(reinterpret_cast<const char*>(payload.data()), payload.size());
     for (const auto& [k, v] : headers) {
         (*req.mutable_headers())[k] = v;
     }

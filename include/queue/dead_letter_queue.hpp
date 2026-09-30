@@ -10,9 +10,7 @@
 
 namespace harbinger {
 
-/// FIFO store for messages that cannot be delivered.
-/// Entries arrive on max-retries, TTL expiry, or processing errors.
-/// The DLQ never redelivers on its own; operators inspect, drain, or replay it.
+/// FIFO failed-message store; the operator RPC only inspects and never drains or replays.
 class DeadLetterQueue {
 public:
     /// Append a failed message with its failure context.
