@@ -89,6 +89,10 @@ public:
     [[nodiscard]] uint64_t rpc_failures() const noexcept {
         return rpc_failures_.load(std::memory_order_relaxed);
     }
+    /// Total deliveries whose settlement was rejected as expired, stale, or conflicting.
+    [[nodiscard]] uint64_t leases_lost() const noexcept {
+        return leases_lost_.load(std::memory_order_relaxed);
+    }
     /// Last terminal RPC error, or OK since the latest start.
     [[nodiscard]] grpc::Status last_rpc_status() const;
 
@@ -100,6 +104,7 @@ private:
 
     void run();
     void fail(grpc::Status status);
+    void settlement_failed(grpc::Status status);
 
     std::string                              id_;
     std::unique_ptr<harbinger_rpc::Broker::Stub> stub_;
@@ -119,6 +124,7 @@ private:
     std::atomic<uint64_t> acked_{0};
     std::atomic<uint64_t> nacked_{0};
     std::atomic<uint64_t> rpc_failures_{0};
+    std::atomic<uint64_t> leases_lost_{0};
 };
 
 } // namespace harbinger

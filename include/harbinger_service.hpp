@@ -47,9 +47,13 @@ struct HarbingerConfig {
     std::chrono::milliseconds ttl_sweep_interval{100};
     /// Fixed delivery lease; handlers must finish before it expires.
     std::chrono::milliseconds delivery_lease{30000};
+    /// Cadence for bounded lease reclamation and completion-history cleanup.
     std::chrono::milliseconds lease_sweep_interval{100};
+    /// Maximum completion-history age from settlement/reclamation, subject to capacity.
     std::chrono::milliseconds completion_retention{60000};
+    /// Maximum retained attempt outcomes; capacity eviction can shorten retention.
     std::size_t completion_cache_max_entries{10000};
+    /// Maximum entries processed per queue TTL, lease, or history maintenance batch.
     std::size_t maintenance_batch_size{256};
 };
 

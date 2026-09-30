@@ -303,11 +303,14 @@ namespace {
 // Forward to a real broker, injecting transport errors before or after settlement.
 class FaultBroker final : public harbinger_rpc::Broker::Service {
 public:
+    explicit FaultBroker(HarbingerConfig config = {}) : broker(config) {}
     HarbingerService broker;
     std::atomic<int> mode{0}; // 1 lost response, 2 before commit, 3 permanent, 4 unavailable
     std::atomic<int> settlement_calls{0};
     std::atomic<int> pull_error{0};
     std::atomic<int> pull_calls{0};
+    std::atomic<int> settlement_error{0};
+    std::atomic<bool> lose_after_transient{false};
     grpc::Status RegisterProducer(grpc::ServerContext* c, const harbinger_rpc::RegisterProducerRequest* r,
                                   harbinger_rpc::RegisterProducerResponse* s) override {
         return broker.RegisterProducer(c, r, s);
@@ -327,6 +330,11 @@ public:
     }
     template <typename Call> grpc::Status inject(Call call) {
         const int attempt = ++settlement_calls;
+        const int error = settlement_error.load();
+        if (error) return {static_cast<grpc::StatusCode>(error), "injected settlement failure"};
+        if (lose_after_transient && attempt <= 2)
+            return {attempt == 1 ? grpc::StatusCode::UNAVAILABLE
+                                 : grpc::StatusCode::FAILED_PRECONDITION, "lost attempt"};
         const int fault = mode.load();
         if (fault == 3) return {grpc::StatusCode::PERMISSION_DENIED, "permanent"};
         if (fault == 4 || (fault == 2 && attempt == 1))
@@ -348,6 +356,7 @@ public:
 
 class ClientRecovery : public ::testing::Test {
 protected:
+    explicit ClientRecovery(HarbingerConfig config = {}) : service(config) {}
     FaultBroker service;
     std::unique_ptr<grpc::Server> server;
     std::string addr;
@@ -435,7 +444,127 @@ TEST_F(ClientRecovery, ExhaustedSettlementRetriesStopWithObservableError) {
     EXPECT_EQ(service.settlement_calls, 3);
     EXPECT_EQ(c->rpc_failures(), 3u);
     EXPECT_EQ(c->messages_nacked(), 0u);
+    EXPECT_EQ(c->leases_lost(), 0u);
     // Destructor also joins an already-exited thread.
+}
+
+namespace {
+class ClientLeaseRecovery : public ClientRecovery,
+                            public ::testing::WithParamInterface<AckResult> {
+protected:
+    ClientLeaseRecovery() : ClientRecovery([] {
+        HarbingerConfig config;
+        config.delivery_lease = 300ms;
+        config.lease_sweep_interval = 10ms;
+        config.ttl_sweep_interval = 0ms;
+        return config;
+    }()) {}
+};
+}
+
+TEST_P(ClientLeaseRecovery, SlowHandlerLosesLeaseAndContinuesProcessing) {
+    auto p = Producer::connect(addr);
+    const auto slow_id = p->send({1});
+    std::promise<void> entered;
+    auto entered_future = entered.get_future();
+    std::promise<void> release;
+    auto released = release.get_future().share();
+    std::atomic<int> slow_calls{0};
+    std::atomic<bool> normal_seen{false};
+    const auto first_result = GetParam();
+    auto c = Consumer::connect(addr, [&](const ReceivedMessage& msg) {
+        if (msg.id == slow_id && slow_calls++ == 0) {
+            entered.set_value();
+            // Bounded even if the test fails before releasing the handler.
+            released.wait_for(3s);
+            return first_result;
+        }
+        if (msg.id != slow_id) normal_seen = true;
+        return AckResult::SUCCESS;
+    }, 100ms);
+    c->start();
+    const bool handler_entered = entered_future.wait_for(3s) == std::future_status::ready;
+    EXPECT_TRUE(handler_entered);
+    if (handler_entered) {
+        EXPECT_TRUE(wait_for([&] {
+            return service.broker.in_flight_count() == 0 && service.broker.queue_size() == 1;
+        }));
+    }
+    p->send({2});
+    release.set_value();
+    EXPECT_TRUE(wait_for([&] { return c->messages_acked() == 2; }));
+    EXPECT_TRUE(c->is_running());
+    c->stop();
+    EXPECT_TRUE(normal_seen);
+    EXPECT_EQ(slow_calls, 2);
+    EXPECT_EQ(c->messages_processed(), 3u);
+    EXPECT_EQ(c->messages_nacked(), 0u);
+    EXPECT_EQ(c->leases_lost(), 1u);
+    EXPECT_EQ(c->rpc_failures(), 1u);
+    EXPECT_TRUE(c->last_rpc_status().ok());
+    c->start();
+    c->stop();
+    EXPECT_EQ(c->leases_lost(), 1u);
+}
+
+INSTANTIATE_TEST_SUITE_P(AckAndNack, ClientLeaseRecovery,
+                        ::testing::Values(AckResult::SUCCESS, AckResult::FAILURE));
+
+TEST_F(ClientRecovery, PermanentSettlementErrorsRemainTerminalForAckAndNack) {
+    auto p = Producer::connect(addr);
+    for (const auto result : {AckResult::SUCCESS, AckResult::FAILURE}) {
+        for (const auto error : {grpc::StatusCode::PERMISSION_DENIED,
+                                 grpc::StatusCode::INVALID_ARGUMENT,
+                                 grpc::StatusCode::NOT_FOUND}) {
+            SCOPED_TRACE(static_cast<int>(result));
+            SCOPED_TRACE(static_cast<int>(error));
+            service.settlement_error = error;
+            service.settlement_calls = 0;
+            auto c = Consumer::connect(addr, [result](const ReceivedMessage&) { return result; });
+            p->send({});
+            c->start();
+            EXPECT_TRUE(wait_for([&] { return !c->is_running(); }));
+            c->stop();
+            EXPECT_EQ(service.settlement_calls, 1);
+            EXPECT_EQ(c->messages_processed(), 1u);
+            EXPECT_EQ(c->messages_acked(), 0u);
+            EXPECT_EQ(c->messages_nacked(), 0u);
+            EXPECT_EQ(c->leases_lost(), 0u);
+            EXPECT_EQ(c->rpc_failures(), 1u);
+            EXPECT_EQ(c->last_rpc_status().error_code(), error);
+        }
+    }
+}
+
+TEST_F(ClientRecovery, TransientThenLostAttemptCountsOnceAndContinues) {
+    service.lose_after_transient = true;
+    auto p = Producer::connect(addr);
+    std::atomic<int> calls{0};
+    auto c = Consumer::connect(addr, [&](const ReceivedMessage&) {
+        return calls++ == 0 ? AckResult::FAILURE : AckResult::SUCCESS;
+    });
+    p->send({});
+    p->send({});
+    c->start();
+    EXPECT_TRUE(wait_for([&] { return c->messages_acked() == 1; }));
+    EXPECT_TRUE(c->is_running());
+    c->stop();
+    EXPECT_EQ(calls, 2);
+    EXPECT_EQ(service.settlement_calls, 3);
+    EXPECT_EQ(c->rpc_failures(), 2u);
+    EXPECT_EQ(c->leases_lost(), 1u);
+    EXPECT_EQ(c->messages_nacked(), 0u);
+    EXPECT_TRUE(c->last_rpc_status().ok());
+}
+
+TEST_F(ClientRecovery, PullFailedPreconditionRemainsTerminal) {
+    service.pull_error = grpc::StatusCode::FAILED_PRECONDITION;
+    auto c = Consumer::connect(addr, [](const ReceivedMessage&) { return AckResult::SUCCESS; });
+    c->start();
+    EXPECT_TRUE(wait_for([&] { return !c->is_running(); }));
+    c->stop();
+    EXPECT_EQ(c->leases_lost(), 0u);
+    EXPECT_EQ(c->last_rpc_status().error_code(), grpc::StatusCode::FAILED_PRECONDITION);
 }
 
 TEST_F(ClientRecovery, PullPermanentErrorsStopAndTransientBackoffIsInterruptible) {

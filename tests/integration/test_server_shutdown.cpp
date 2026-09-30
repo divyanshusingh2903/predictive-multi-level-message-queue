@@ -14,6 +14,7 @@
 #include <stdexcept>
 #include <string>
 #include <thread>
+#include <vector>
 
 extern char** environ;
 using namespace std::chrono_literals;
@@ -21,7 +22,8 @@ using namespace std::chrono_literals;
 namespace {
 class ServerChild {
 public:
-    explicit ServerChild(std::string address = "127.0.0.1:0") {
+    explicit ServerChild(std::string address = "127.0.0.1:0",
+                         std::vector<std::string> options = {}) {
         int pipes[2];
         if (pipe(pipes) != 0) throw std::runtime_error("pipe failed");
         fcntl(pipes[0], F_SETFD, FD_CLOEXEC);
@@ -33,8 +35,10 @@ public:
         posix_spawn_file_actions_addclose(&actions, pipes[0]);
         posix_spawn_file_actions_addclose(&actions, pipes[1]);
         std::string executable = SERVER_EXECUTABLE;
-        char* args[] = {executable.data(), address.data(), nullptr};
-        const int result = posix_spawn(&pid_, executable.c_str(), &actions, nullptr, args, environ);
+        std::vector<char*> args{executable.data(), address.data()};
+        for (auto& option : options) args.push_back(option.data());
+        args.push_back(nullptr);
+        const int result = posix_spawn(&pid_, executable.c_str(), &actions, nullptr, args.data(), environ);
         posix_spawn_file_actions_destroy(&actions);
         close(pipes[1]);
         output_ = pipes[0];
@@ -90,9 +94,81 @@ TEST(ServerShutdown, SigintAndSigtermExitNormally) {
     for (const int signal : {SIGINT, SIGTERM}) {
         ServerChild child;
         ASSERT_GT(child.ready_port(), 0) << child.output;
+        EXPECT_NE(child.output.find("delivery_lease_ms=30000"), std::string::npos);
+        EXPECT_NE(child.output.find("completion_retention_ms=60000"), std::string::npos);
+        EXPECT_NE(child.output.find("completion_cache_max_entries=10000"), std::string::npos);
         child.signal(signal);
         EXPECT_EQ(child.wait(), 0) << child.output;
     }
+}
+
+TEST(ServerConfiguration, RecoveryOverridesReachBroker) {
+    ServerChild child{"127.0.0.1:0", {
+        "--delivery-lease-ms", "45000", "--lease-sweep-interval-ms", "200",
+        "--completion-retention-ms", "120000", "--completion-cache-max-entries", "20000",
+        "--maintenance-batch-size", "512", "--ttl-sweep-interval-ms", "0"}};
+    const auto port = child.ready_port();
+    ASSERT_GT(port, 0) << child.output;
+    for (const auto value : {"delivery_lease_ms=45000", "lease_sweep_interval_ms=200",
+                             "completion_retention_ms=120000", "completion_cache_max_entries=20000",
+                             "maintenance_batch_size=512", "ttl_sweep_interval_ms=0"}) {
+        EXPECT_NE(child.output.find(value), std::string::npos) << child.output;
+    }
+    auto stub = harbinger_rpc::Broker::NewStub(grpc::CreateChannel(
+        "127.0.0.1:" + std::to_string(port), grpc::InsecureChannelCredentials()));
+    grpc::ClientContext producer_ctx;
+    producer_ctx.set_deadline(std::chrono::system_clock::now() + 3s);
+    harbinger_rpc::RegisterProducerRequest producer_req;
+    harbinger_rpc::RegisterProducerResponse producer_resp;
+    ASSERT_TRUE(stub->RegisterProducer(&producer_ctx, producer_req, &producer_resp).ok());
+    grpc::ClientContext consumer_ctx;
+    consumer_ctx.set_deadline(std::chrono::system_clock::now() + 3s);
+    harbinger_rpc::RegisterConsumerRequest consumer_req;
+    harbinger_rpc::RegisterConsumerResponse consumer_resp;
+    ASSERT_TRUE(stub->RegisterConsumer(&consumer_ctx, consumer_req, &consumer_resp).ok());
+    grpc::ClientContext submit_ctx;
+    submit_ctx.set_deadline(std::chrono::system_clock::now() + 3s);
+    harbinger_rpc::SubmitRequest submit_req;
+    submit_req.set_producer_id(producer_resp.producer_id());
+    harbinger_rpc::SubmitResponse submit_resp;
+    ASSERT_TRUE(stub->Submit(&submit_ctx, submit_req, &submit_resp).ok());
+    grpc::ClientContext pull_ctx;
+    pull_ctx.set_deadline(std::chrono::system_clock::now() + 3s);
+    harbinger_rpc::PullRequest pull_req;
+    pull_req.set_consumer_id(consumer_resp.consumer_id());
+    pull_req.set_timeout_ms(100);
+    harbinger_rpc::PullResponse pull_resp;
+    ASSERT_TRUE(stub->Pull(&pull_ctx, pull_req, &pull_resp).ok());
+    ASSERT_FALSE(pull_resp.timed_out());
+    EXPECT_EQ(pull_resp.message().lease_duration_ms(), 45000);
+    child.signal(SIGTERM);
+    EXPECT_EQ(child.wait(), EXIT_SUCCESS);
+}
+
+TEST(ServerConfiguration, InvalidOptionsExitBeforeListening) {
+    const std::vector<std::vector<std::string>> invalid{
+        {"--unknown", "1"}, {"--delivery-lease-ms"}, {"--delivery-lease-ms", "-1"},
+        {"--completion-retention-ms", "1ms"}, {"--delivery-lease-ms", "0"},
+        {"--lease-sweep-interval-ms", "0"}, {"--completion-retention-ms", "0"},
+        {"--completion-cache-max-entries", "0"}, {"--maintenance-batch-size", "0"},
+        {"--ttl-sweep-interval-ms", "-1"}, {"--delivery-lease-ms", "18446744073709551616"},
+        {"--completion-cache-max-entries", "18446744073709551616"},
+        {"--completion-retention-ms", "9223372036854775807"}, {"second-address"}};
+    for (const auto& options : invalid) {
+        SCOPED_TRACE(options.front());
+        ServerChild child{"127.0.0.1:0", options};
+        EXPECT_EQ(child.ready_port(), 0) << child.output;
+        EXPECT_EQ(child.wait(), EXIT_FAILURE) << child.output;
+        EXPECT_NE(child.output.find("Use --help"), std::string::npos) << child.output;
+    }
+}
+
+TEST(ServerConfiguration, HelpExitsSuccessfullyWithoutListening) {
+    ServerChild child{"127.0.0.1:0", {"--help"}};
+    EXPECT_EQ(child.ready_port(), 0);
+    EXPECT_EQ(child.wait(), EXIT_SUCCESS);
+    EXPECT_NE(child.output.find("Usage: harbinger_server"), std::string::npos);
+    EXPECT_NE(child.output.find("--completion-retention-ms"), std::string::npos);
 }
 
 TEST(ServerShutdown, SigtermDuringPull) {

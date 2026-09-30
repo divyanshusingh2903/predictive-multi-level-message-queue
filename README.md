@@ -208,6 +208,41 @@ Configuration is validated at broker construction. Levels and retry count must
 be positive, durations must use their documented non-negative/off semantics,
 and an enabled aging policy requires positive threshold and interval values.
 
+### Standalone server recovery options
+
+Embedded brokers can set these fields in `HarbingerConfig` before constructing
+`HarbingerService`. The standalone server accepts the corresponding options:
+
+| Option | Default |
+|---|---:|
+| `--delivery-lease-ms` | 30000 |
+| `--lease-sweep-interval-ms` | 100 |
+| `--completion-retention-ms` | 60000 |
+| `--completion-cache-max-entries` | 10000 |
+| `--maintenance-batch-size` | 256 |
+| `--ttl-sweep-interval-ms` | 100 |
+
+```bash
+./build/harbinger_server 0.0.0.0:50051 \
+  --delivery-lease-ms 120000 \
+  --completion-retention-ms 300000 \
+  --completion-cache-max-entries 100000
+./build/harbinger_server --help
+```
+
+Omitted options retain their defaults. Values are unsigned decimal integers;
+durations are milliseconds. All six settings must be positive except
+`--ttl-sweep-interval-ms`, which accepts `0` to disable background queued-TTL
+cleanup. Invalid, missing, out-of-range, or unknown options cause a nonzero exit
+before listening. Options use `--name value` syntax and may appear before or
+after the optional address; repeated options use the last value. Settings apply
+at startup, and effective values are printed before the readiness message.
+
+The example is illustrative, not a recommended production profile. Size both
+retention and capacity for peak attempt-completion volume and expected settlement
+delays; increasing retention alone cannot prevent capacity eviction. See the
+[consumer system boundary](docs/consumers.md#system-boundary-delivery-safety-and-consumer-recovery).
+
 ### Delivery and shutdown semantics
 
 Every Pull returns a fresh `attempt_token`; Ack/Nack must echo it. Upgrade the
@@ -220,14 +255,23 @@ sends the message to the DLQ without incrementing its retry count. With
 Duplicate accepted Ack/Nack requests replay OK without repeating the mutation.
 This guarantee lasts until completion retention expires or the cache evicts the
 record, whichever happens first. Stale attempt tokens cannot settle a newer
-delivery, even after cache eviction. Conflicting or expired attempts return
-`FAILED_PRECONDITION`; an unknown delivery returns `NOT_FOUND`.
+delivery, even after cache eviction. Known conflicting or expired attempts return
+`FAILED_PRECONDITION`. After history is gone, a late settlement can instead return
+`NOT_FOUND` or `PERMISSION_DENIED`, depending on current delivery ownership.
 
 The consumer retries transient settlement errors up to three times, using
 5-second RPC deadlines and 100/200 ms backoff, without rerunning the handler.
-On permanent failure or retry exhaustion it stops; `last_rpc_status()` exposes
-the error and `rpc_failures()` counts failed settlement calls. Ack/Nack counters
-count only confirmed outcomes. Pull retries use interruptible 200 ms backoff.
+Settlement `FAILED_PRECONDITION` counts once in `leases_lost()` and polling
+continues without a confirmed outcome. Other final settlement errors, including
+retry exhaustion, stop the worker; `last_rpc_status()` exposes the terminal error
+and `rpc_failures()` counts failed settlement calls. Ack/Nack counters count only
+confirmed outcomes. Pull retries use interruptible 200 ms backoff.
+
+**Stale-token safety does not guarantee automatic consumer recovery.** Completion
+history is bounded by both time and capacity; late `NOT_FOUND` or
+`PERMISSION_DENIED` results remain terminal. There is no automatic worker restart.
+See the [consumer system boundary](docs/consumers.md#system-boundary-delivery-safety-and-consumer-recovery)
+for expected results, history sizing, and application/operator responsibilities.
 
 Consumer destruction joins the worker; restart after a stopped worker is safe.
 `stop()` cancels pending Pull, but waits for an active handler and settlement.

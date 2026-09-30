@@ -27,7 +27,8 @@ Predictive Multi-Level Message Queue: ML-predicted processing time + MLFQ routin
 - `Pull`: `wait = min(requested>0 ? requested : max_pull_wait, max_pull_wait)`; polls in 100 ms chunks checking `IsCancelled()`. No message → `timed_out=true`.
 - Consumer poll deadline = `pull_timeout + 500 ms`; UNAVAILABLE/DEADLINE_EXCEEDED Pull errors back off 200 ms (interruptible), permanent errors stop polling. Registration has a 5-second deadline.
 - Consumer destructor stops/joins, restart joins an exited worker, concurrent stop has one join owner. Handler-thread stop only requests stop; never destroy the consumer from its own handler. External stop cancels pending Pull but waits for a running handler and its settlement. Arbitrary handlers cannot be interrupted.
-- Ack/Nack retries echo the identical attempt/request, at most three calls with 5-second deadlines and 100/200 ms backoff on UNAVAILABLE/DEADLINE_EXCEEDED. Counters record one confirmed outcome; `rpc_failures` counts failed settlement calls; `last_rpc_status()` exposes the terminal error. No handler rerun merely to retry settlement.
+- Ack/Nack retries echo the identical attempt/request, at most three calls with 5-second deadlines and 100/200 ms backoff on UNAVAILABLE/DEADLINE_EXCEEDED. Settlement FAILED_PRECONDITION counts once in `leases_lost()` and resumes polling without a confirmed outcome; other errors remain terminal. Counters record one confirmed outcome; `rpc_failures` counts failed settlement calls; `last_rpc_status()` exposes only the terminal error. No handler rerun merely to retry settlement.
+- Recovery boundary: stale tokens remain fenced after completion-history eviction, but late settlement may then return terminal NOT_FOUND or PERMISSION_DENIED. Retention starts at recorded settlement/reclamation and capacity can shorten it; no guaranteed replay window, automatic consumer restart, or re-registration. User-facing expectations and responsibilities live in `docs/consumers.md` under "System boundary: delivery safety and consumer recovery".
 - Server blocks SIGINT/SIGTERM before spawning threads, waits with sigwait, and shuts down with a 5-second grace deadline outside signal context.
 - ID format: `<ns-timestamp>-<counter>`. Producer key stored as `__producer_id` header.
 - Proto package `harbinger_rpc` ≠ C++ namespace `harbinger` (avoids collisions).
@@ -37,6 +38,8 @@ Predictive Multi-Level Message Queue: ML-predicted processing time + MLFQ routin
 `num_levels=3`, `aging=nullopt` (strict-priority; use `{5000 ms, 500 ms}` to enable aging), `default_max_retries=3`, `default_ttl=0`, `default_priority=1`, `max_pull_wait=5000 ms`, `ttl_sweep_interval=100 ms` (`0` = off).
 
 Recovery defaults: `delivery_lease=30000 ms`, `lease_sweep_interval=100 ms`, `completion_retention=60000 ms`, `completion_cache_max_entries=10000`, `maintenance_batch_size=256`. All must be positive; extreme maintenance durations are rejected before clock conversion. Lease, queue TTL, and completion-history maintenance use bounded batches; reclamation delay grows with backlog.
+
+Standalone server startup overrides: `--delivery-lease-ms`, `--lease-sweep-interval-ms`, `--completion-retention-ms`, `--completion-cache-max-entries`, `--maintenance-batch-size`, `--ttl-sweep-interval-ms` (unsigned decimal values, TTL sweep alone permits 0). Omitted options use `HarbingerConfig` defaults; server still enables aging explicitly. `--help` lists defaults; invalid configuration exits nonzero before listening. No runtime reload.
 
 ## Phase 2 contract
 
