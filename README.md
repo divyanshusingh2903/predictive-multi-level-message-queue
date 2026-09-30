@@ -63,6 +63,7 @@ Producer::send()
 - [Producer guide](docs/producers.md) — connect, send messages, set TTL, and understand Submit outcomes.
 - [Consumer guide](docs/consumers.md) — handlers, delivery leases, acknowledgements, retries, and shutdown.
 - [Broker and queue internals](docs/internals.md) — state transitions, priority ordering, aging, expiry, and recovery.
+- [Planned ML contract](docs/ml-contract.md), [architecture decision](docs/adr/0001-phase2-ml-contract.md), and [validation plan](docs/phase2-validation.md) — Phase 2 design; ML is not implemented yet.
 
 ---
 
@@ -316,17 +317,21 @@ idempotency and durable storage are not implemented.
 - [x] Unit + integration test suite
 
 ### Phase 2 — ML integration (next)
+
+The [Phase 2 tracker](https://github.com/divyanshusingh2903/predictive-multi-level-message-queue/issues/11) sequences implementation from the [ML contract](docs/ml-contract.md). Prediction begins in shadow mode; explicit predictive routing requires the [synthetic validation gate](docs/phase2-validation.md).
+
 - [ ] Feature extraction from message headers/payload metadata
 - [ ] Python ML service with online learning (`river` or scikit-learn incremental estimators)
 - [ ] gRPC/IPC bridge between C++ broker and Python classifier
 - [ ] Predictive routing injected into `route_message()` in `harbinger_service.cpp`
 - [ ] `processing_time_ms` feedback from Ack/Nack fed to classifier
 - [ ] Model drift monitoring and accuracy tracking
+- [ ] Minimum synthetic workload and FIFO/static-priority/round-robin comparison gate before predictive activation
 
 ### Phase 3 — Benchmarking & validation
-- [ ] Synthetic workload generators (uniform, bimodal, heavy-tailed)
+- [ ] Expand synthetic workload coverage beyond the Phase 2 activation gate
 - [ ] Real-world dataset replay: Alibaba Microservices Trace (2021/2022), Azure Functions Trace
-- [ ] Comparison against FIFO, static priority, round-robin baselines
+- [ ] Extend FIFO/static-priority/round-robin comparisons to real trace workloads
 - [ ] Comparison against Kafka, RabbitMQ, Pulsar
 
 ### Phase 4 — Enhancements (optional)
