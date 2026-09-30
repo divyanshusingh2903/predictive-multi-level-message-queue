@@ -13,12 +13,14 @@ Status: planned contract for [issue #1](https://github.com/divyanshusingh2903/pr
 | `routing_policy_version` | Immutable mode-independent specification of level count, boundaries, and mapping rules |
 | `broker_instance_id` | Unique telemetry namespace per broker process; separate from secret/fencing token material |
 | `message_id` | Existing broker message ID |
-| `attempt_id` | Internal per-message delivery ordinal starting at 1; null before any Pull; never the opaque attempt token |
+| `attempt_id` | Internal per-message successful ownership-installation ordinal starting at 1; null for ingress/queued expiry; never the opaque attempt token |
 | `event_id` | Broker instance plus monotonically allocated event sequence, unique across record types |
 
 Version/instance identifiers are bounded strings (at most 128 UTF-8 bytes); counters use decimal strings in JSON to avoid cross-language integer truncation. Message IDs retain their existing format. A schema version refers to an immutable specification registered on both sides: changing an allowlist, type, range, hashing rule, or missing-value policy requires a new version. A model snapshot declares its compatible feature schema. Model updates change `model_version`; an ingress record retains the exact version used for its prediction.
 
 Sequence allocation identifies an event, not a wall-clock ordering guarantee across concurrent threads. Log replay uses file generation/offset and explicit event identity. Broker completion-cache retention and learner deduplication are independent mechanisms.
+
+Maintain a per-message delivery counter starting at zero, separately from `retry_count`. Increment it as part of successful in-flight ownership installation under the settlement mutex, after the final Pull cancellation check, and capture that ordinal in the installed delivery. A cancelled Pull restored to the queue, token generation, response preparation, aging, settlement replay, or reclamation does not increment it. The next successful delivery after Nack/lease requeue does. In-flight outcome events use their installed ordinal; queued expiry uses null even after earlier deliveries. Thus a cancelled Pull followed by Nack, lease expiry, and Ack on three successful deliveries produces attempts 1, 2, and 3, with no event for the cancelled Pull or replayed Ack.
 
 ## Proposed configuration
 
@@ -49,17 +51,48 @@ Existing level/default-priority validation remains authoritative: levels 1–255
 
 | Field | Type and validation |
 |---|---|
-| `payload_size_bytes` | Nonnegative byte count, represented as a decimal string in JSON; Python/C++ preserve exact integer value before model conversion |
-| `headers` | Map containing only configured application-header keys; each value is a finite typed number, UTF-8 category string, or null |
+| `payload_size_bytes` | Unsigned 64-bit byte count, represented as a decimal string in JSON; Python/C++ preserve exact integer value before model conversion |
+| `headers` | Map containing only configured application-header keys; each value is a finite binary64 number, UTF-8 category string, or null |
 | `missing_reasons` | Map of configured missing/invalid keys to `absent`, `invalid_type`, `out_of_range`, `invalid_encoding`, or `oversized` |
 
-Key lookup is exact and case-sensitive; no implicit normalization. Configuration declares each key's numeric or categorical type. Numeric values use strict decimal parsing with no trailing characters, must be finite, and must fit the schema's declared range. Missing/invalid values become null with an explicit reason and missing indicator. Zero/empty-string categories remain distinct from missing. Do not truncate oversized values into another valid category.
+Key lookup is exact and case-sensitive; no implicit normalization. Configuration declares each key's numeric or categorical type. Missing/invalid values become null with an explicit reason and missing indicator. Zero/empty-string categories remain distinct from missing. Do not truncate oversized values into another valid category.
 
 Use at most 16 configured headers, 64 UTF-8 bytes per key, 256 UTF-8 bytes per value, and an 8 KiB encoded feature record. Retain only bounded data: never copy unapproved values while extracting. Exclude raw payloads, unapproved headers, free-text Nack/exception details, reserved `__*` headers (including `__producer_id`), consumer IDs, and attempt tokens. Oversized complete records disable prediction with `feature_limit`; if collection is enabled, record null features and a feature-validity reason, not raw rejected content.
 
-The Python encoder maps categorical values into 1,024 bins per feature: SHA-256 of the exact UTF-8 value, first eight digest bytes interpreted as unsigned big-endian, modulo 1,024. Bin collisions are an expected tradeoff. Each feature has its own bins and a separate missing indicator. This encoding has bounded dimensionality and is part of the schema specification. Hashing does not make sensitive data anonymous; allowlisting remains necessary. Model-specific numeric preprocessing is versioned with the model artifact.
+### Numeric parsing and representation
 
-Example allowlist: `job_type` categorical and `units` numeric in `[0, 1000000]`. An incoming payload of 4096 bytes with `job_type=resize`, `units=2`, `authorization=secret`, and `__producer_id=producer-0` yields:
+Numeric headers use IEEE-754 binary64 (`double`) in C++, classifier transport, and Python. Accept only complete strings matching this locale-independent decimal grammar:
+
+```text
+-?(0|[1-9][0-9]*)(\.[0-9]+)?([eE][+-]?[0-9]+)?
+```
+
+`0`, `-2`, `2.5`, and `1e3` are syntactically valid; leading/trailing whitespace, a leading `+`, leading zeros such as `01`, `.5`, `2.`, hexadecimal notation, `NaN`, infinity, and unit suffixes are invalid. Syntax failures use `invalid_type`. Convert using round-to-nearest, ties-to-even; reject overflow/nonfinite results, nonzero values rounded to zero, and converted values outside the schema's inclusive binary64 range as `out_of_range`. Finite nonzero subnormal values are allowed. Normalize negative zero to positive zero. Serialize JSON numbers with sufficient precision to round-trip the binary64 value; Python validates the typed snapshot without reinterpreting the original header string.
+
+Numeric headers represent approximate real-valued features, not lossless integer identifiers. Preserve `payload_size_bytes` as an exact unsigned integer in extraction/transport and a decimal string in JSON; Python performs any model-facing conversion. Model-specific scaling/transforms are versioned with the model artifact and fitted without future-data leakage.
+
+### Categorical encoding
+
+Declare the encoding separately for each categorical header in the immutable schema. Prefer a fixed vocabulary for small known sets such as operation names, formats, and algorithms; hashing is an explicit option for open-ended categories, not a universal requirement.
+
+| Encoding | Rule |
+|---|---|
+| `vocabulary` | Declare an ordered list of at most 1,024 unique exact UTF-8 values per field, subject to the value-size limit. Encode a known value as a sparse one-hot feature. An unseen valid value activates a dedicated unknown indicator. |
+| `hash` | Use 1,024 bins per field: SHA-256 of the exact UTF-8 value, first eight digest bytes interpreted as unsigned big-endian, modulo 1,024. Activate that bin as a sparse one-hot feature. |
+
+Each field has a separate feature namespace and missing indicator. Missing/invalid values activate only the missing indicator, with no category/bin or unknown indicator. An empty string is a valid category: it is known if listed in a vocabulary, otherwise unknown, or hashed normally. Never use a vocabulary/bin index as a numerical feature, which would imply an artificial ordering. Use structured feature identities (field plus category/bin/indicator) to prevent namespace collisions. Vocabulary additions/reordering, encoding changes, and hash-rule changes require a new schema version; do not grow a vocabulary silently while learning.
+
+Hash collisions can merge distinct operations; hashing and one-hot encoding do not capture semantic similarity between operation names. Hashing also does not make sensitive data anonymous. Allowlisting remains necessary, and request IDs or other nearly unique categories generally offer little reusable cost information. Collision effects and unseen-category behavior must be evaluated in #5.
+
+### Message-to-model ingestion and useful context
+
+The data path is `message → C++ allowlist extraction/validation → versioned typed gRPC features → Python encoding → duration regressor → C++ bucket mapping`. Persist the original typed snapshot for delayed feedback and apply the same schema encoding during prediction and learning. The learner evaluates the stored prediction against its accepted successful runtime before updating.
+
+Feature extraction determines which context is available; encoding only represents that context. Prefer application-supplied workload descriptors such as `operation`, `operation_family`, `input_format`, pixel counts, or item counts. For example, allowlisted `operation=image_resize`, `operation_family=image_processing`, `input_pixels=8847360`, and `output_pixels=230400` describe both the kind and scale of work without exposing image bytes. The broker remains a generic metadata validator, not a payload parser. If materially different requests have identical extracted features, the model cannot reliably distinguish their costs; include an uninformative-feature control in evaluation. Semantic text embeddings are outside the initial Phase 2 representation and would require a separately evaluated schema/model decision.
+
+#2 must provide shared C++/Python fixtures for numeric syntax/conversion/ranges, exact payload sizes, Unicode/empty categories, vocabulary known/unknown/missing behavior, expected hash bins, sparse feature identities, and schema mismatch.
+
+Example allowlist: `job_type` categorical with vocabulary `["resize", "convert", "thumbnail"]` and `units` numeric in `[0, 1000000]`. An incoming payload of 4096 bytes with `job_type=resize`, `units=2`, `authorization=secret`, and `__producer_id=producer-0` yields this typed snapshot (Python subsequently one-hot encodes `resize`):
 
 ```json
 {
@@ -146,13 +179,25 @@ Ingress events use null settlement/outcome/duration and `label_status=missing`. 
 
 For accepted requests, durations in `[0, delivery_lease_ms]` are plausibly usable; negative/larger durations get an invalid status. Values are consumer-provided, not trusted ground truth. The existing proto scalar does not distinguish an omitted duration from zero; this contract treats zero as reported zero and does not infer missing presence. Unaccepted late requests do not supply measurements, even when they cause reclamation.
 
-Label classification first excludes invalid measurements/features; otherwise successful Ack is eligible, Nack is failure, valid reported runtime on TTL DLQ is censored, and no observation is missing. Only eligible events train initially. A later label-policy change requires a versioned model/evaluation decision, not reinterpretation of old outcome fields.
+Classify labels using the first matching rule below. Keep feature validity separately in the routing context so simultaneous measurement/feature problems remain observable. A null individual configured header is a valid missing-value input, not an unusable complete snapshot.
+
+| Precedence | Condition | `label_status` |
+|---|---|---|
+| 1 | No accepted handler measurement | `missing` |
+| 2 | Measurement is negative | `negative` |
+| 3 | Measurement exceeds `delivery_lease_ms` | `out_of_range` |
+| 4 | Complete feature snapshot is unusable | `invalid_features` |
+| 5 | Actual outcome is TTL DLQ | `censored` |
+| 6 | Accepted operation is Nack | `failure` |
+| 7 | Actual outcome is successful Ack | `eligible` |
+
+A valid Nack-after-TTL is therefore censored, not failure. A negative runtime on Ack-after-TTL is negative while the actual outcome remains TTL DLQ. Lease expiry has a missing measurement even if a rejected late request reports a duration. Successful Ack with usable features and zero runtime is eligible. Classification never changes settlement status, actual outcome, or retry budget. Only eligible events train initially. A later label-policy change requires a versioned model/evaluation decision, not reinterpretation of old outcome fields.
 
 | Path | Operation / actual outcome | Observation and emission |
 |---|---|---|
 | Ack, valid ownership/token/lease, live TTL | `ack` / `ack` | One eligible event if measurement/features valid |
-| Nack with remaining budget | `nack` / `retry` | One failure event; restore ingress priority |
-| Nack exhausts budget | `nack` / `dlq`, `MAX_RETRIES_EXCEEDED` | One failure event |
+| Nack with remaining budget | `nack` / `retry` | One failure event if measurement/features valid, otherwise invalid; restore ingress priority |
+| Nack exhausts budget | `nack` / `dlq`, `MAX_RETRIES_EXCEEDED` | One failure event if measurement/features valid, otherwise invalid |
 | Ack or Nack after TTL, valid lease | Requested op / `dlq`, `TTL_EXPIRED` | One censored/invalid event; no retry increment; Ack remains OK |
 | Lease expires, TTL live | null / `retry` or max-retry `dlq` | One event with null measurement; consume failure budget |
 | Lease expires, TTL expired | null / TTL `dlq` | One event with null measurement; no retry increment |

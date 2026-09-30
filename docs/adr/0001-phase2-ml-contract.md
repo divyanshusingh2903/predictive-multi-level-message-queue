@@ -44,15 +44,23 @@ An unavailable, slow, unready, incompatible, overloaded, or invalid classifier f
 
 Use payload byte count and typed, explicitly allowlisted application headers. Raw payloads, unapproved headers, free-text errors, producer/consumer identities, and settlement tokens are excluded by default. Header allowlists and encoding limits are part of a versioned feature specification.
 
+C++ validates a typed snapshot; Python encodes it for prediction and delayed learning. Numeric headers use a strict locale-independent decimal grammar and binary64 values; payload byte count remains exact until model conversion. Prefer fixed, bounded vocabularies with sparse one-hot encoding for small categorical sets. Optional hashing also uses sparse one-hot bins, with explicit collision tradeoffs; never interpret category indices as ordered numeric values. Encoding/vocabulary changes require a new schema version. Shared C++/Python fixtures are part of #2.
+
+Useful context comes from declared workload metadata, such as operation family and pixel/item counts, rather than arbitrary payload inspection. Encoding cannot recover omitted context: identical feature snapshots cannot reliably distinguish different underlying costs. Category hashing preserves identity only approximately and does not preserve semantic similarity. Text embeddings are outside the initial representation.
+
 Store ingress features, prediction or its absence, selected priority, versions, mode, and fallback reason internally. This snapshot survives aging, retries, in-flight placement, and DLQ. Consumers remain tier-blind; ML context is not placed in their headers or Pull responses.
 
 ### Learn from accepted outcomes
 
 Feedback is an event history keyed by broker instance and message ID, with separate delivery-attempt and event identities. A message can have several retries followed by Ack or DLQ. Do not overwrite that history with one latest row.
 
+Allocate the internal delivery ordinal only as part of successful ownership installation after the final Pull cancellation check, under the settlement mutex. Cancelled Pull restoration does not consume an ordinal or emit a delivery event. The ordinal is independent of retry count and remains associated with that delivery's outcome.
+
 Record actual outcome separately from requested operation. Ack-after-TTL can return OK while producing a TTL DLQ. Lease/queued expiry has no measured handler duration. Replayed accepted settlements emit no new event. Rejected owners/tokens supply no handler labels; a valid lease-expiry transition caused by a late, correctly owned settlement still emits the expiry event.
 
 Initially train only on valid successful-handler Ack observations. Retain failed/censored events for analysis. Zero milliseconds is valid timer truncation; negative or implausible measurements are unusable labels and do not change existing settlement statuses. Evaluate the original stored prediction before applying its delayed label. Document that consumer hardware and success-only sampling can bias the target.
+
+Use the ordered label-status rules in the [ML contract](../ml-contract.md): missing observation, negative/out-of-range measurement, unusable features, actual TTL DLQ, Nack failure, then successful Ack eligibility. TTL DLQ takes precedence over Nack failure when the measurement/features are valid; keep actual outcome and feature validity independently observable.
 
 ### Persist bounded telemetry
 
@@ -66,7 +74,7 @@ Shutdown stops telemetry admission only after broker handlers and maintenance ca
 
 ### Gate activation on scheduling evidence
 
-The small synthetic evaluation harness is required in Phase 2. Compare FIFO, static priority, and round-robin with identical workloads and explicit aging/TTL/lease configurations. Prediction accuracy alone does not establish latency benefit. Measure latency, throughput, inference overhead, drops, incomplete messages, and per-class starvation.
+The small synthetic evaluation harness is required in Phase 2. Compare FIFO, static priority, and round-robin with identical workloads and explicit aging/TTL/lease configurations. Prediction accuracy alone does not establish latency benefit. Measure latency, throughput, inference overhead, drops, incomplete messages, and per-class starvation. Gate per-class longest first-dispatch wait separately so a small set of delayed long jobs cannot hide behind an aggregate starvation rate; numerical allowances remain proposed until baseline feasibility checks.
 
 Freeze the final numerical gates and experimental configuration after baseline feasibility checks and before predictive evaluation. A failed gate keeps experiments in shadow/static mode with follow-up work. Real trace replay and Kafka/RabbitMQ/Pulsar comparisons remain Phase 3.
 
