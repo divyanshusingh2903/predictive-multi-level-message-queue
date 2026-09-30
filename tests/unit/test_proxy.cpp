@@ -45,7 +45,7 @@ TEST(Proxy, AcceptStampsArrivalTime) {
     Proxy proxy{cap.sink()};
 
     const auto before = std::chrono::steady_clock::now();
-    proxy.accept({}, {}, "prod-1");
+    (void)proxy.accept({}, {}, "prod-1");
     const auto after = std::chrono::steady_clock::now();
 
     ASSERT_EQ(cap.messages.size(), 1u);
@@ -57,7 +57,7 @@ TEST(Proxy, AcceptForwardsPayload) {
     SinkCapture cap;
     Proxy proxy{cap.sink()};
 
-    proxy.accept({0xDE, 0xAD}, {{"type", "job"}}, "p1");
+    (void)proxy.accept({0xDE, 0xAD}, {{"type", "job"}}, "p1");
 
     ASSERT_EQ(cap.messages.size(), 1u);
     EXPECT_EQ(cap.messages[0].payload, (std::vector<uint8_t>{0xDE, 0xAD}));
@@ -68,7 +68,7 @@ TEST(Proxy, AcceptStoresProducerId) {
     SinkCapture cap;
     Proxy proxy{cap.sink()};
 
-    proxy.accept({}, {}, "my-producer");
+    (void)proxy.accept({}, {}, "my-producer");
 
     ASSERT_EQ(cap.messages.size(), 1u);
     EXPECT_EQ(cap.messages[0].headers.at("__producer_id"), "my-producer");
@@ -79,8 +79,8 @@ TEST(Proxy, AcceptIncrementsCounter) {
     Proxy proxy{cap.sink()};
 
     EXPECT_EQ(proxy.messages_accepted(), 0u);
-    proxy.accept({}, {}, "p");
-    proxy.accept({}, {}, "p");
+    (void)proxy.accept({}, {}, "p");
+    (void)proxy.accept({}, {}, "p");
     EXPECT_EQ(proxy.messages_accepted(), 2u);
 }
 
@@ -97,7 +97,7 @@ TEST(Proxy, AcceptLeavesTtlUnsetByDefault) {
     SinkCapture cap;
     Proxy proxy{cap.sink()};
 
-    proxy.accept({}, {}, "p1");
+    (void)proxy.accept({}, {}, "p1");
 
     ASSERT_EQ(cap.messages.size(), 1u);
     EXPECT_EQ(cap.messages[0].ttl, kTtlUnset);
@@ -107,8 +107,8 @@ TEST(Proxy, AcceptForwardsExplicitTtl) {
     SinkCapture cap;
     Proxy proxy{cap.sink()};
 
-    proxy.accept({}, {}, "p1", std::chrono::milliseconds{0});
-    proxy.accept({}, {}, "p1", std::chrono::milliseconds{250});
+    (void)proxy.accept({}, {}, "p1", std::chrono::milliseconds{0});
+    (void)proxy.accept({}, {}, "p1", std::chrono::milliseconds{250});
 
     ASSERT_EQ(cap.messages.size(), 2u);
     EXPECT_EQ(cap.messages[0].ttl, std::chrono::milliseconds{0});

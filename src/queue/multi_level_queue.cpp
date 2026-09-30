@@ -4,7 +4,7 @@
 namespace harbinger {
 
 MultiLevelQueue::MultiLevelQueue(uint8_t num_levels, std::optional<AgingConfig> aging)
-    : num_levels_(num_levels), queues_(num_levels), aging_cfg_(aging) {
+    : num_levels_(num_levels), queues_(num_levels), aging_cfg_(aging), next_aging_(num_levels) {
     if (!num_levels) throw std::invalid_argument("num_levels must be positive");
     if (aging_cfg_) {
         if (aging_cfg_->threshold.count() <= 0 || aging_cfg_->interval.count() <= 0)
@@ -50,6 +50,7 @@ void MultiLevelQueue::place_message(Message msg, bool restore_front) {
             throw;
         }
         ++total_size_;
+        note_aging_deadline(it->message.priority, it->message.enqueue_time);
     }
     available_cv_.notify_one();
 }
@@ -58,6 +59,7 @@ Message MultiLevelQueue::remove_locked(uint8_t level, Level::iterator it) {
     if (it->expiry) expiry_.erase(*it->expiry);
     Message msg = std::move(it->message);
     queues_[level].erase(it);
+    if (queues_[level].empty()) next_aging_[level].reset();
     --total_size_;
     return msg;
 }
@@ -111,25 +113,54 @@ std::size_t MultiLevelQueue::size(uint8_t level) const {
     return queues_[level].size();
 }
 
+std::optional<MultiLevelQueue::Clock::time_point>
+MultiLevelQueue::aging_deadline(Clock::time_point enqueued) const {
+    const auto max_ms = std::chrono::duration_cast<std::chrono::milliseconds>(Clock::duration::max());
+    if (aging_cfg_->threshold >= max_ms) return std::nullopt;
+    const auto delay = std::chrono::duration_cast<Clock::duration>(aging_cfg_->threshold);
+    if (enqueued > Clock::time_point::max() - delay) return std::nullopt;
+    return enqueued + delay;
+}
+
+void MultiLevelQueue::note_aging_deadline(uint8_t level, Clock::time_point enqueued) {
+    if (!aging_cfg_ || level == 0) return;
+    const auto due = aging_deadline(enqueued);
+    if (due && (!next_aging_[level] || *due < *next_aging_[level])) next_aging_[level] = due;
+}
+
+std::size_t MultiLevelQueue::age_once_locked(Clock::time_point now) {
+    if (!aging_cfg_) return 0;
+    std::size_t visited = 0;
+    bool promoted = false;
+    for (uint8_t level = num_levels_ - 1; level >= 1; --level) {
+        if (!next_aging_[level] || *next_aging_[level] > now) continue;
+        auto& q = queues_[level];
+        next_aging_[level].reset();
+        for (auto it = q.begin(); it != q.end();) {
+            auto current = it++;
+            auto& msg = current->message;
+            ++visited;
+            if (msg.is_expired()) continue;
+            const auto due = aging_deadline(msg.enqueue_time);
+            if (due && *due <= now) {
+                msg.priority = level - 1;
+                msg.enqueue_time = now;
+                queues_[level - 1].splice(queues_[level - 1].end(), q, current);
+                note_aging_deadline(msg.priority, msg.enqueue_time);
+                promoted = true;
+            } else {
+                note_aging_deadline(level, msg.enqueue_time);
+            }
+        }
+    }
+    if (promoted) available_cv_.notify_all();
+    return visited;
+}
+
 void MultiLevelQueue::run_aging() {
     std::unique_lock lock{mutex_};
     while (!aging_cv_.wait_for(lock, aging_cfg_->interval, [this] { return shutdown_; })) {
-        const auto now = Clock::now();
-        bool promoted = false;
-        for (uint8_t level = num_levels_ - 1; level >= 1; --level) {
-            auto& q = queues_[level];
-            for (auto it = q.begin(); it != q.end();) {
-                auto current = it++;
-                auto& msg = current->message;
-                if (!msg.is_expired() && now - msg.enqueue_time >= aging_cfg_->threshold) {
-                    msg.priority = level - 1;
-                    msg.enqueue_time = now;
-                    queues_[level - 1].splice(queues_[level - 1].end(), q, current);
-                    promoted = true;
-                }
-            }
-        }
-        if (promoted) available_cv_.notify_all();
+        (void)age_once_locked(Clock::now());
     }
 }
 

@@ -4,6 +4,7 @@
 #include <gtest/gtest.h>
 
 #include <chrono>
+#include <atomic>
 #include <optional>
 #include <thread>
 #include <barrier>
@@ -424,10 +425,12 @@ struct LocalBroker {
     }
 
     std::string submit(const std::string& payload = "x",
-                       std::optional<int64_t> ttl_ms = std::nullopt) {
+                       std::optional<int64_t> ttl_ms = std::nullopt,
+                       const std::unordered_map<std::string, std::string>& headers = {}) {
         harbinger_rpc::SubmitRequest sq;
         sq.set_producer_id(producer_id);
         sq.set_payload(payload);
+        for (const auto& [key, value] : headers) (*sq.mutable_headers())[key] = value;
         if (ttl_ms) sq.set_ttl_ms(*ttl_ms);
         harbinger_rpc::SubmitResponse ss;
         grpc::ClientContext c;
@@ -491,6 +494,7 @@ class ObservedPull final : public harbinger_rpc::Broker::Service {
 public:
     explicit ObservedPull(HarbingerService& broker) : broker_(broker) {}
     std::promise<grpc::Status> finished;
+    std::atomic<bool> cancelled_response_empty{false};
     bool cancelled() {
         std::lock_guard lock{mutex_};
         return context_ && context_->IsCancelled();
@@ -502,6 +506,8 @@ public:
             context_ = ctx;
         }
         const auto status = broker_.Pull(ctx, req, resp);
+        if (status.error_code() == grpc::StatusCode::CANCELLED)
+            cancelled_response_empty = !resp->has_message();
         {
             std::lock_guard lock{mutex_};
             context_ = nullptr;
@@ -528,7 +534,9 @@ TEST(DeliveryRecovery, CancelledSelectedPullRestoresFrontWithoutLeaseOrRetry) {
     LocalBroker b{HarbingerConfig{
         .default_max_retries = 2, .ttl_sweep_interval = 0ms,
         .delivery_lease = 30s, .lease_sweep_interval = 30s}};
-    const auto first_id = b.submit("A");
+    const std::string payload{"\0\x80\xffX", 4};
+    const std::unordered_map<std::string, std::string> headers{{"job", "binary"}, {"empty", ""}};
+    const auto first_id = b.submit(payload, std::nullopt, headers);
     const auto second_id = b.submit("B");
     const auto before = BrokerTestAccess::queued_front(b.service);
     ASSERT_TRUE(before);
@@ -562,6 +570,7 @@ TEST(DeliveryRecovery, CancelledSelectedPullRestoresFrontWithoutLeaseOrRetry) {
     EXPECT_EQ(pending.get().error_code(), grpc::StatusCode::CANCELLED);
     ASSERT_EQ(finished.wait_for(3s), std::future_status::ready);
     EXPECT_EQ(finished.get().error_code(), grpc::StatusCode::CANCELLED);
+    EXPECT_TRUE(observed.cancelled_response_empty);
     EXPECT_EQ(b.service.queue_size(), 2u);
     EXPECT_EQ(b.service.in_flight_count(), 0u);
     EXPECT_EQ(b.service.dlq_size(), 0u);
@@ -574,6 +583,8 @@ TEST(DeliveryRecovery, CancelledSelectedPullRestoresFrontWithoutLeaseOrRetry) {
     EXPECT_EQ(restored->retry_count, before->retry_count);
     EXPECT_EQ(restored->enqueue_time, before->enqueue_time);
     EXPECT_EQ(restored->arrival_time, before->arrival_time);
+    EXPECT_EQ(restored->payload, before->payload);
+    EXPECT_EQ(restored->headers, before->headers);
 
     // Register a different receiver, then prove both FIFO and the remaining budget.
     grpc::ClientContext registration;
@@ -586,6 +597,8 @@ TEST(DeliveryRecovery, CancelledSelectedPullRestoresFrontWithoutLeaseOrRetry) {
     const auto first = b.pull(200);
     ASSERT_FALSE(first.timed_out());
     EXPECT_EQ(first.message().message_id(), first_id);
+    EXPECT_EQ(first.message().payload(), payload);
+    for (const auto& [key, value] : headers) EXPECT_EQ(first.message().headers().at(key), value);
     EXPECT_TRUE(b.nack(first.message()).ok());
     EXPECT_EQ(b.service.dlq_size(), 0u);
     const auto second = b.pull(200);
@@ -595,8 +608,30 @@ TEST(DeliveryRecovery, CancelledSelectedPullRestoresFrontWithoutLeaseOrRetry) {
     const auto retry = b.pull(200);
     ASSERT_FALSE(retry.timed_out());
     EXPECT_EQ(retry.message().message_id(), first_id);
+    EXPECT_EQ(retry.message().payload(), payload);
     EXPECT_TRUE(b.ack(retry.message()).ok());
     EXPECT_LT(std::chrono::steady_clock::now() - start, 3s);
+}
+
+TEST(DeliveryRecovery, DlqInspectionPreservesEmptyAndBinaryPayloads) {
+    for (const auto& payload : {std::string{}, std::string{"\0\x80\xffX", 4}, std::string(65536, '\xff')}) {
+        LocalBroker b{HarbingerConfig{.default_max_retries = 1}};
+        const auto id = b.submit(payload, std::nullopt, {{"job", "binary"}, {"empty", ""}});
+        const auto delivery = b.pull();
+        ASSERT_FALSE(delivery.timed_out());
+        EXPECT_EQ(delivery.message().payload(), payload);
+        ASSERT_TRUE(b.nack(delivery.message()).ok());
+        for (int repeat = 0; repeat < 2; ++repeat) {
+            const auto page = b.inspect();
+            ASSERT_EQ(page.entries_size(), 1);
+            EXPECT_EQ(page.entries(0).message_id(), id);
+            EXPECT_EQ(page.entries(0).payload(), payload);
+            EXPECT_EQ(page.entries(0).headers().at("job"), "binary");
+            EXPECT_EQ(page.entries(0).headers().at("empty"), "");
+            EXPECT_EQ(page.entries(0).headers().at("__producer_id"), b.producer_id);
+        }
+        EXPECT_EQ(b.service.dlq_size(), 1u);
+    }
 }
 
 TEST_F(BrokerTest, PullCapsRequestedWaitAtServerMaximum) {

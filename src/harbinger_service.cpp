@@ -230,13 +230,22 @@ grpc::Status HarbingerService::Pull(grpc::ServerContext* ctx,
         }
 
         const std::string            msg_id  = msg.id;
-        const std::vector<uint8_t>   payload = msg.payload;
-        const auto                   headers = msg.headers;
         const auto token = instance_token_ + "-" + Proxy::generate_id();
+
+        auto* pulled = resp->mutable_message();
+        pulled->set_message_id(msg_id);
+        pulled->set_attempt_token(token);
+        pulled->set_lease_duration_ms(config_.delivery_lease.count());
+        if (msg.payload.empty()) pulled->clear_payload();
+        else pulled->set_payload(reinterpret_cast<const char*>(msg.payload.data()), msg.payload.size());
+        for (const auto& [k, v] : msg.headers) {
+            (*pulled->mutable_headers())[k] = v;
+        }
 
         {
             std::lock_guard lock{in_flight_mutex_};
             if (ctx->IsCancelled()) {
+                resp->Clear();
                 queue_.requeue_front(std::move(msg));
                 return grpc::Status::CANCELLED;
             }
@@ -250,14 +259,6 @@ grpc::Status HarbingerService::Pull(grpc::ServerContext* ctx,
             });
         }
 
-        auto* pulled = resp->mutable_message();
-        pulled->set_message_id(msg_id);
-        pulled->set_attempt_token(token);
-        pulled->set_lease_duration_ms(config_.delivery_lease.count());
-        pulled->set_payload(std::string(payload.begin(), payload.end()));
-        for (const auto& [k, v] : headers) {
-            (*pulled->mutable_headers())[k] = v;
-        }
         resp->set_timed_out(false);
         return grpc::Status::OK;
     }
@@ -398,8 +399,9 @@ grpc::Status HarbingerService::InspectDlq(grpc::ServerContext*,
     for (const auto& entry : entries) {
         auto* out = resp->add_entries();
         out->set_message_id(entry.message.id);
-        out->set_payload(std::string(entry.message.payload.begin(),
-                                     entry.message.payload.end()));
+        const auto& payload = entry.message.payload;
+        if (payload.empty()) out->clear_payload();
+        else out->set_payload(reinterpret_cast<const char*>(payload.data()), payload.size());
         for (const auto& [k, v] : entry.message.headers) {
             (*out->mutable_headers())[k] = v;
         }

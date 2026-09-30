@@ -62,8 +62,8 @@ message PullResponse {
 }
 
 // Processing time in milliseconds measured by the consumer.
-// Carried on both Ack and Nack so the server can record it for the
-// Phase 2 ML feedback loop regardless of outcome.
+// Carried on both Ack and Nack for the future Phase 2 feedback loop.
+// The current broker does not store or train on this measurement.
 message AckRequest {
     string consumer_id        = 1;
     string message_id         = 2;
@@ -131,7 +131,7 @@ service Broker {
     rpc RegisterConsumer (RegisterConsumerRequest)   returns (RegisterConsumerResponse);
     rpc Pull             (PullRequest)               returns (PullResponse);
 
-    // Ack/Nack carry actual processing time for the Phase 2 feedback loop.
+    // Ack/Nack carry actual processing time for future, not yet persisted, ML feedback.
     rpc Ack              (AckRequest)                returns (AckResponse);
     rpc Nack             (NackRequest)               returns (NackResponse);
 

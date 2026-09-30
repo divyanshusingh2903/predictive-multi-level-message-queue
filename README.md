@@ -52,7 +52,7 @@ Producer::send()
 - **Consumers are tier-blind** — the broker picks which message each `Pull()` receives; consumers never see queue levels.
 - **Proxy is narrowly scoped** — stamps ID and `arrival_time`, stores `producer_id` in headers, then hands off to `route_message()`.
 - **In-flight tracking** — messages are held in an `unordered_map` between `Pull` and `Ack/Nack`; on `Nack` they are re-queued or DLQ'd.
-- **Phase 2 hook** — `route_message()` in `harbinger_service.cpp` is the single injection point for the ML classifier; `processing_time_ms` in every `Ack`/`Nack` feeds the training loop.
+- **Phase 2 hook** — `route_message()` in `harbinger_service.cpp` is the single injection point for the future ML classifier; `processing_time_ms` is transmitted on every `Ack`/`Nack` but is not yet stored or used for training.
 - **`harbinger_rpc` proto package** — kept distinct from the `harbinger` C++ namespace to avoid symbol collisions.
 
 ---
@@ -90,7 +90,7 @@ harbinger/
 │                              # (queue, DLQ, proxy — no gRPC) and
 │                              # harbinger_integration_tests (broker, client over gRPC)
 ├── ml_engine/                 # (Phase 2, planned — not yet present)
-├── benchmarks/                # (Phase 3, planned — not yet present)
+├── benchmarks/                # Opt-in Phase 1 cleanup measurements; scheduler gate planned
 └── CMakeLists.txt
 ```
 
@@ -123,6 +123,12 @@ Do not mix dependency installations. For sanitizer verification, configure with
 CI runs the full suite under ASan/UBSan and queue tests under TSan. Transport
 tests under TSan require a compatible, TSan-instrumented gRPC/Protobuf stack;
 prebuilt libraries can hide synchronization and produce unusable reports.
+
+`-DHARBINGER_WARNINGS_AS_ERRORS=ON` makes warnings fail first-party builds;
+it defaults to OFF locally and is enabled in CI. Generated protobuf sources and
+fetched dependencies are excluded from this policy. For reproducible queue and
+loopback delivery measurements, enable `-DHARBINGER_BUILD_BENCHMARKS=ON` (default
+OFF) and follow [the benchmark guide](benchmarks/README.md).
 
 **Targets**
 
@@ -282,7 +288,7 @@ implemented. Handlers must tolerate duplicate processing after lease expiry.
 
 TTL reclamation uses a deadline index and bounded batches, avoiding full-backlog
 scans on delivery. Large expired backlogs take multiple passes to reclaim;
-aging still scans the queue. The standalone POSIX server handles SIGINT/SIGTERM
+aging skips wholly not-yet-due levels but still scans due levels fully. The standalone POSIX server handles SIGINT/SIGTERM
 using `sigwait` and shuts down with a five-second grace deadline.
 
 ### Current production boundary

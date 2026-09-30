@@ -28,7 +28,7 @@ public:
     /// Wait for a message or shutdown; queued messages remain drainable after shutdown.
     [[nodiscard]] std::optional<Message> dequeue(
         std::chrono::milliseconds timeout = std::chrono::milliseconds{100});
-    /// Remove all expired messages in level/FIFO order.
+    /// Diagnostic full scan in level/FIFO order; use bounded batches on service hot paths.
     [[nodiscard]] std::vector<Message> sweep_expired();
     /// Remove at most limit expired messages in deadline order without scanning live messages.
     [[nodiscard]] std::vector<Message> sweep_expired_batch(std::size_t limit);
@@ -50,6 +50,9 @@ private:
         std::optional<ExpiryIndex::iterator> expiry;
     };
     void run_aging();
+    std::optional<Clock::time_point> aging_deadline(Clock::time_point enqueued) const;
+    void note_aging_deadline(uint8_t level, Clock::time_point enqueued);
+    std::size_t age_once_locked(Clock::time_point now);
     void place_message(Message msg, bool restore_front);
     std::optional<Message> dequeue_locked();
     Message remove_locked(uint8_t level, Level::iterator it);
@@ -64,6 +67,8 @@ private:
     std::atomic<std::size_t> total_size_{0};
     bool shutdown_{false};
     std::optional<AgingConfig> aging_cfg_;
+    // Conservative minima: removal can leave an earlier deadline until the next due scan.
+    std::vector<std::optional<Clock::time_point>> next_aging_;
     std::thread aging_thread_;
 };
 

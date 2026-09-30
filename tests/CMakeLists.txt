@@ -9,6 +9,7 @@ add_executable(harbinger_unit_tests
 target_link_libraries(harbinger_unit_tests
     PRIVATE harbinger_server_lib GTest::gtest_main
 )
+harbinger_target_warnings(harbinger_unit_tests)
 
 # ── Integration tests: gRPC broker + client ────────────────────────────────────
 # These tests start a real gRPC server on port 0 and exercise the full
@@ -20,6 +21,7 @@ add_executable(harbinger_integration_tests
 target_link_libraries(harbinger_integration_tests
     PRIVATE harbinger_server_lib harbinger_client_lib GTest::gtest_main
 )
+harbinger_target_warnings(harbinger_integration_tests)
 
 include(GoogleTest)
 gtest_discover_tests(harbinger_unit_tests PROPERTIES TIMEOUT 60 DISCOVERY_MODE PRE_TEST)
@@ -31,5 +33,6 @@ if(UNIX)
     target_compile_definitions(harbinger_server_shutdown_tests PRIVATE
         SERVER_EXECUTABLE="$<TARGET_FILE:harbinger_server>")
     add_dependencies(harbinger_server_shutdown_tests harbinger_server)
+    harbinger_target_warnings(harbinger_server_shutdown_tests)
     gtest_discover_tests(harbinger_server_shutdown_tests PROPERTIES TIMEOUT 30 DISCOVERY_MODE PRE_TEST)
 endif()
