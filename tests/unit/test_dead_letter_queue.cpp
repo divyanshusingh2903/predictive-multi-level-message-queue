@@ -1,4 +1,5 @@
 #include "queue/dead_letter_queue.hpp"
+#include "ml/routing_context.hpp"
 
 #include <gtest/gtest.h>
 #include <limits>
@@ -19,6 +20,27 @@ TEST(DeadLetterQueue, StartsEmpty) {
     DeadLetterQueue dlq;
     EXPECT_TRUE(dlq.empty());
     EXPECT_EQ(dlq.size(), 0u);
+}
+
+TEST(DeadLetterQueue, SnapshotCopiesShareImmutableRoutingContext) {
+    DeadLetterQueue dlq;
+    auto message = make_msg("context");
+    message.routing_context = std::make_shared<const ml::RoutingContext>(ml::RoutingContext{
+        .feature_schema_version = "features-v1", .routing_policy_version = "policy-v1",
+        .features = ml::FeatureSnapshot{.payload_size_bytes = 7}, .ingress_priority = 1});
+    const auto context = message.routing_context;
+    dlq.push(std::move(message), DLQReason::TTL_EXPIRED);
+    auto first = dlq.snapshot(0, 10);
+    const auto second = dlq.snapshot(0, 10);
+    ASSERT_EQ(first.size(), 1u);
+    ASSERT_EQ(second.size(), 1u);
+    EXPECT_EQ(first[0].message.routing_context, context);
+    EXPECT_EQ(second[0].message.routing_context, context);
+    first[0].message.routing_context.reset();
+    const auto popped = dlq.pop();
+    ASSERT_TRUE(popped);
+    EXPECT_EQ(popped->message.routing_context, context);
+    EXPECT_EQ(context->features->payload_size_bytes, 7u);
 }
 
 TEST(DeadLetterQueue, PopEmptyReturnsNullopt) {

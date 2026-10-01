@@ -8,7 +8,7 @@ Predictive Multi-Level Message Queue: ML-predicted processing time + MLFQ routin
 
 - **Consumers are tier-blind.** Broker picks the message; levels never leak to clients.
 - **Proxy is narrow:** ID + `arrival_time` + `__producer_id` header → forwards to sink. No queue/priority/TTL knowledge.
-- **Phase 2 hooks (stubbed):** `route_message()` in `src/harbinger_service.cpp` is the single ML-classifier injection point; `processing_time_ms` on every Ack/Nack feeds training.
+- **Phase 2:** `route_message()` is the sole feature/classifier hook. Opt-in static ingress capture and Python encoding are implemented; classifier calls and persistent `processing_time_ms` feedback remain planned.
 
 ## Invariants (don't break)
 
@@ -38,6 +38,8 @@ Predictive Multi-Level Message Queue: ML-predicted processing time + MLFQ routin
 
 `num_levels=3`, `aging=nullopt` (strict-priority; use `{5000 ms, 500 ms}` to enable aging), `default_max_retries=3`, `default_ttl=0`, `default_priority=1`, `max_pull_wait=5000 ms`, `ttl_sweep_interval=100 ms` (`0` = off).
 
+`ingress_features=nullopt` disables capture. Embedded brokers may supply `ml::IngressFeatureConfig` with a schema and caller-declared static policy version; no standalone schema flag, inference, or persistence is enabled. `Message::routing_context` is `shared_ptr<const ml::RoutingContext>` and must survive all message moves/restoration/aging/retry/DLQ copies without leaking to RPCs. Disabled context has absent model/prediction/fallback/timing fields; oversized complete snapshots have null features plus `FeatureLimit`.
+
 Recovery defaults: `delivery_lease=30000 ms`, `lease_sweep_interval=100 ms`, `completion_retention=60000 ms`, `completion_cache_max_entries=10000`, `maintenance_batch_size=256`. All must be positive; extreme maintenance durations are rejected before clock conversion. Lease, queue TTL, and completion-history maintenance use bounded batches; reclamation delay grows with backlog.
 
 Standalone server startup overrides: `--delivery-lease-ms`, `--lease-sweep-interval-ms`, `--completion-retention-ms`, `--completion-cache-max-entries`, `--maintenance-batch-size`, `--ttl-sweep-interval-ms` (unsigned decimal values, TTL sweep alone permits 0). Omitted options use `HarbingerConfig` defaults; server still enables aging explicitly. `--help` lists defaults; invalid configuration exits nonzero before listening. No runtime reload.
@@ -50,13 +52,14 @@ Standalone server startup overrides: `--delivery-lease-ms`, `--lease-sweep-inter
 - Bound classifier calls with a short deadline. Any timeout, unavailable classifier, invalid prediction, or priority outside `[0, num_levels)` falls back to `default_priority`.
 - Compare prediction error, P50/P95/P99, throughput, and starvation against FIFO, static-priority, and round-robin workloads before enabling predictive routing.
 
-Planned implementation details live in [ADR 0001](docs/adr/0001-phase2-ml-contract.md), the [ML contract](docs/ml-contract.md), and the [validation plan](docs/phase2-validation.md). These documents do not describe implemented ML behavior; proposed numeric resource defaults and performance budgets require validation.
+Design details live in [ADR 0001](docs/adr/0001-phase2-ml-contract.md), the [ML contract](docs/ml-contract.md), and the [validation plan](docs/phase2-validation.md). [Feature capture/encoding](ml_engine/README.md) is implemented; inference, feedback persistence, and proposed resource/performance budgets remain planned.
 
 - Modes: disabled/static by default, shadow for initial prediction experiments, predictive only by explicit opt-in after the gate. Feedback collection is separately configured so static-mode collection works without Python.
 - Predict successful handler duration, then let C++ map it to fixed versioned boundaries. Current `uint8_t` levels support 1–255; exactly `num_levels - 1` positive increasing boundaries, equality enters the next bucket. One level requires default priority 0 and no boundaries.
 - Store immutable ingress features and routing context internally; never put predictions/priorities into client headers. Disabled/shadow assign both priority fields to `default_priority`; predictive assigns both to the validated bucket or fallback. Retry/aging do not reclassify.
 - Separate protocol/feature-schema/model/routing-policy versions. Changing allowlists or encodings changes the schema; changing boundaries changes the policy. No silent compatibility migration.
 - Numeric headers use strict locale-independent decimal grammar and binary64; payload size stays an exact integer until model conversion. Prefer bounded fixed vocabularies for small categorical sets; optional hashing uses sparse one-hot bins. Missing and unknown are distinct, category indices are never numeric features, and encoding/vocabulary changes require a new schema version. Workload metadata supplies context; hashing does not preserve semantic meaning.
+- Feature-limit admission uses identical bounded JSON in C++/Python: fixed object order, sorted map keys, explicit control escapes, and 17-significant-digit scientific binary64 values. Shared fixtures cover conversion bits, encoding, privacy, and exact 8 KiB boundaries. Python 3.10+ tests run via CTest when available; CI requires `HARBINGER_REQUIRE_PYTHON_TESTS=ON`.
 - Capture actual outcome events, keyed by broker instance/message/event and internal attempt identity, before moving message state. Never export opaque settlement tokens or arbitrary failure text. Accepted replay emits no second training event; rejected requests supply no labels. Actual lease reclamation still emits its own event.
 - Internal delivery ordinals increment only with successful ownership installation under the settlement mutex after the final cancellation check. Cancelled Pull restoration emits no delivery event and consumes no ordinal; attempt identity is independent of retry count.
 - Zero duration is valid; missing duration is null. Train initially on valid successful Ack labels only, evaluating the stored prediction before learning. Ack-after-TTL is DLQ feedback; lease/queued expiry has no handler runtime.
@@ -81,7 +84,7 @@ Targets: `harbinger_server`, `harbinger_unit_tests`, `harbinger_integration_test
 
 ## Layout
 
-`proto/harbinger.proto` · `include/{harbinger_service,proxy,queue/{message,multi_level_queue,dead_letter_queue},producer,consumer}.hpp` · `src/` mirrors `include/` · `server/main.cpp` · `demo/main.cpp` · `tests/unit/` · `docs/adr/` · `ml_engine/` (Phase 2, planned) · `benchmarks/` (Phase 2 gate + Phase 3 expansion, planned)
+`proto/harbinger.proto` · `include/{harbinger_service,proxy,queue/{message,multi_level_queue,dead_letter_queue},producer,consumer}.hpp` · `include/ml/` · `src/` mirrors `include/` · `server/main.cpp` · `demo/main.cpp` · `tests/unit/` · `tests/fixtures/ml/` · `docs/adr/` · `ml_engine/` (features implemented; model/service planned) · `benchmarks/` (Phase 2 gate + Phase 3 expansion, planned)
 
 ## Conventions
 

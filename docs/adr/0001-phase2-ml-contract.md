@@ -1,6 +1,6 @@
 # ADR 0001: Phase 2 ML routing and feedback
 
-Status: planned design. The decisions below guide Phase 2 implementation; the broker does not yet implement them. Resource defaults and performance gates marked proposed must be validated before rollout.
+Status: Phase 2 design with [feature capture/encoding](../../ml_engine/README.md) implemented. Prediction transport, persistent feedback, and predictive activation remain planned. Resource defaults and performance gates marked proposed must be validated before rollout.
 
 Tracking: [contract issue #1](https://github.com/divyanshusingh2903/predictive-multi-level-message-queue/issues/1), under [Phase 2 tracker #11](https://github.com/divyanshusingh2903/predictive-multi-level-message-queue/issues/11).
 

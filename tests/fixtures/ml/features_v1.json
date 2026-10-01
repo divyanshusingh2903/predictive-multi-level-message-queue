@@ -1,0 +1,111 @@
+{
+  "schemas": {
+    "empty": {"version": "features-v1-empty", "headers": []},
+    "main": {
+      "version": "features-v1-job-units-format",
+      "headers": [
+        {"name": "job_type", "type": "categorical", "vocabulary": ["resize", "convert", ""]},
+        {"name": "units", "type": "numeric", "minimum": -1000000, "maximum": 1000000},
+        {"name": "format", "type": "categorical", "encoding": "hash"}
+      ]
+    },
+    "numbers": {
+      "version": "features-v1-numbers",
+      "headers": [{"name": "n", "type": "numeric", "minimum": -1.7976931348623157e308, "maximum": 1.7976931348623157e308}]
+    }
+  },
+  "cases": [
+    {
+      "id": "empty", "schema": "empty", "payload_size_bytes": "0", "headers": {},
+      "expected": {"payload_size_bytes": "0", "headers": {}, "missing_reasons": {}},
+      "json": "{\"payload_size_bytes\":\"0\",\"headers\":{},\"missing_reasons\":{}}",
+      "encoded": [{"key": ["payload", "size_bytes", "numeric", ""], "value": 0}]
+    },
+    {
+      "id": "allowlist-only", "schema": "main", "payload_size_bytes": "4096",
+      "headers": {"job_type": "resize", "units": "2", "format": "png", "authorization": "secret", "__producer_id": "producer-0", "failure_reason": "secret details"},
+      "expected": {"payload_size_bytes": "4096", "headers": {"job_type": "resize", "units": 2, "format": "png"}, "missing_reasons": {}},
+      "json": "{\"payload_size_bytes\":\"4096\",\"headers\":{\"format\":\"png\",\"job_type\":\"resize\",\"units\":2.0000000000000000e+00},\"missing_reasons\":{}}",
+      "encoded": [
+        {"key": ["payload", "size_bytes", "numeric", ""], "value": 4096},
+        {"key": ["header", "job_type", "category", "0"], "value": 1},
+        {"key": ["header", "units", "numeric", ""], "value": 2},
+        {"key": ["header", "format", "bin", "188"], "value": 1}
+      ]
+    },
+    {
+      "id": "unknown-unicode-and-zero", "schema": "main", "payload_size_bytes": "9007199254740993",
+      "headers": {"job_type": "unseen", "units": "-0.0", "format": "résumé"},
+      "expected": {"payload_size_bytes": "9007199254740993", "headers": {"job_type": "unseen", "units": 0, "format": "résumé"}, "missing_reasons": {}},
+      "encoded": [
+        {"key": ["payload", "size_bytes", "numeric", ""], "value": 9007199254740992},
+        {"key": ["header", "job_type", "unknown", ""], "value": 1},
+        {"key": ["header", "units", "numeric", ""], "value": 0},
+        {"key": ["header", "format", "bin", "659"], "value": 1}
+      ]
+    },
+    {
+      "id": "empty-category", "schema": "main", "payload_size_bytes": "18446744073709551615",
+      "headers": {"job_type": "", "units": "1e3", "format": ""},
+      "expected": {"payload_size_bytes": "18446744073709551615", "headers": {"job_type": "", "units": 1000, "format": ""}, "missing_reasons": {}},
+      "encoded": [
+        {"key": ["payload", "size_bytes", "numeric", ""], "value": 18446744073709551616},
+        {"key": ["header", "job_type", "category", "2"], "value": 1},
+        {"key": ["header", "units", "numeric", ""], "value": 1000},
+        {"key": ["header", "format", "bin", "20"], "value": 1}
+      ]
+    },
+    {
+      "id": "case-sensitive-missing", "schema": "main", "payload_size_bytes": "0",
+      "headers": {"JOB_TYPE": "resize", "units": "2ms"},
+      "expected": {"payload_size_bytes": "0", "headers": {"job_type": null, "units": null, "format": null}, "missing_reasons": {"job_type": "absent", "units": "invalid_type", "format": "absent"}},
+      "encoded": [
+        {"key": ["payload", "size_bytes", "numeric", ""], "value": 0},
+        {"key": ["header", "job_type", "missing", ""], "value": 1},
+        {"key": ["header", "units", "missing", ""], "value": 1},
+        {"key": ["header", "format", "missing", ""], "value": 1}
+      ]
+    },
+    {
+      "id": "invalid-utf8", "schema": "main", "payload_size_bytes": "1", "headers": {"units": "1000001"},
+      "raw_hex": {"job_type": "eda080", "format": "c080"},
+      "expected": {"payload_size_bytes": "1", "headers": {"job_type": null, "units": null, "format": null}, "missing_reasons": {"job_type": "invalid_encoding", "units": "out_of_range", "format": "invalid_encoding"}}
+    },
+    {
+      "id": "escapes", "schema": "main", "payload_size_bytes": "1",
+      "headers": {"job_type": "line\n\\n\t\"", "units": "-1000000", "format": "😀"},
+      "expected": {"payload_size_bytes": "1", "headers": {"job_type": "line\n\\n\t\"", "units": -1000000, "format": "😀"}, "missing_reasons": {}},
+      "json": "{\"payload_size_bytes\":\"1\",\"headers\":{\"format\":\"😀\",\"job_type\":\"line\\u000a\\\\n\\u0009\\\"\",\"units\":-1.0000000000000000e+06},\"missing_reasons\":{}}"
+    }
+  ],
+  "size_boundaries": [
+    {"tail_bytes": 2, "expected_size": 8191, "accepted": true},
+    {"tail_bytes": 3, "expected_size": 8192, "accepted": true},
+    {"tail_bytes": 4, "expected_size": 8193, "accepted": false}
+  ],
+  "numeric_cases": [
+    {"input": "0.1", "bits": "3fb999999999999a", "json_number": "1.0000000000000001e-01"},
+    {"input": "-0", "bits": "0000000000000000", "json_number": "0.0000000000000000e+00"},
+    {"input": "0e-9999", "bits": "0000000000000000", "json_number": "0.0000000000000000e+00"},
+    {"input": "5e-324", "bits": "0000000000000001", "json_number": "4.9406564584124654e-324"},
+    {"input": "2.2250738585072014e-308", "bits": "0010000000000000", "json_number": "2.2250738585072014e-308"},
+    {"input": "1.7976931348623157e308", "bits": "7fefffffffffffff", "json_number": "1.7976931348623157e+308"},
+    {"input": "9007199254740993", "bits": "4340000000000000", "json_number": "9.0071992547409920e+15"},
+    {"input": "1.00000000000000011102230246251565404236316680908203125", "bits": "3ff0000000000000", "json_number": "1.0000000000000000e+00"},
+    {"input": "1e309", "reason": "out_of_range"},
+    {"input": "1e-9999", "reason": "out_of_range"},
+    {"input": "2e-324", "reason": "out_of_range"},
+    {"input": "", "reason": "invalid_type"},
+    {"input": "+2", "reason": "invalid_type"},
+    {"input": " 2", "reason": "invalid_type"},
+    {"input": "2 ", "reason": "invalid_type"},
+    {"input": "01", "reason": "invalid_type"},
+    {"input": ".5", "reason": "invalid_type"},
+    {"input": "2.", "reason": "invalid_type"},
+    {"input": "NaN", "reason": "invalid_type"},
+    {"input": "Infinity", "reason": "invalid_type"},
+    {"input": "0x10", "reason": "invalid_type"},
+    {"input": "1e", "reason": "invalid_type"},
+    {"input": "1\n", "reason": "invalid_type"}
+  ]
+}

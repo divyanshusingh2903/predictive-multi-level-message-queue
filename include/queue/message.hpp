@@ -2,11 +2,14 @@
 
 #include <chrono>
 #include <cstdint>
+#include <memory>
 #include <string>
 #include <unordered_map>
 #include <vector>
 
 namespace harbinger {
+
+namespace ml { struct RoutingContext; }
 
 /// Sentinel TTL meaning "unset — apply the server default in route_message".
 /// Flows only from Proxy to route_message; never stored in queue/DLQ/in-flight.
@@ -34,6 +37,8 @@ struct Message {
     uint32_t retry_count{0};
     uint32_t max_retries{3};
     std::unordered_map<std::string, std::string> headers;
+    /// Broker-only immutable ingress features and routing decision.
+    std::shared_ptr<const ml::RoutingContext> routing_context{};
 
     /// Check TTL expiry relative to arrival_time.
     /// @return True if ttl > 0 and now - arrival_time >= ttl, else false.

@@ -10,6 +10,9 @@ namespace harbinger {
 namespace {
 
 HarbingerConfig validate_config(HarbingerConfig config) {
+    if (config.ingress_features) {
+        ml::validate_version(config.ingress_features->routing_policy_version);
+    }
     if (config.num_levels == 0) {
         throw std::invalid_argument("HarbingerConfig: num_levels must be >= 1");
     }
@@ -55,6 +58,8 @@ HarbingerConfig validate_config(HarbingerConfig config) {
 
 HarbingerService::HarbingerService(HarbingerConfig config)
     : config_(validate_config(std::move(config))),
+      feature_extractor_(config_.ingress_features
+          ? std::make_optional<ml::FeatureExtractor>(config_.ingress_features->schema) : std::nullopt),
       queue_(config_.num_levels, config_.aging),
       dlq_(),
       proxy_([this](Message msg) { route_message(std::move(msg)); }),
@@ -125,6 +130,16 @@ void HarbingerService::route_message(Message msg) {
     msg.max_retries       = config_.default_max_retries;
     if (msg.ttl == kTtlUnset) {
         msg.ttl = config_.default_ttl;
+    }
+    if (feature_extractor_) {
+        auto extracted = feature_extractor_->extract(msg.payload.size(), msg.headers);
+        msg.routing_context = std::make_shared<const ml::RoutingContext>(ml::RoutingContext{
+            .feature_schema_version = feature_extractor_->schema().version,
+            .routing_policy_version = config_.ingress_features->routing_policy_version,
+            .features = std::move(extracted.features),
+            .feature_validity = extracted.validity,
+            .ingress_priority = msg.priority,
+        });
     }
     queue_.enqueue(std::move(msg));
 }

@@ -1,6 +1,6 @@
 # Broker and queue internals
 
-This is a code-oriented map of **Phase 1**. It describes the present behavior of [`HarbingerService`](../src/harbinger_service.cpp), [`MultiLevelQueue`](../src/queue/multi_level_queue.cpp), and the [gRPC contract](../proto/harbinger.proto). Producer and consumer integration examples live in [producers.md](producers.md) and [consumers.md](consumers.md).
+This is a code-oriented map of the core broker and implemented Phase 2 ingress feature capture. It describes the present behavior of [`HarbingerService`](../src/harbinger_service.cpp), [`MultiLevelQueue`](../src/queue/multi_level_queue.cpp), and the [gRPC contract](../proto/harbinger.proto). Producer and consumer integration examples live in [producers.md](producers.md) and [consumers.md](consumers.md).
 
 ## Components and boundaries
 
@@ -22,7 +22,7 @@ Producer::send → Broker.Submit → Proxy::accept → HarbingerService::route_m
 |---|---|
 | `proto/harbinger.proto` | `harbinger_rpc::Broker` methods: producer/consumer registration, Submit, Pull, Ack, Nack, InspectDlq. The wire package differs from the `harbinger` C++ namespace. |
 | `src/proxy/proxy.cpp` | Create the message ID, stamp `arrival_time`, set `__producer_id`, forward to a sink; no queue scheduling decisions. |
-| `HarbingerService::route_message` | Resolve per-message/default TTL and apply configured static priority and retry budget. Future classifier injection point. |
+| `HarbingerService::route_message` | Resolve per-message/default TTL, apply static priority/retry budget, and optionally capture ingress features. Future classifier injection point. |
 | `MultiLevelQueue` | Thread-safe FIFO priority levels, optional aging thread, and a deadline index for positive-TTL queued messages. |
 | `HarbingerService` | Registration sets, Pull selection, ownership/lease tracking, serialized settlement, bounded completion history, maintenance loop. |
 | `DeadLetterQueue` | FIFO in-memory storage of expired/exhausted work; read-only paginated RPC inspection. |
@@ -48,6 +48,7 @@ SUBMITTED → QUEUED → IN_FLIGHT ── Ack ──→ DONE
 - `enqueue_time`: when the message most recently entered its level; reset on enqueue and aging promotion. Unlike `arrival_time`, this measures wait time *at the current placement*. Cancelled-selection restoration preserves it, so rolling back a dequeue does not restart aging.
 - `ttl`: 0 disables expiry; positive durations expire at `arrival_time + ttl`. Unset requests use the server default. Negative TTL on Submit is rejected.
 - `retry_count`, `max_retries`: failure accounting; successful delivery does not increase `retry_count`. The first failed delivery increments it to 1.
+- `routing_context`: optional `shared_ptr<const ml::RoutingContext>` containing a bounded immutable ingress snapshot and static decision. It remains broker-only and survives retry, aging, restoration, and DLQ placement/copies.
 
 Attempt tokens, lease deadlines, and completion records belong to broker delivery state, **not** to `Message` or its headers. A redelivery has the same message ID and a different attempt token. This distinction is what fences a late Ack/Nack after the lease has expired.
 
@@ -56,7 +57,7 @@ Attempt tokens, lease deadlines, and completion records belong to broker deliver
 1. `RegisterProducer` creates a process-local `producer-<counter>` ID. `Submit` requires an ID in the registration set; registration is not authentication.
 2. `Submit` copies protobuf bytes and headers, rejects negative `ttl_ms`, and calls `Proxy::accept`.
 3. The proxy stamps `id`, `arrival_time`, and `__producer_id`; absent TTL is a temporary `kTtlUnset` sentinel passed only to `route_message`.
-4. `route_message` assigns `default_priority` to both `priority` and `original_priority`, assigns `default_max_retries`, resolves the TTL sentinel, and enqueues.
+4. `route_message` assigns `default_priority` to both `priority` and `original_priority`, assigns `default_max_retries`, resolves the TTL sentinel, optionally captures ingress features/context, and enqueues once.
 5. `enqueue` checks priority in `[0, num_levels)`, resets `enqueue_time`, appends to that level's FIFO list, updates the optional expiry index, and notifies a waiting dequeuer.
 
 With the default settings the levels look like this:
@@ -68,6 +69,12 @@ Level 2 (lowest):  [E]
 ```
 
 `try_dequeue` / `dequeue` inspect levels from 0 upward and remove the front of the first nonempty level. There is **strict priority between levels** and FIFO within each level at the instant of selection. A newly arrived high-priority message can be selected ahead of an older low-priority message; work already dispatched to a handler is not preempted. Today normal Submit traffic all starts on the same configured level; other levels become relevant through optional aging (and a future routing classifier).
+
+### Opt-in ingress features
+
+`HarbingerConfig::ingress_features` is optional and programmatic. When present, a validated schema allowlists bounded numeric/categorical headers and captures exact payload byte count. Extraction and deterministic size validation run before enqueue, outside broker locks. Unknown categories remain valid values; invalid individual values have explicit missing reasons. Complete feature overflow leaves null features and an explicit validity reason without altering submission/priority semantics.
+
+Context records disabled/static mode and actual ingress priority; model/prediction/fallback/inference-time fields are absent. Retries and aging never re-extract it. The configured schema is owned by the broker, independent of caller mutation. No capture means no context allocation. This is in-memory capture, not a feedback writer, and no standalone feature flag or ML service exists yet. See [feature configuration and Python encoding](../ml_engine/README.md).
 
 ### Aging
 
@@ -143,5 +150,6 @@ The completion map/list keeps accepted Ack/Nack and expired-attempt outcomes for
 | `completion_retention` | 60000 | Completion replay duration, subject to capacity |
 | `completion_cache_max_entries` | 10000 | Replay cache capacity |
 | `maintenance_batch_size` | 256 | Max queued TTL / lease removals per maintenance batch |
+| `ingress_features` | `nullopt` | Opt-in versioned, immutable static ingress snapshots; embedded configuration only |
 
 The standalone server and demo explicitly **enable aging**; constructing `HarbingerService{}` does not. For routing changes, start at `route_message()` in `src/harbinger_service.cpp`. For scheduling/expiry behavior, inspect `MultiLevelQueue`. For delivery ownership and retry policy, inspect `HarbingerService::Pull`, `settle`, `finish_locked`, and `run_maintenance`; for callback behavior, inspect `Consumer::run`. The integration tests in `tests/unit/test_broker.cpp` and `tests/unit/test_client.cpp` exercise the broker over a real gRPC server despite their directory name.

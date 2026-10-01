@@ -80,6 +80,7 @@ add_library(harbinger_server_lib STATIC
     src/queue/multi_level_queue.cpp
     src/queue/dead_letter_queue.cpp
     src/proxy/proxy.cpp
+    src/ml/features.cpp
     src/harbinger_service.cpp
 )
 target_include_directories(harbinger_server_lib PUBLIC include)

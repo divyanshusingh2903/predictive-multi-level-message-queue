@@ -17,7 +17,7 @@ A research messaging system that combines **online ML-based processing time pred
 
 ## Status
 
-**Phase 1 complete.** The core gRPC broker is fully implemented: multi-level priority queues, producer/consumer clients, DLQ, aging-based starvation prevention, retry tracking, and in-flight message management. The Phase 2 ML feedback hook (`processing_time_ms` on every Ack/Nack, `route_message()` in the service) is stubbed and ready.
+**Phase 1 complete; Phase 2 feature boundary implemented.** The core gRPC broker includes multi-level priority queues, producer/consumer clients, DLQ, aging, retries, and in-flight management. Embedded brokers can opt into [versioned ingress features and immutable routing context](ml_engine/README.md), with matching Python validation/encoding. Routing remains static; prediction and persistent `processing_time_ms` feedback are not implemented yet.
 
 ---
 
@@ -63,7 +63,8 @@ Producer::send()
 - [Producer guide](docs/producers.md) — connect, send messages, set TTL, and understand Submit outcomes.
 - [Consumer guide](docs/consumers.md) — handlers, delivery leases, acknowledgements, retries, and shutdown.
 - [Broker and queue internals](docs/internals.md) — state transitions, priority ordering, aging, expiry, and recovery.
-- [Planned ML contract](docs/ml-contract.md), [architecture decision](docs/adr/0001-phase2-ml-contract.md), and [validation plan](docs/phase2-validation.md) — Phase 2 design; ML is not implemented yet.
+- [Ingress features and encoding](ml_engine/README.md) — implemented opt-in C++ capture and matching Python representation.
+- [ML contract](docs/ml-contract.md), [architecture decision](docs/adr/0001-phase2-ml-contract.md), and [validation plan](docs/phase2-validation.md) — Phase 2 design; feature capture is implemented, prediction and feedback persistence remain planned.
 
 ---
 
@@ -90,7 +91,7 @@ harbinger/
 │   └── unit/                  # GoogleTest sources; built as harbinger_unit_tests
 │                              # (queue, DLQ, proxy — no gRPC) and
 │                              # harbinger_integration_tests (broker, client over gRPC)
-├── ml_engine/                 # (Phase 2, planned — not yet present)
+├── ml_engine/                 # Versioned feature validation/encoding; model/service planned
 ├── benchmarks/                # Opt-in Phase 1 cleanup measurements; scheduler gate planned
 └── CMakeLists.txt
 ```
@@ -210,6 +211,7 @@ consumer->stop();
 | `completion_retention` | `60000 ms` | Maximum retention for replayable Ack/Nack outcomes |
 | `completion_cache_max_entries` | `10000` | Hard cap on retained delivery outcomes |
 | `maintenance_batch_size` | `256` | Maximum messages reclaimed per TTL/lease batch |
+| `ingress_features` | `nullopt` | Opt-in bounded static ingress snapshots; programmatic embedded configuration |
 
 Configuration is validated at broker construction. Levels and retry count must
 be positive, durations must use their documented non-negative/off semantics,
@@ -316,11 +318,11 @@ idempotency and durable storage are not implemented.
 - [x] Producer and Consumer gRPC clients
 - [x] Unit + integration test suite
 
-### Phase 2 — ML integration (next)
+### Phase 2 — ML integration (in progress)
 
 The [Phase 2 tracker](https://github.com/divyanshusingh2903/predictive-multi-level-message-queue/issues/11) sequences implementation from the [ML contract](docs/ml-contract.md). Prediction begins in shadow mode; explicit predictive routing requires the [synthetic validation gate](docs/phase2-validation.md).
 
-- [ ] Feature extraction from message headers/payload metadata
+- [x] Versioned, bounded ingress features and immutable routing context with C++/Python fixtures
 - [ ] Python ML service with online learning (`river` or scikit-learn incremental estimators)
 - [ ] gRPC/IPC bridge between C++ broker and Python classifier
 - [ ] Predictive routing injected into `route_message()` in `harbinger_service.cpp`

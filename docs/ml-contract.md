@@ -1,6 +1,8 @@
 # Phase 2 ML contract
 
-Status: planned contract for [issue #1](https://github.com/divyanshusingh2903/predictive-multi-level-message-queue/issues/1). Field names below are language-neutral design names, not existing C++ members or protobuf fields. See the [ADR](adr/0001-phase2-ml-contract.md) for rationale and the [validation plan](phase2-validation.md) for activation criteria.
+Status: the [issue #2 feature boundary](../ml_engine/README.md) is implemented: opt-in static ingress capture, internal immutable context, and matching Python validation/encoding. Prediction transport, feedback persistence, and activation remain planned under [issue #1's contract](https://github.com/divyanshusingh2903/predictive-multi-level-message-queue/issues/1). Persistent/transport field names below remain language-neutral design names rather than existing protobuf fields. See the [ADR](adr/0001-phase2-ml-contract.md) for rationale and the [validation plan](phase2-validation.md) for activation criteria.
+
+Embedded brokers enable capture through optional `HarbingerConfig::ingress_features` (`ml::IngressFeatureConfig`), with a schema and caller-declared static routing-policy version. Absent configuration allocates no ML context. Capture is distinct from future feedback persistence: it does not write events or enable inference, and the standalone server currently has no feature-schema flag. Schema versions identify immutable field specifications; static policy identities must not be reused across incompatible configurations. Both priorities remain `default_priority` and prediction/model/fallback/timing fields remain absent, including when the complete snapshot exceeds its limit.
 
 ## Versions and identifiers
 
@@ -58,6 +60,8 @@ Existing level/default-priority validation remains authoritative: levels 1–255
 Key lookup is exact and case-sensitive; no implicit normalization. Configuration declares each key's numeric or categorical type. Missing/invalid values become null with an explicit reason and missing indicator. Zero/empty-string categories remain distinct from missing. Do not truncate oversized values into another valid category.
 
 Use at most 16 configured headers, 64 UTF-8 bytes per key, 256 UTF-8 bytes per value, and an 8 KiB encoded feature record. Retain only bounded data: never copy unapproved values while extracting. Exclude raw payloads, unapproved headers, free-text Nack/exception details, reserved `__*` headers (including `__producer_id`), consumer IDs, and attempt tokens. Oversized complete records disable prediction with `feature_limit`; if collection is enabled, record null features and a feature-validity reason, not raw rejected content.
+
+The implemented size-admission rule measures the feature object alone, excluding enclosing schema/context metadata. `snapshot_json()` emits fixed top-level order (`payload_size_bytes`, `headers`, `missing_reasons`), sorted UTF-8 map keys, no whitespace, quote/backslash escapes, six-byte lowercase `\u00xx` escapes for all ASCII control bytes, and unescaped valid non-ASCII UTF-8. Binary64 values use scientific notation with 17 significant digits (16 after the decimal point), lowercase `e`, an explicit exponent sign, at least two exponent digits, and positive-zero normalization. C++ and Python use this same bounded representation; their ordinary default JSON formatting is not the admission rule. Illustrated objects below are semantic examples. Shared fixtures verify exact admission at 8,191/8,192/8,193 bytes.
 
 ### Numeric parsing and representation
 
