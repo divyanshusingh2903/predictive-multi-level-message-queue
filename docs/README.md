@@ -1,12 +1,13 @@
 # Harbinger documentation
 
-The operational guides below describe the **current Phase 1 implementation**. The Phase 2 design documents describe planned behavior, not an implemented classifier. Start with the [project README](../README.md) for build and run instructions.
+The operational guides below describe the core broker and implemented Phase 2 feature capture. Prediction and persistent feedback remain planned. Start with the [project README](../README.md) for build and run instructions.
 
 | Guide | Read this for |
 |---|---|
 | [Producers](producers.md) | Registering, sending bytes and headers, per-message TTL, and Submit failure semantics |
 | [Consumers](consumers.md) | Handler callbacks, polling, Ack/Nack, delivery leases, retries, and shutdown |
 | [Broker and queue internals](internals.md) | The full message state machine, scheduling, aging, TTL, leases, DLQ, and concurrency |
+| [Ingress features and encoding](../ml_engine/README.md) | Implemented programmatic feature capture, schema validation, and Python sparse encoding |
 
 ## Planned Phase 2 design
 

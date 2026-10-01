@@ -23,6 +23,25 @@ struct BrokerTestAccess {
         if (message) service.queue_.requeue_front(*message);
         return message;
     }
+    static std::shared_ptr<const ml::RoutingContext> in_flight_context(
+        HarbingerService& service, const std::string& id) {
+        std::lock_guard lock{service.in_flight_mutex_};
+        return service.in_flight_.at(id).message.routing_context;
+    }
+    static void expire_ttl(HarbingerService& service, const std::string& id) {
+        std::lock_guard lock{service.in_flight_mutex_};
+        auto& message = service.in_flight_.at(id).message;
+        message.ttl = 1ms;
+        message.arrival_time = HarbingerService::Clock::now() - 1s;
+    }
+    static void expire_queued(HarbingerService& service) {
+        auto message = service.queue_.try_dequeue();
+        ASSERT_TRUE(message);
+        message->ttl = 1ms;
+        message->arrival_time = HarbingerService::Clock::now() - 1s;
+        service.queue_.requeue_front(std::move(*message));
+        service.dlq_swept(service.queue_.sweep_expired_batch(256), "test queued expiry");
+    }
     static void expire(HarbingerService& service, const std::string& id, bool ttl = false) {
         std::lock_guard lock{service.in_flight_mutex_};
         auto& entry = service.in_flight_.at(id);
@@ -391,6 +410,16 @@ TEST_F(BrokerTest, NackExceedingMaxRetriesSendsToDLQ) {
 
 namespace {
 
+ml::IngressFeatureConfig capture_features() {
+    return {
+        .schema = {.version = "features-v1-job-units", .headers = {
+            {.name = "job", .type = ml::FeatureType::Categorical, .vocabulary = {"binary", "resize"}},
+            {.name = "units", .minimum = 0, .maximum = 1000000},
+        }},
+        .routing_policy_version = "static-v1-three-levels-priority-1",
+    };
+}
+
 // Spin up a broker with a custom config on an ephemeral port.
 // Returns the server (must outlive the test) and fills stub + ids.
 struct LocalBroker {
@@ -533,7 +562,8 @@ bool wait_until(Pred pred) {
 TEST(DeliveryRecovery, CancelledSelectedPullRestoresFrontWithoutLeaseOrRetry) {
     LocalBroker b{HarbingerConfig{
         .default_max_retries = 2, .ttl_sweep_interval = 0ms,
-        .delivery_lease = 30s, .lease_sweep_interval = 30s}};
+        .delivery_lease = 30s, .lease_sweep_interval = 30s,
+        .ingress_features = capture_features()}};
     const std::string payload{"\0\x80\xffX", 4};
     const std::unordered_map<std::string, std::string> headers{{"job", "binary"}, {"empty", ""}};
     const auto first_id = b.submit(payload, std::nullopt, headers);
@@ -585,6 +615,8 @@ TEST(DeliveryRecovery, CancelledSelectedPullRestoresFrontWithoutLeaseOrRetry) {
     EXPECT_EQ(restored->arrival_time, before->arrival_time);
     EXPECT_EQ(restored->payload, before->payload);
     EXPECT_EQ(restored->headers, before->headers);
+    ASSERT_TRUE(before->routing_context);
+    EXPECT_EQ(restored->routing_context, before->routing_context);
 
     // Register a different receiver, then prove both FIFO and the remaining budget.
     grpc::ClientContext registration;
@@ -611,6 +643,146 @@ TEST(DeliveryRecovery, CancelledSelectedPullRestoresFrontWithoutLeaseOrRetry) {
     EXPECT_EQ(retry.message().payload(), payload);
     EXPECT_TRUE(b.ack(retry.message()).ok());
     EXPECT_LT(std::chrono::steady_clock::now() - start, 3s);
+}
+
+TEST(IngressContext, OptInStaticCapturePreservesFeaturesAcrossRetryAndDlqWithoutRpcLeakage) {
+    HarbingerConfig config{.default_max_retries = 2, .ingress_features = capture_features()};
+    LocalBroker b{config};
+    // Configuration is owned by the broker, not borrowed from the caller.
+    config.ingress_features->schema.version = "changed";
+    config.ingress_features->schema.headers.clear();
+    std::unordered_map<std::string, std::string> headers{{"job", "resize"}, {"units", "2"}, {"authorization", "secret"}};
+    const std::string payload(1024 * 1024, '\xff');
+    const auto id = b.submit(payload, std::nullopt, headers);
+    headers["units"] = "999";
+    const auto queued = BrokerTestAccess::queued_front(b.service);
+    ASSERT_TRUE(queued);
+    const auto context = queued->routing_context;
+    ASSERT_TRUE(context);
+    EXPECT_EQ(context->feature_schema_version, "features-v1-job-units");
+    EXPECT_EQ(context->routing_policy_version, "static-v1-three-levels-priority-1");
+    EXPECT_EQ(context->mode, ml::RoutingMode::Disabled);
+    EXPECT_EQ(context->ingress_priority, 1);
+    EXPECT_FALSE(context->model_version);
+    EXPECT_FALSE(context->predicted_processing_time_ms);
+    EXPECT_FALSE(context->predicted_bucket);
+    EXPECT_FALSE(context->fallback_reason);
+    EXPECT_FALSE(context->inference_elapsed_ms);
+    ASSERT_TRUE(context->features);
+    EXPECT_EQ(context->features->payload_size_bytes, payload.size());
+    EXPECT_EQ(std::get<double>(context->features->headers.at("units")), 2);
+    EXPECT_EQ(context->features->headers.size(), 2u);
+    EXPECT_FALSE(context->features->headers.contains("authorization"));
+    EXPECT_FALSE(context->features->headers.contains("__producer_id"));
+    auto delivery = b.pull();
+    EXPECT_EQ(delivery.message().message_id(), id);
+    EXPECT_EQ(delivery.message().payload(), payload);
+    EXPECT_EQ(delivery.message().headers().size(), 4u); // Three originals plus existing producer stamp.
+    EXPECT_EQ(delivery.message().headers().at("authorization"), "secret");
+    EXPECT_EQ(delivery.message().headers().at("units"), "2");
+    EXPECT_EQ(BrokerTestAccess::in_flight_context(b.service, id), context);
+    ASSERT_TRUE(b.nack(delivery.message()).ok());
+    const auto retried = BrokerTestAccess::queued_front(b.service);
+    ASSERT_TRUE(retried);
+    EXPECT_EQ(retried->routing_context, context);
+    EXPECT_EQ(retried->priority, retried->original_priority);
+    delivery = b.pull();
+    EXPECT_EQ(BrokerTestAccess::in_flight_context(b.service, id), context);
+    ASSERT_TRUE(b.nack(delivery.message()).ok());
+    const auto dlq = b.service.dlq_snapshot(0, 10);
+    ASSERT_EQ(dlq.size(), 1u);
+    EXPECT_EQ(dlq[0].message.routing_context, context);
+    EXPECT_EQ(dlq[0].reason, DLQReason::MAX_RETRIES_EXCEEDED);
+    const auto inspection = b.inspect();
+    ASSERT_EQ(inspection.entries_size(), 1);
+    EXPECT_EQ(inspection.entries(0).headers().size(), 4u);
+    EXPECT_EQ(inspection.entries(0).payload(), payload);
+}
+
+TEST(IngressContext, DefaultDisabledPathAllocatesNoContext) {
+    LocalBroker b{HarbingerConfig{}};
+    const auto id = b.submit("");
+    const auto queued = BrokerTestAccess::queued_front(b.service);
+    ASSERT_TRUE(queued);
+    EXPECT_FALSE(queued->routing_context);
+    const auto delivery = b.pull();
+    EXPECT_FALSE(BrokerTestAccess::in_flight_context(b.service, id));
+    EXPECT_TRUE(b.ack(delivery.message()).ok());
+}
+
+TEST(IngressContext, LeaseRetryAndEveryTtlDispositionRetainSnapshot) {
+    for (int path = 0; path < 4; ++path) {
+        SCOPED_TRACE(path);
+        LocalBroker b{HarbingerConfig{
+            .default_max_retries = 2, .ttl_sweep_interval = 0ms,
+            .delivery_lease = 30s, .lease_sweep_interval = 30s,
+            .ingress_features = capture_features()}};
+        const auto id = b.submit("", std::nullopt, {{"job", "binary"}});
+        const auto queued = BrokerTestAccess::queued_front(b.service);
+        ASSERT_TRUE(queued);
+        const auto context = queued->routing_context;
+        ASSERT_TRUE(context);
+        EXPECT_EQ(context->features->payload_size_bytes, 0u);
+        if (path == 3) {
+            BrokerTestAccess::expire_queued(b.service);
+        } else {
+            const auto delivery = b.pull();
+            if (path == 2) {
+                BrokerTestAccess::expire_ttl(b.service, id);
+                ASSERT_TRUE(b.ack(delivery.message()).ok());
+            } else {
+                BrokerTestAccess::expire(b.service, id, path == 1);
+                BrokerTestAccess::maintain(b.service);
+            }
+            if (path == 0) {
+                const auto retried = BrokerTestAccess::queued_front(b.service);
+                ASSERT_TRUE(retried);
+                EXPECT_EQ(retried->routing_context, context);
+                EXPECT_EQ(retried->retry_count, 1u);
+                const auto retry_delivery = b.pull();
+                BrokerTestAccess::expire(b.service, id);
+                BrokerTestAccess::maintain(b.service);
+                EXPECT_EQ(b.ack(retry_delivery.message()).error_code(), grpc::StatusCode::FAILED_PRECONDITION);
+            }
+        }
+        const auto dlq = b.service.dlq_snapshot(0, 10);
+        ASSERT_EQ(dlq.size(), 1u);
+        EXPECT_EQ(dlq[0].message.routing_context, context);
+        EXPECT_EQ(dlq[0].reason, path == 0 ? DLQReason::MAX_RETRIES_EXCEEDED : DLQReason::TTL_EXPIRED);
+        EXPECT_EQ(dlq[0].message.retry_count, path == 0 ? 2u : 0u);
+    }
+}
+
+TEST(IngressContext, OversizedSnapshotDoesNotRejectSubmissionOrChangeStaticPriority) {
+    auto capture = capture_features();
+    capture.schema.headers.clear();
+    std::unordered_map<std::string, std::string> headers;
+    for (int i = 0; i < 16; ++i) {
+        const auto key = "h" + std::to_string(i);
+        capture.schema.headers.push_back({.name = key, .type = ml::FeatureType::Categorical});
+        headers[key] = std::string(256, '\0');
+    }
+    LocalBroker b{HarbingerConfig{.ingress_features = capture}};
+    b.submit("", std::nullopt, headers);
+    const auto queued = BrokerTestAccess::queued_front(b.service);
+    ASSERT_TRUE(queued);
+    ASSERT_TRUE(queued->routing_context);
+    EXPECT_EQ(queued->priority, 1);
+    EXPECT_EQ(queued->original_priority, 1);
+    EXPECT_EQ(queued->routing_context->feature_validity, ml::FeatureValidity::FeatureLimit);
+    EXPECT_FALSE(queued->routing_context->features);
+    EXPECT_FALSE(queued->routing_context->fallback_reason);
+    const auto delivery = b.pull();
+    EXPECT_TRUE(b.ack(delivery.message()).ok());
+}
+
+TEST(IngressContext, InvalidConfigurationFailsConstruction) {
+    auto config = HarbingerConfig{.ingress_features = capture_features()};
+    config.ingress_features->routing_policy_version.clear();
+    EXPECT_THROW(HarbingerService{config}, std::invalid_argument);
+    config.ingress_features->routing_policy_version = "static-v1";
+    config.ingress_features->schema.headers[0].name = "__producer_id";
+    EXPECT_THROW(HarbingerService{config}, std::invalid_argument);
 }
 
 TEST(DeliveryRecovery, DlqInspectionPreservesEmptyAndBinaryPayloads) {

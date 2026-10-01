@@ -1,4 +1,5 @@
 #include "queue/multi_level_queue.hpp"
+#include "ml/routing_context.hpp"
 
 #include <gtest/gtest.h>
 
@@ -157,6 +158,8 @@ TEST(MultiLevelQueue, RestoreFrontPreservesMetadataAndLevelOrder) {
     selected->enqueue_time = std::chrono::steady_clock::now() - 10s;
     selected->arrival_time = std::chrono::steady_clock::now() - 20s;
     selected->headers = {{"job", "test"}};
+    selected->routing_context = std::make_shared<const ml::RoutingContext>(ml::RoutingContext{
+        .feature_schema_version = "features-v1", .routing_policy_version = "policy-v1", .ingress_priority = 2});
     const auto expected = *selected;
     q.requeue_front(std::move(*selected));
     EXPECT_EQ(q.size(), 2u);
@@ -179,10 +182,36 @@ TEST(MultiLevelQueue, RestoreFrontPreservesMetadataAndLevelOrder) {
     EXPECT_EQ(restored->ttl, expected.ttl);
     EXPECT_EQ(restored->payload, expected.payload);
     EXPECT_EQ(restored->headers, expected.headers);
+    EXPECT_EQ(restored->routing_context, expected.routing_context);
     auto next = q.try_dequeue();
     ASSERT_TRUE(next);
     EXPECT_EQ(next->id, "B");
     EXPECT_TRUE(q.empty());
+}
+
+TEST(MultiLevelQueue, AgingAndExpiryPreserveImmutableIngressContext) {
+    MultiLevelQueue q{3, AgingConfig{10ms, 1h}};
+    auto message = make_msg(2, "context");
+    message.routing_context = std::make_shared<const ml::RoutingContext>(ml::RoutingContext{
+        .feature_schema_version = "features-v1", .routing_policy_version = "policy-v1",
+        .features = ml::FeatureSnapshot{.payload_size_bytes = 123}, .ingress_priority = 2});
+    const auto context = message.routing_context;
+    q.enqueue(std::move(message));
+    const auto placed = QueueTestAccess::contents(q)[2][0];
+    QueueTestAccess::age(q, placed.enqueue_time + 11ms);
+    auto aged = q.try_dequeue();
+    ASSERT_TRUE(aged);
+    EXPECT_EQ(aged->priority, 1);
+    EXPECT_EQ(aged->original_priority, 2);
+    EXPECT_EQ(aged->routing_context, context);
+    EXPECT_EQ(context->ingress_priority, 2);
+    EXPECT_EQ(context->features->payload_size_bytes, 123u);
+    aged->ttl = 1ms;
+    aged->arrival_time = std::chrono::steady_clock::now() - 1s;
+    q.requeue_front(std::move(*aged));
+    const auto expired = q.sweep_expired_batch(1);
+    ASSERT_EQ(expired.size(), 1u);
+    EXPECT_EQ(expired[0].routing_context, context);
 }
 
 TEST(MultiLevelQueue, RestoreFrontRejectsInvalidPriority) {
