@@ -17,7 +17,7 @@ A research messaging system that combines **online ML-based processing time pred
 
 ## Status
 
-**Phase 1 complete; Phase 2 feature boundary implemented.** The core gRPC broker includes multi-level priority queues, producer/consumer clients, DLQ, aging, retries, and in-flight management. Embedded brokers can opt into [versioned ingress features and immutable routing context](ml_engine/README.md), with matching Python validation/encoding. Routing remains static; prediction and persistent `processing_time_ms` feedback are not implemented yet.
+**Phase 1 complete; Phase 2 features and feedback implemented.** The core gRPC broker includes multi-level priority queues, producer/consumer clients, DLQ, aging, retries, and in-flight management. Embedded brokers can opt into [versioned ingress features and immutable routing context](ml_engine/README.md), with matching Python validation/encoding, and [bounded persistent feedback](docs/feedback.md). Routing remains static; prediction and learning remain planned.
 
 ---
 
@@ -52,7 +52,7 @@ Producer::send()
 - **Consumers are tier-blind** — the broker picks which message each `Pull()` receives; consumers never see queue levels.
 - **Proxy is narrowly scoped** — stamps ID and `arrival_time`, stores `producer_id` in headers, then hands off to `route_message()`.
 - **In-flight tracking** — messages are held in an `unordered_map` between `Pull` and `Ack/Nack`; on `Nack` they are re-queued or DLQ'd.
-- **Phase 2 hook** — `route_message()` in `harbinger_service.cpp` is the single injection point for the future ML classifier; `processing_time_ms` is transmitted on every `Ack`/`Nack` but is not yet stored or used for training.
+- **Phase 2 hook** — `route_message()` in `harbinger_service.cpp` is the single injection point for the future ML classifier; opt-in feedback persists accepted `processing_time_ms` observations and actual outcomes without changing delivery semantics. No learner is implemented yet.
 - **`harbinger_rpc` proto package** — kept distinct from the `harbinger` C++ namespace to avoid symbol collisions.
 
 ---
@@ -64,7 +64,8 @@ Producer::send()
 - [Consumer guide](docs/consumers.md) — handlers, delivery leases, acknowledgements, retries, and shutdown.
 - [Broker and queue internals](docs/internals.md) — state transitions, priority ordering, aging, expiry, and recovery.
 - [Ingress features and encoding](ml_engine/README.md) — implemented opt-in C++ capture and matching Python representation.
-- [ML contract](docs/ml-contract.md), [architecture decision](docs/adr/0001-phase2-ml-contract.md), and [validation plan](docs/phase2-validation.md) — Phase 2 design; feature capture is implemented, prediction and feedback persistence remain planned.
+- [Persistent feedback](docs/feedback.md) — embedded static-mode collection, JSONL storage, retention, loss counters, and durability/shutdown limits.
+- [ML contract](docs/ml-contract.md), [architecture decision](docs/adr/0001-phase2-ml-contract.md), and [validation plan](docs/phase2-validation.md) — Phase 2 design; feature capture and feedback are implemented, prediction remains planned.
 
 ---
 

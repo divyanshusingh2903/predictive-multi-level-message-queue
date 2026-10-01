@@ -1,6 +1,6 @@
 # Harbinger documentation
 
-The operational guides below describe the core broker and implemented Phase 2 feature capture. Prediction and persistent feedback remain planned. Start with the [project README](../README.md) for build and run instructions.
+The operational guides below describe the core broker and implemented Phase 2 feature capture/persistent feedback. Prediction remains planned. Start with the [project README](../README.md) for build and run instructions.
 
 | Guide | Read this for |
 |---|---|
@@ -8,8 +8,9 @@ The operational guides below describe the core broker and implemented Phase 2 fe
 | [Consumers](consumers.md) | Handler callbacks, polling, Ack/Nack, delivery leases, retries, and shutdown |
 | [Broker and queue internals](internals.md) | The full message state machine, scheduling, aging, TTL, leases, DLQ, and concurrency |
 | [Ingress features and encoding](../ml_engine/README.md) | Implemented programmatic feature capture, schema validation, and Python sparse encoding |
+| [Persistent feedback](feedback.md) | Embedded configuration, event labels, bounded JSONL, retention/recovery, and durability limits |
 
-## Planned Phase 2 design
+## Phase 2 design and validation
 
 | Document | Read this for |
 |---|---|
@@ -21,4 +22,4 @@ These documents implement the planning deliverables for [issue #1](https://githu
 
 The wire contract is [proto/harbinger.proto](../proto/harbinger.proto); the public C++ interfaces are under [`include/`](../include/). Configuration defaults and development invariants are also recorded in [AGENTS.md](../AGENTS.md).
 
-Harbinger currently distributes work among **competing consumers of one logical queue**. It does not implement RabbitMQ-style exchanges, named subscriptions, or fan-out; ML prediction and scheduler benchmark workloads are planned rather than implemented. An opt-in [Phase 1 cleanup measurement harness](../benchmarks/README.md) covers queue contention and loopback delivery. State lives in memory and is lost on broker restart.
+Harbinger currently distributes work among **competing consumers of one logical queue**. It does not implement RabbitMQ-style exchanges, named subscriptions, or fan-out; ML prediction and scheduler benchmark workloads are planned rather than implemented. An opt-in [Phase 1 cleanup measurement harness](../benchmarks/README.md) covers queue contention and loopback delivery. Delivery state lives in memory and is lost on broker restart; optional feedback files survive independently.
