@@ -62,8 +62,8 @@ message PullResponse {
 }
 
 // Processing time in milliseconds measured by the consumer.
-// Accepted Ack/Nack observations may be persisted by opt-in broker feedback.
-// Zero is a reported observation; rejected requests supply no handler labels.
+// Carried on both Ack and Nack for the future Phase 2 feedback loop.
+// The current broker does not store or train on this measurement.
 message AckRequest {
     string consumer_id        = 1;
     string message_id         = 2;
@@ -131,7 +131,7 @@ service Broker {
     rpc RegisterConsumer (RegisterConsumerRequest)   returns (RegisterConsumerResponse);
     rpc Pull             (PullRequest)               returns (PullResponse);
 
-    // Ack/Nack carry processing time for optional persistent feedback; no learner yet.
+    // Ack/Nack carry actual processing time for future, not yet persisted, ML feedback.
     rpc Ack              (AckRequest)                returns (AckResponse);
     rpc Nack             (NackRequest)               returns (NackResponse);
 

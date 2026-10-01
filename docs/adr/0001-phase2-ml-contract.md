@@ -1,12 +1,12 @@
 # ADR 0001: Phase 2 ML routing and feedback
 
-Status: Phase 2 design with [feature capture/encoding](../../ml_engine/README.md) and [embedded persistent feedback](../feedback.md) implemented. Prediction transport and predictive activation remain planned. Implemented feedback limits and proposed inference/performance budgets still require performance evaluation before rollout.
+Status: Phase 2 design with [feature capture/encoding](../../ml_engine/README.md) implemented. Prediction transport, persistent feedback, and predictive activation remain planned. Resource defaults and performance gates marked proposed must be validated before rollout.
 
 Tracking: [contract issue #1](https://github.com/divyanshusingh2903/predictive-multi-level-message-queue/issues/1), under [Phase 2 tracker #11](https://github.com/divyanshusingh2903/predictive-multi-level-message-queue/issues/11).
 
 ## Context
 
-Harbinger assigns `default_priority` in `HarbingerService::route_message()`. Consumers measure callback runtime with `steady_clock` and include integer `processing_time_ms` in Ack/Nack. The original broker discarded it; issue #3 now optionally persists accepted measurements and actual outcomes. Queue, in-flight, completion, and DLQ state remain process-local.
+Harbinger currently assigns `default_priority` in `HarbingerService::route_message()`. Consumers measure callback runtime with `steady_clock` and include integer `processing_time_ms` in Ack/Nack, but the broker discards that field. Queue, in-flight, completion, and DLQ state are process-local.
 
 The hypothesis is that prioritizing messages with shorter predicted handler runtimes improves completion latency. Predictions can be wrong, observations arrive after routing, failures censor runtimes, and classifier calls add ingress overhead. The implementation must make those effects measurable while retaining existing delivery semantics.
 
@@ -64,7 +64,7 @@ Use the ordered label-status rules in the [ML contract](../ml-contract.md): miss
 
 ### Persist bounded telemetry
 
-The implemented first backend is POSIX rotated append-only JSONL with one asynchronous writer and nonblocking admission. Each outcome includes its bounded ingress context, so it remains interpretable if its ingress event is missing. The [feedback guide](../feedback.md) documents embedded configuration, exclusive directory ownership, file-count/byte/age limits, suspect-tail recovery, and sync/shutdown limitations; the [ML contract](../ml-contract.md) defines records and labels.
+The first proposed backend is rotated append-only JSONL with one asynchronous writer. Each outcome includes its bounded ingress context, so it remains interpretable if its ingress event is missing. The detailed capacity/retention/flush policy is in the [ML contract](../ml-contract.md).
 
 Capture a bounded event at the successful state-transition boundary before moving the message, then attempt nonblocking admission to telemetry. Disk/network work happens outside broker locks. On overflow or disk failure preserve broker settlement, drop telemetry as necessary, and expose counters. There is no transaction between in-memory settlement and log append.
 
@@ -100,4 +100,4 @@ Freeze the final numerical gates and experimental configuration after baseline f
 
 ## Implementation handoff
 
-#2 owns feature extraction/context; #3 feedback capture/storage (both implemented); #4 datasets/baselines; #5 model selection; #6 transport; #7 routing; #8 checkpoint/replay/monitoring; #9 cross-component tests; #10 comparative results and operating documentation. Standalone feature/feedback configuration remains deferred; the implemented boundary is embedded configuration.
+#2 owns feature extraction/context; #3 feedback capture/storage; #4 datasets/baselines; #5 model selection; #6 transport; #7 routing; #8 checkpoint/replay/monitoring; #9 cross-component tests; #10 comparative results and operating documentation. These documents introduce no runtime behavior or dependencies.

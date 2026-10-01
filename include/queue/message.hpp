@@ -39,8 +39,6 @@ struct Message {
     std::unordered_map<std::string, std::string> headers;
     /// Broker-only immutable ingress features and routing decision.
     std::shared_ptr<const ml::RoutingContext> routing_context{};
-    /// Successful delivery ordinal, independent of retries and invisible to clients.
-    uint64_t delivery_count{0};
 
     /// Check TTL expiry relative to arrival_time.
     /// @return True if ttl > 0 and now - arrival_time >= ttl, else false.
