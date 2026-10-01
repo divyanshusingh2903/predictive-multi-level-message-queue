@@ -4,12 +4,16 @@
 #include <stdexcept>
 #include <cctype>
 #include <random>
+#include <limits>
+#include <type_traits>
 
 namespace harbinger {
 
 namespace {
 
 HarbingerConfig validate_config(HarbingerConfig config) {
+    if (config.feedback && !config.ingress_features)
+        throw std::invalid_argument("feedback requires ingress_features");
     if (config.ingress_features) {
         ml::validate_version(config.ingress_features->routing_policy_version);
     }
@@ -60,6 +64,8 @@ HarbingerService::HarbingerService(HarbingerConfig config)
     : config_(validate_config(std::move(config))),
       feature_extractor_(config_.ingress_features
           ? std::make_optional<ml::FeatureExtractor>(config_.ingress_features->schema) : std::nullopt),
+      feedback_writer_(config_.feedback
+          ? std::make_unique<ml::FeedbackWriter>(*config_.feedback, config_.delivery_lease.count()) : nullptr),
       queue_(config_.num_levels, config_.aging),
       dlq_(),
       proxy_([this](Message msg) { route_message(std::move(msg)); }),
@@ -76,6 +82,7 @@ HarbingerService::~HarbingerService() {
     if (sweeper_thread_.joinable()) {
         sweeper_thread_.join();
     }
+    if (feedback_writer_) feedback_writer_->close();
 }
 
 void HarbingerService::run_maintenance() {
@@ -105,7 +112,10 @@ void HarbingerService::run_maintenance() {
 void HarbingerService::dlq_swept(std::vector<Message> expired,
                              std::string details) {
     for (auto& msg : expired) {
+        auto event = capture_event(msg, ml::FeedbackTrigger::TtlSweep);
+        if (event) { event->outcome = ml::FeedbackOutcome::Dlq; event->dlq_reason = DLQReason::TTL_EXPIRED; }
         dlq_.push(std::move(msg), DLQReason::TTL_EXPIRED, details);
+        publish_event(event);
     }
 }
 
@@ -122,6 +132,21 @@ bool HarbingerService::is_registered_consumer(const std::string& id) const {
 std::size_t HarbingerService::in_flight_count() const {
     std::lock_guard lock{in_flight_mutex_};
     return in_flight_.size();
+}
+
+ml::FeedbackStats HarbingerService::feedback_stats() const noexcept {
+    return feedback_writer_ ? feedback_writer_->stats() : ml::FeedbackStats{};
+}
+
+std::optional<ml::FeedbackEvent> HarbingerService::capture_event(
+    const Message& message, ml::FeedbackTrigger trigger) noexcept {
+    if (!feedback_writer_) return std::nullopt;
+    try { return ml::capture_feedback(message, trigger); }
+    catch (...) { feedback_writer_->record_drop(ml::FeedbackDrop::Capture); return std::nullopt; }
+}
+
+void HarbingerService::publish_event(const std::optional<ml::FeedbackEvent>& event) noexcept {
+    if (event) feedback_writer_->publish(*event);
 }
 
 void HarbingerService::route_message(Message msg) {
@@ -141,7 +166,9 @@ void HarbingerService::route_message(Message msg) {
             .ingress_priority = msg.priority,
         });
     }
+    auto event = capture_event(msg, ml::FeedbackTrigger::Submit);
     queue_.enqueue(std::move(msg));
+    publish_event(event);
 }
 
 grpc::Status HarbingerService::RegisterProducer(
@@ -239,13 +266,17 @@ grpc::Status HarbingerService::Pull(grpc::ServerContext* ctx,
         auto& msg = *msg_opt;
 
         if (msg.is_expired()) {
+            auto event = capture_event(msg, ml::FeedbackTrigger::PullExpiry);
+            if (event) { event->outcome = ml::FeedbackOutcome::Dlq; event->dlq_reason = DLQReason::TTL_EXPIRED; }
             dlq_.push(std::move(msg), DLQReason::TTL_EXPIRED,
                       "TTL expired at Pull time");
+            publish_event(event);
             continue;
         }
 
         const std::string            msg_id  = msg.id;
-        const auto token = instance_token_ + "-" + Proxy::generate_id();
+        auto token = instance_token_ + "-" + Proxy::generate_id();
+        auto owner = req->consumer_id();
 
         auto* pulled = resp->mutable_message();
         pulled->set_message_id(msg_id);
@@ -264,14 +295,31 @@ grpc::Status HarbingerService::Pull(grpc::ServerContext* ctx,
                 queue_.requeue_front(std::move(msg));
                 return grpc::Status::CANCELLED;
             }
-            auto lease = deadlines_.emplace(Clock::now() + config_.delivery_lease, msg_id);
-            in_flight_.emplace(msg_id, InFlightEntry{
-                .message     = std::move(msg),
-                .consumer_id = req->consumer_id(),
-                .pull_time   = std::chrono::steady_clock::now(),
-                .attempt_token = token,
-                .deadline = lease,
-            });
+            if (msg.delivery_count == std::numeric_limits<uint64_t>::max()) {
+                resp->Clear(); queue_.requeue_front(std::move(msg));
+                return {grpc::StatusCode::RESOURCE_EXHAUSTED, "Delivery ordinal exhausted"};
+            }
+            auto installed = in_flight_.end();
+            static_assert(std::is_nothrow_move_assignable_v<Message>);
+            static_assert(std::is_nothrow_move_assignable_v<std::string>);
+            try {
+                auto [entry, inserted] = in_flight_.try_emplace(msg_id);
+                if (!inserted) throw std::logic_error("Duplicate in-flight message");
+                installed = entry;
+                auto lease = deadlines_.emplace(Clock::now() + config_.delivery_lease, msg_id);
+                ++msg.delivery_count;
+                entry->second.message = std::move(msg);
+                entry->second.consumer_id = std::move(owner);
+                entry->second.pull_time = Clock::now();
+                entry->second.attempt_token = std::move(token);
+                entry->second.deadline = lease;
+                entry->second.attempt_id = entry->second.message.delivery_count;
+            } catch (...) {
+                // Token allocation must occur before installation; remaining assignments are moves.
+                if (installed != in_flight_.end()) in_flight_.erase(installed);
+                resp->Clear(); queue_.requeue_front(std::move(msg));
+                return {grpc::StatusCode::INTERNAL, "Delivery installation failed"};
+            }
         }
 
         resp->set_timed_out(false);
@@ -286,14 +334,14 @@ grpc::Status HarbingerService::Ack(grpc::ServerContext*,
                                 const harbinger_rpc::AckRequest* req,
                                 harbinger_rpc::AckResponse*) {
     return settle(req->consumer_id(), req->message_id(), req->attempt_token(),
-                  Settlement::Ack, "Ack");
+                  Settlement::Ack, "Ack", req->processing_time_ms());
 }
 
 grpc::Status HarbingerService::Nack(grpc::ServerContext*,
                                  const harbinger_rpc::NackRequest* req,
                                  harbinger_rpc::NackResponse*) {
     return settle(req->consumer_id(), req->message_id(), req->attempt_token(),
-                  Settlement::Nack, req->reason());
+                  Settlement::Nack, req->reason(), req->processing_time_ms());
 }
 
 void HarbingerService::prune_completions_locked(std::size_t budget) {
@@ -306,21 +354,36 @@ void HarbingerService::prune_completions_locked(std::size_t budget) {
     }
 }
 
-void HarbingerService::finish_locked(const std::string& id, Settlement kind,
-                                    const std::string& reason) {
+std::optional<ml::FeedbackEvent> HarbingerService::finish_locked(
+    const std::string& id, Settlement kind, const std::string& reason,
+    std::optional<int64_t> measurement) {
     auto it = in_flight_.find(id);
     auto& entry = it->second;
     // Lock order is settlement -> queue/DLQ; no queue operation takes settlement.
     auto& msg = entry.message;
-    if (msg.is_expired()) {
+    const bool ttl_expired = msg.is_expired();
+    auto event = capture_event(msg, kind == Settlement::Expired
+        ? ml::FeedbackTrigger::LeaseExpiry : ml::FeedbackTrigger::Settlement);
+    if (event) {
+        event->attempt_id = entry.attempt_id;
+        event->processing_time_ms = measurement;
+        if (kind != Settlement::Expired) event->operation = kind == Settlement::Ack
+            ? ml::FeedbackOperation::Ack : ml::FeedbackOperation::Nack;
+        event->outcome = ml::FeedbackOutcome::Ack;
+    }
+    if (ttl_expired) {
+        if (event) { event->outcome = ml::FeedbackOutcome::Dlq; event->dlq_reason = DLQReason::TTL_EXPIRED; }
         dlq_.push(std::move(msg), DLQReason::TTL_EXPIRED, "TTL expired; " + reason);
     } else if (kind != Settlement::Ack) {
         ++msg.retry_count;
+        if (event) event->retry_count = msg.retry_count;
         if (msg.retry_count >= msg.max_retries) {
+            if (event) { event->outcome = ml::FeedbackOutcome::Dlq; event->dlq_reason = DLQReason::MAX_RETRIES_EXCEEDED; }
             const auto details = "Exceeded max_retries=" + std::to_string(msg.max_retries) +
                                  "; last reason: " + reason;
             dlq_.push(std::move(msg), DLQReason::MAX_RETRIES_EXCEEDED, details);
         } else {
+            if (event) event->outcome = ml::FeedbackOutcome::Retry;
             msg.priority = msg.original_priority;
             queue_.enqueue(std::move(msg));
         }
@@ -330,18 +393,19 @@ void HarbingerService::finish_locked(const std::string& id, Settlement kind,
     deadlines_.erase(entry.deadline);
     in_flight_.erase(it);
     prune_completions_locked(1);
+    return event;
 }
 
 grpc::Status HarbingerService::settle(const std::string& owner, const std::string& id,
-                                    const std::string& token, Settlement kind,
-                                    const std::string& reason) {
+                                     const std::string& token, Settlement kind,
+                                     const std::string& reason, int64_t processing_time_ms) {
     if (!is_registered_consumer(owner))
         return {grpc::StatusCode::PERMISSION_DENIED, "Unknown consumer"};
     if (token.empty() || token.size() > 128 ||
         !std::all_of(token.begin(), token.end(), [](unsigned char c) {
             return std::isalnum(c) || c == '-';
         })) return {grpc::StatusCode::INVALID_ARGUMENT, "Invalid attempt token"};
-    std::lock_guard lock{in_flight_mutex_};
+    std::unique_lock lock{in_flight_mutex_};
     auto prior = completed_.find(token);
     if (prior != completed_.end()) {
         const auto& record = *prior->second;
@@ -363,22 +427,37 @@ grpc::Status HarbingerService::settle(const std::string& owner, const std::strin
     if (live->second.attempt_token != token)
         return {grpc::StatusCode::FAILED_PRECONDITION, "Stale attempt token"};
     if (Clock::now() >= live->second.deadline->first) {
-        finish_locked(id, Settlement::Expired, "Delivery lease expired");
+        auto event = finish_locked(id, Settlement::Expired, "Delivery lease expired");
+        lock.unlock(); publish_event(event);
         return {grpc::StatusCode::FAILED_PRECONDITION, "Delivery lease expired"};
     }
-    finish_locked(id, kind, reason);
+    auto event = finish_locked(id, kind, reason, processing_time_ms);
+    lock.unlock(); publish_event(event);
     return grpc::Status::OK;
 }
 
 void HarbingerService::maintain_deliveries() {
-    std::lock_guard lock{in_flight_mutex_};
-    std::size_t budget = config_.maintenance_batch_size;
-    const auto now = Clock::now();
-    while (budget-- && !deadlines_.empty() && deadlines_.begin()->first <= now) {
-        const auto id = deadlines_.begin()->second;
-        finish_locked(id, Settlement::Expired, "Delivery lease expired");
+    std::vector<ml::FeedbackEvent> events;
+    bool collect = feedback_writer_ != nullptr;
+    if (collect) {
+        try { events.reserve(config_.maintenance_batch_size); }
+        catch (...) { collect = false; }
     }
-    prune_completions_locked(config_.maintenance_batch_size);
+    {
+        std::lock_guard lock{in_flight_mutex_};
+        std::size_t budget = config_.maintenance_batch_size;
+        const auto now = Clock::now();
+        while (budget-- && !deadlines_.empty() && deadlines_.begin()->first <= now) {
+            const auto id = deadlines_.begin()->second;
+            auto event = finish_locked(id, Settlement::Expired, "Delivery lease expired");
+            if (event) {
+                if (collect) events.push_back(std::move(*event));
+                else feedback_writer_->record_drop(ml::FeedbackDrop::Capture);
+            }
+        }
+        prune_completions_locked(config_.maintenance_batch_size);
+    }
+    for (const auto& event : events) feedback_writer_->publish(event);
 }
 
 namespace {

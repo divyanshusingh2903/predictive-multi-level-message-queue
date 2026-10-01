@@ -6,9 +6,12 @@ add_executable(harbinger_unit_tests
     unit/test_dead_letter_queue.cpp
     unit/test_proxy.cpp
     unit/test_ml_features.cpp
+    unit/test_ml_feedback.cpp
+    unit/test_feedback_writer.cpp
 )
 target_compile_definitions(harbinger_unit_tests PRIVATE
-    ML_FEATURE_FIXTURES="${CMAKE_CURRENT_SOURCE_DIR}/fixtures/ml/features_v1.json")
+    ML_FEATURE_FIXTURES="${CMAKE_CURRENT_SOURCE_DIR}/fixtures/ml/features_v1.json"
+    ML_FEEDBACK_FIXTURE="${CMAKE_CURRENT_SOURCE_DIR}/fixtures/ml/feedback_v1.json")
 target_link_libraries(harbinger_unit_tests
     PRIVATE harbinger_server_lib GTest::gtest_main
 )

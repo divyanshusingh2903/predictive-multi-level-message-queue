@@ -1,8 +1,8 @@
 # Phase 2 ML contract
 
-Status: the [issue #2 feature boundary](../ml_engine/README.md) is implemented: opt-in static ingress capture, internal immutable context, and matching Python validation/encoding. Prediction transport, feedback persistence, and activation remain planned under [issue #1's contract](https://github.com/divyanshusingh2903/predictive-multi-level-message-queue/issues/1). Persistent/transport field names below remain language-neutral design names rather than existing protobuf fields. See the [ADR](adr/0001-phase2-ml-contract.md) for rationale and the [validation plan](phase2-validation.md) for activation criteria.
+Status: the [issue #2 feature boundary](../ml_engine/README.md) and [issue #3 persistent feedback](feedback.md) are implemented for embedded static-mode brokers. Prediction transport and activation remain planned under [issue #1's contract](https://github.com/divyanshusingh2903/predictive-multi-level-message-queue/issues/1). Persistent fields below describe version-1 JSONL; transport fields remain design names rather than existing protobuf fields. See the [ADR](adr/0001-phase2-ml-contract.md) and [validation plan](phase2-validation.md).
 
-Embedded brokers enable capture through optional `HarbingerConfig::ingress_features` (`ml::IngressFeatureConfig`), with a schema and caller-declared static routing-policy version. Absent configuration allocates no ML context. Capture is distinct from future feedback persistence: it does not write events or enable inference, and the standalone server currently has no feature-schema flag. Schema versions identify immutable field specifications; static policy identities must not be reused across incompatible configurations. Both priorities remain `default_priority` and prediction/model/fallback/timing fields remain absent, including when the complete snapshot exceeds its limit.
+Embedded brokers enable capture through optional `HarbingerConfig::ingress_features` (`ml::IngressFeatureConfig`), with a schema and caller-declared static routing-policy version. Absent configuration allocates no ML context. Capture alone writes no events; optional `HarbingerConfig::feedback` independently enables persistence and requires explicit feature configuration. Neither enables inference. The standalone server has no feature-schema/feedback flags. Schema versions identify immutable field specifications; static policy identities must not be reused across incompatible configurations. Both priorities remain `default_priority` and prediction/model/fallback/timing fields remain absent, including when the complete snapshot exceeds its limit.
 
 ## Versions and identifiers
 
@@ -24,9 +24,9 @@ Sequence allocation identifies an event, not a wall-clock ordering guarantee acr
 
 Maintain a per-message delivery counter starting at zero, separately from `retry_count`. Increment it as part of successful in-flight ownership installation under the settlement mutex, after the final Pull cancellation check, and capture that ordinal in the installed delivery. A cancelled Pull restored to the queue, token generation, response preparation, aging, settlement replay, or reclamation does not increment it. The next successful delivery after Nack/lease requeue does. In-flight outcome events use their installed ordinal; queued expiry uses null even after earlier deliveries. Thus a cancelled Pull followed by Nack, lease expiry, and Ack on three successful deliveries produces attempts 1, 2, and 3, with no event for the cancelled Pull or replayed Ack.
 
-## Proposed configuration
+## Implemented feedback and proposed inference configuration
 
-These settings are design starting values. They are not currently accepted by `HarbingerConfig` or server flags. Implementation issues must provide validation and configuration wiring.
+Inference settings remain design starting values, not runtime options. Feedback settings are implemented through optional `HarbingerConfig::feedback` (`ml::FeedbackConfig`); see [exact C++ field names, validation, and platform support](feedback.md#capacity-and-timing-settings). No standalone flags are provided. Implemented resource limits are not measured performance budgets.
 
 | Setting | Proposed default/rule |
 |---|---|
@@ -46,6 +46,7 @@ These settings are design starting values. They are not currently accepted by `H
 | `feedback_retention_bytes` / `feedback_retention_age` | `1 GiB` / `7 days`, evict when either cap requires it |
 | `feedback_sync_interval` | `1 second` healthy-operation target |
 | `feedback_shutdown_drain` | `1 second` target; see storage/shutdown limitations below |
+| `max_segments` | `256`, including active/suspect files; bounds file count alongside retention bytes |
 
 Existing level/default-priority validation remains authoritative: levels 1–255, priority in `[0, num_levels)`. Validate feature/policy specifications at startup. Enabled inference requires explicit compatible versions and exactly `num_levels - 1` finite positive increasing boundaries. Invalid configuration fails construction; invalid runtime prediction falls back. Do not silently resize three-level boundaries for another level count.
 
@@ -254,7 +255,7 @@ For the same ingress context, an accepted Ack after TTL changes `outcome` to `dl
 
 ## Transition capture and storage lifecycle
 
-| Current function/path | Future capture point |
+| Function/path | Implemented capture point |
 |---|---|
 | `route_message()` | Capture ingress decision after TTL resolution and successful enqueue, retaining local context across the move |
 | Ack/Nack → `settle()` → `finish_locked()` | After ownership/token/replay/lease checks; derive actual outcome and snapshot context before moving/erasing the message |
@@ -265,9 +266,9 @@ For the same ingress context, an accepted Ack after TTL changes `outcome` to `dl
 
 Capturing an event must not reclassify, change settlement status, or add a throwing telemetry failure to an already accepted broker mutation. Use bounded, nonblocking admission; never take broker locks from the telemetry writer. Preserve settlement → queue/DLQ ordering. An outcome may reach storage before its ingress record under concurrency; full context makes this safe.
 
-The single writer appends complete JSONL records and performs periodic flush/sync. On a partial write, stop using the damaged tail, report the failure, and recover into a new segment with bounded retry/backoff. Replay rejects/quarantines malformed records and an incomplete final line; it never trains twice while trying to parse a tail. Retention acts on sealed segments only, enforces both age and byte caps, and reports deletion of unconsumed records. If the active segment prevents satisfying a cap, stop/drop new telemetry until rotation/recovery permits bounded storage. Wall-clock retention must tolerate clock changes; wall time does not affect delivery.
+The single writer appends complete JSONL records and performs periodic file/directory sync. On write/sync failure, quarantine the segment and recover with bounded backoff; never retry an ambiguously written record into another segment. Restart preserves stale active files as suspect, including complete prefixes and incomplete tails. Future replay readers must reject malformed records/incomplete final lines and deduplicate event identity; no learner/replay reader exists yet. Retention acts on sealed/suspect segments, enforces age, total segment bytes, and file-count caps, and conservatively reports potentially unconsumed loss. If the active segment prevents satisfying a cap, stop/drop new telemetry until rotation/recovery permits bounded storage. Wall-clock retention does not affect delivery. See [storage lifecycle](feedback.md#segment-ownership-retention-and-restart).
 
-Full admission buffer drops newest events with a reason counter. Disk failures do not block settlement and cannot cause unlimited buffer growth. Observe accepted/persisted/dropped events by bounded reason, buffer bytes/depth, writer failures, sync age, retention loss, learner backlog, and prediction fallbacks. Never put message IDs or raw headers into metric labels.
+Full admission buffer and admission contention drop newest events with a reason counter. Disk failures do not block settlement or permit unlimited buffer growth. Implemented stats distinguish admitted, written, synced, dropped, uncertain, pending, writer failures, sync age, and retention loss. Learner backlog and prediction-fallback metrics follow with those components. Never put message IDs or raw headers into metric labels.
 
 After broker handlers/maintenance stop emitting, stop telemetry admission, attempt the proposed one-second drain, discard remaining queued records on budget exhaustion, and join resources safely. The one-second drain is a target for healthy storage, not a way to interrupt blocked syscalls. Do not detach a thread that owns broker references. Any hard deadline requirement needs storage isolation and a revised ADR; document measured shutdown behavior in #3/#9.
 
