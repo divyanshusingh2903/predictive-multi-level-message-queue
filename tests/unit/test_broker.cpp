@@ -31,7 +31,26 @@ struct QueueTestAccess {
 };
 struct BrokerTestAccess {
     static void expire_selected(HarbingerService& service) { QueueTestAccess::expire_selected(service.queue_); }
-    static void close_feedback(HarbingerService& service) { service.feedback_writer_->close(); }
+    static void stop_maintenance(HarbingerService& service) {
+        {
+            std::lock_guard lock{service.sweeper_mutex_};
+            service.stop_sweeper_.store(true, std::memory_order_release);
+        }
+        service.sweeper_cv_.notify_all();
+        if (service.sweeper_thread_.joinable()) service.sweeper_thread_.join();
+    }
+    static void close_feedback(HarbingerService& service) {
+        stop_maintenance(service);
+        service.feedback_writer_->close();
+    }
+    static ml::FeedbackWriter& writer(HarbingerService& service) { return *service.feedback_writer_; }
+    static bool prime_ingress(HarbingerService& service) {
+        auto event = feedback_test::event();
+        event.trigger = ml::FeedbackTrigger::Submit;
+        event.attempt_id.reset(); event.operation.reset(); event.outcome.reset();
+        event.processing_time_ms.reset();
+        return feedback_test::admit(writer(service), event);
+    }
     static void exhaust_delivery_count(HarbingerService& service) {
         auto message = service.queue_.try_dequeue();
         ASSERT_TRUE(message);
@@ -1332,6 +1351,13 @@ TEST(FeedbackBroker, EveryExpiryPathIncludingNeverPulledAndPreviouslyRetriedMess
         auto config = feedback_config(directory);
         if (path == 5) { config.ttl_sweep_interval = 5ms; config.default_ttl = 10ms; }
         LocalBroker b{config};
+        auto storage = std::make_shared<feedback_test::Storage>();
+        feedback_test::ReleaseStorage release{storage};
+        storage->gate();
+        BrokerTestAccess::replace_writer(b.service, storage);
+        ASSERT_TRUE(BrokerTestAccess::prime_ingress(b.service));
+        ASSERT_TRUE(storage->await_entry());
+        const auto before = b.service.feedback_stats();
         const auto id = b.submit();
         if (path == 0 || path == 1) {
             const auto delivery = b.pull().message();
@@ -1348,6 +1374,10 @@ TEST(FeedbackBroker, EveryExpiryPathIncludingNeverPulledAndPreviouslyRetriedMess
             b.submit("expires", 1); std::this_thread::sleep_for(5ms);
             const auto live = b.pull().message(); EXPECT_EQ(live.message_id(), id); EXPECT_TRUE(b.ack(live).ok());
         } else { ASSERT_TRUE(feedback_test::wait_for([&] { return b.service.dlq_size() == 1; })); }
+        // DLQ visibility precedes publication; join the sweeper while the writer is still parked.
+        BrokerTestAccess::stop_maintenance(b.service);
+        EXPECT_EQ(b.service.feedback_stats().dropped, before.dropped);
+        storage->release();
         BrokerTestAccess::close_feedback(b.service);
         auto rows = outcomes(directory);
         std::erase_if(rows, [](const auto& row) { return row.fields().at("outcome").string_value() != "dlq"; });
@@ -1481,14 +1511,29 @@ TEST(FeedbackBroker, LeaseMaintenancePublishesOnlyItsBoundedCommittedBatch) {
     feedback_test::Directory directory;
     auto config = feedback_config(directory); config.maintenance_batch_size = 1;
     LocalBroker b{config};
+    auto storage = std::make_shared<feedback_test::Storage>();
+    feedback_test::ReleaseStorage release{storage};
+    storage->gate();
+    BrokerTestAccess::replace_writer(b.service, storage);
+    ASSERT_TRUE(BrokerTestAccess::prime_ingress(b.service));
+    ASSERT_TRUE(storage->await_entry());
+    // Park the worker in storage, outside the admission mutex, so every broker event is admitted.
+    const auto before = b.service.feedback_stats();
     for (int i = 0; i < 3; ++i) {
         b.submit(); const auto delivery = b.pull().message();
         BrokerTestAccess::expire(b.service, delivery.message_id());
     }
     BrokerTestAccess::maintain(b.service);
     EXPECT_EQ(b.service.in_flight_count(), 2u); EXPECT_EQ(b.service.queue_size(), 1u);
-    EXPECT_EQ(b.service.feedback_stats().captured, 4u);
+    EXPECT_EQ(b.service.feedback_stats().captured - before.captured, 4u);
+    EXPECT_EQ(b.service.feedback_stats().admitted - before.admitted, 4u);
     BrokerTestAccess::maintain(b.service); BrokerTestAccess::maintain(b.service);
+    EXPECT_EQ(b.service.in_flight_count(), 0u); EXPECT_EQ(b.service.queue_size(), 3u);
+    const auto after = b.service.feedback_stats();
+    EXPECT_EQ(after.captured - before.captured, 6u);
+    EXPECT_EQ(after.admitted - before.admitted, 6u);
+    EXPECT_EQ(after.dropped, before.dropped);
+    storage->release();
     BrokerTestAccess::close_feedback(b.service);
     const auto rows = outcomes(directory); ASSERT_EQ(rows.size(), 3u);
     for (const auto& row : rows) {

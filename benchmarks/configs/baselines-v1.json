@@ -1,0 +1,37 @@
+{
+  "version": "baseline-experiment-v1",
+  "budgets": "benchmarks/configs/budgets-v1.json",
+  "seeds": [11, 22, 33, 44, 55],
+  "repeats": 2,
+  "bootstrap_samples": 2000,
+  "bootstrap_seed": 42,
+  "telemetry_off_control": true,
+  "capacity_calibration": {
+    "source": "calibration-v1.json, five seeds, disabled broker, 200 messages each",
+    "estimator": "median offered-count/full-drain-time; finite-backlog estimate, not steady-state guarantee",
+    "single_worker_per_s": {"uniform": 86, "bimodal": 175, "heavy_tail": 282},
+    "four_worker_bimodal_per_s": 700,
+    "loads": [0.5, 0.9, 1.1],
+    "rounding": "nearest integer absolute rate, half upward, shared across all paired policies"
+  },
+  "broker": {"drain_ms": 1000},
+  "cases": [
+    {"name": "uniform-low", "distribution": "uniform", "count": 200, "warmup": 20, "rate_per_s": 43, "workers": 1},
+    {"name": "uniform-near", "distribution": "uniform", "count": 200, "warmup": 20, "rate_per_s": 77, "workers": 1},
+    {"name": "uniform-overload", "distribution": "uniform", "count": 200, "warmup": 20, "rate_per_s": 95, "workers": 1},
+    {"name": "bimodal-low", "distribution": "bimodal", "count": 200, "warmup": 20, "rate_per_s": 88, "workers": 1},
+    {"name": "bimodal-near", "distribution": "bimodal", "count": 200, "warmup": 20, "rate_per_s": 158, "workers": 1},
+    {"name": "bimodal-overload", "distribution": "bimodal", "count": 200, "warmup": 20, "rate_per_s": 193, "workers": 1},
+    {"name": "heavy-low", "distribution": "heavy_tail", "count": 200, "warmup": 20, "rate_per_s": 141, "workers": 1},
+    {"name": "heavy-near", "distribution": "heavy_tail", "count": 200, "warmup": 20, "rate_per_s": 254, "workers": 1},
+    {"name": "heavy-overload", "distribution": "heavy_tail", "count": 200, "warmup": 20, "rate_per_s": 310, "workers": 1},
+    {"name": "bimodal-control", "distribution": "bimodal", "count": 200, "warmup": 20, "rate_per_s": 158, "workers": 1, "informative": false},
+    {"name": "heavy-shift", "distribution": "heavy_tail", "count": 200, "warmup": 20, "rate_per_s": 254, "workers": 1, "shift_index": 100},
+    {"name": "uniform-cold", "distribution": "uniform", "count": 200, "warmup": 0, "rate_per_s": 77, "workers": 1},
+    {"name": "bimodal-four-workers", "distribution": "bimodal", "count": 200, "warmup": 20, "rate_per_s": 350, "workers": 4},
+    {"name": "bimodal-aging-off", "distribution": "bimodal", "count": 200, "warmup": 20, "rate_per_s": 158, "workers": 1,
+     "starvation_ms": 300, "broker": {"aging_threshold_ms": 0, "aging_interval_ms": 0}},
+    {"name": "ttl-retry-lease-stress", "distribution": "bimodal", "count": 200, "warmup": 0, "rate_per_s": 500, "workers": 2,
+     "failure_probability": 0.3, "abandon_probability": 0.2, "broker": {"lease_ms": 40, "ttl_ms": 70, "max_retries": 2}}
+  ]
+}

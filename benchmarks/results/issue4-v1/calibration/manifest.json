@@ -1,0 +1,180 @@
+{
+  "artifact_version": 1,
+  "build_cache": {
+    "CMAKE_BUILD_TYPE:STRING": "Release",
+    "CMAKE_CXX_COMPILER:FILEPATH": "/usr/bin/c++",
+    "CMAKE_CXX_FLAGS-ADVANCED:INTERNAL": "1",
+    "CMAKE_CXX_FLAGS:STRING": "",
+    "CMAKE_CXX_FLAGS_DEBUG-ADVANCED:INTERNAL": "1",
+    "CMAKE_CXX_FLAGS_DEBUG:STRING": "-g",
+    "CMAKE_CXX_FLAGS_MINSIZEREL-ADVANCED:INTERNAL": "1",
+    "CMAKE_CXX_FLAGS_MINSIZEREL:STRING": "-Os -DNDEBUG",
+    "CMAKE_CXX_FLAGS_RELEASE-ADVANCED:INTERNAL": "1",
+    "CMAKE_CXX_FLAGS_RELEASE:STRING": "-O3 -DNDEBUG",
+    "CMAKE_CXX_FLAGS_RELWITHDEBINFO-ADVANCED:INTERNAL": "1",
+    "CMAKE_CXX_FLAGS_RELWITHDEBINFO:STRING": "-O2 -g -DNDEBUG",
+    "HARBINGER_BUILD_BENCHMARKS:BOOL": "ON",
+    "HARBINGER_REQUIRE_PYTHON_TESTS:BOOL": "ON",
+    "HARBINGER_SANITIZER:STRING": "",
+    "HARBINGER_WARNINGS_AS_ERRORS:BOOL": "ON",
+    "Protobuf_DIR:PATH": "/home/divyanshu-singh/anaconda3/lib/cmake/protobuf",
+    "gRPC_DIR:PATH": "/home/divyanshu-singh/anaconda3/lib/cmake/grpc"
+  },
+  "config": {
+    "bootstrap_samples": 2000,
+    "bootstrap_seed": 42,
+    "broker": {
+      "drain_ms": 2500
+    },
+    "cases": [
+      {
+        "cap_cost_us": 20000,
+        "count": 200,
+        "distribution": "uniform",
+        "min_cost_us": 1000,
+        "name": "capacity-uniform",
+        "rate_per_s": 1000,
+        "workers": 1
+      },
+      {
+        "cap_cost_us": 20000,
+        "count": 200,
+        "distribution": "bimodal",
+        "min_cost_us": 1000,
+        "name": "capacity-bimodal",
+        "rate_per_s": 1000,
+        "workers": 1
+      },
+      {
+        "cap_cost_us": 20000,
+        "count": 200,
+        "distribution": "heavy_tail",
+        "min_cost_us": 1000,
+        "name": "capacity-heavy-tail",
+        "rate_per_s": 1000,
+        "workers": 1
+      },
+      {
+        "broker": {
+          "drain_ms": 1000
+        },
+        "cap_cost_us": 20000,
+        "count": 200,
+        "distribution": "bimodal",
+        "min_cost_us": 1000,
+        "name": "capacity-bimodal-four-workers",
+        "rate_per_s": 1000,
+        "workers": 4
+      }
+    ],
+    "policies": [
+      "disabled"
+    ],
+    "repeats": 1,
+    "seeds": [
+      11,
+      22,
+      33,
+      44,
+      55
+    ],
+    "telemetry_off_control": false,
+    "version": "baseline-experiment-v1"
+  },
+  "config_sha256": "d075c43b8c189cc7901cb03804a52b4bde9dc6cec48fdf4f5002b171e45bf05b",
+  "cpu_affinity": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    13,
+    14,
+    15
+  ],
+  "cpu_count": 16,
+  "cpu_model": "11th Gen Intel(R) Core(TM) i7-11800H @ 2.30GHz",
+  "dirty": true,
+  "fixed_broker_defaults": {
+    "completion_cache_max_entries": 10000,
+    "completion_retention_ms": 60000,
+    "feedback": {
+      "buffer_bytes": 33554432,
+      "buffer_records": 4096,
+      "max_event_bytes": 16384,
+      "max_segments": 256,
+      "retention_age_days": 7,
+      "retention_bytes": 1073741824,
+      "segment_bytes": 67108864,
+      "shutdown_drain_ms": 1000,
+      "sync_interval_ms": 1000
+    },
+    "maintenance_batch_size": 256,
+    "max_pull_wait_ms": 5000
+  },
+  "machine": "x86_64",
+  "platform": "Linux-7.0.0-38-generic-x86_64-with-glibc2.43",
+  "processor": "",
+  "python": "3.13.9 | packaged by Anaconda, Inc. | (main, Oct 21 2025, 19:16:10) [GCC 11.2.0]",
+  "revision": "16c40e26fa2b720c80c6f528ae770e759a78bddb",
+  "runner_sha256": "697a78c62a252e8da4b96c47ebb480e3aef5daa7c396a0be84d0e2e3d0912d1f",
+  "runtime_realization": "sleep_us",
+  "schema": {
+    "headers": [
+      {
+        "name": "job",
+        "type": "categorical",
+        "vocabulary": [
+          "class0",
+          "class1",
+          "class2"
+        ]
+      }
+    ],
+    "version": "synthetic-job-v1"
+  },
+  "source_sha256": {
+    "CMakeLists.txt": "fc22e951c4f91db65a61c62ed40250cfb085825d5e2cbf292044830463b8bc44",
+    "benchmarks/CMakeLists.txt": "4914777330397045c18c396397f9a2bd1b4a40711e5c5cd771db4c4b02da0ab3",
+    "benchmarks/__init__.py": "83b5d33d894b7f87225f154aeb2a57b1be00ee6c78569b3f15d1fc69d5760da9",
+    "benchmarks/evaluate.py": "22e80bf2eb4a3bc64976258e89e94c84c00dbbcd63748fb70ed37b2a71fd0445",
+    "benchmarks/export_feedback.py": "a34bfd822eff9dac823a89826063b6fdb800a6eebd9378f03efec66c25e3f512",
+    "benchmarks/hooks.cpp": "9ee9baa6c27d3257d582000a30d15f37e0e3d0627377a14a9c2f0b7a10b8877c",
+    "benchmarks/phase1_cleanup.cpp": "f3a2ffa984c8417045e5126e9a7be76e5571cc1d2f14669ea9860a85bbb9241b",
+    "benchmarks/synthetic_replay.cpp": "8ad08a877d13da404fb3705e2864a1042dd99781b7bc88ab656d46734c531844",
+    "benchmarks/workloads.py": "9d118b38c02d6b0e6f10021c020808f4fb949069256c6208d5aecda16657e0bc",
+    "include/benchmark/hooks.hpp": "728258d302655ec16ab312c3287c638b7f54b8941359523553f1ca1d60005025",
+    "include/consumer/consumer.hpp": "ee1a58a0222cb048db37f15898b97ac98320d28bb231892b2986f4e5fac3d4d2",
+    "include/harbinger_service.hpp": "62080566847ea1bfe47d82c10b25f169e3b1ddf483fab69be4bf5f95b835212b",
+    "include/ml/features.hpp": "97b63e4b6fe6e3192e0caea5ba684d39818d6140d72d3adf763d3a6badc509d4",
+    "include/ml/feedback_event.hpp": "ab23b29777fc3a369c56fdb242c0ec90568f225a043253729304cf459d151438",
+    "include/ml/feedback_writer.hpp": "71f39b9992b845f64655f8221695ef273ea945b871226642f4e28fe9551e5820",
+    "include/ml/routing_context.hpp": "77de5a0930df2f82dc3779363318ce1c21a95c7c95a824d28da23d9db7399f0b",
+    "include/producer/producer.hpp": "8ac8acdbecc4730f23f288816bbf2a79392452e8363f315895866491f4f26d94",
+    "include/proxy/proxy.hpp": "2ebd3b783595e7e37b19aa1ca46c1bebf2b13b820c60323847f51be3ebdca3ea",
+    "include/queue/dead_letter_queue.hpp": "a0f532d9cf021c1af7900aef6ce7fcee83e5cc70fe87da67e262f45237778647",
+    "include/queue/message.hpp": "1246b4fd0acb3ab1967c389e22c7448c431fb8599c271ef0adf65b0dd6bf58bb",
+    "include/queue/multi_level_queue.hpp": "2b74e16d52d1aa23508c68371bf923dafed77819f5b2639259538a6de0b1330c",
+    "ml_engine/__init__.py": "9d80ff2631a37903c28dce2074e6dd59175eb7079ddb8647c20ed72530aceac0",
+    "ml_engine/features.py": "72a53eb51a782441ec1459f7cafd0a885b13715ec4e4859e07d6985b8a24eafe",
+    "ml_engine/feedback.py": "9cd804793aeb8108cf6962af6d19183dce654fcd36d60ca92174b62423439e1f",
+    "proto/harbinger.proto": "d975d3ece14610935d52d96108294b3538750f91c08802f57e359d5fe025fe5b",
+    "src/consumer/consumer.cpp": "59a9aed659947f5da925538d6d3a70689ee18ab394e198f0b87fa930254acba2",
+    "src/harbinger_service.cpp": "1a57bbbc6e023af373b3ba0f84b95003610c664501d8cd9c48f41b88b98bb40a",
+    "src/ml/features.cpp": "18748cd3eb7ca6479aa7f88472e30a137c83603b1dff9da5bb30bdd82177aaa6",
+    "src/ml/feedback_event.cpp": "56da170944a75f655947a06b2a4087d273375632f5c9234cd8a4ee273b96bd04",
+    "src/ml/feedback_writer.cpp": "ab6aec83986a720edf494b1d44cdb59c167235416f74cdae0d94c3ff7823d12d",
+    "src/producer/producer.cpp": "72cc66e0012c9740a11febd8250c5c62e36d2f0a91c5c14f60850c0d21a78bd6",
+    "src/proxy/proxy.cpp": "15d2e921d5a42008a0fd3e713576072c579180a6f22dfe929d18b172326c36af",
+    "src/queue/dead_letter_queue.cpp": "6b224190c5df8d25332cc32a5c900086d8a740f3645de35ba7c862a4417154da",
+    "src/queue/multi_level_queue.cpp": "8facacb1540a40fa7ed72a44248c22e55f53e42bc05e93c75348614ead4b1d67"
+  }
+}

@@ -3,9 +3,12 @@
 
 namespace harbinger {
 
-MultiLevelQueue::MultiLevelQueue(uint8_t num_levels, std::optional<AgingConfig> aging)
-    : num_levels_(num_levels), queues_(num_levels), aging_cfg_(aging), next_aging_(num_levels) {
+MultiLevelQueue::MultiLevelQueue(uint8_t num_levels, std::optional<AgingConfig> aging,
+                               QueueSelection selection)
+    : num_levels_(num_levels), selection_(selection), queues_(num_levels), aging_cfg_(aging), next_aging_(num_levels) {
     if (!num_levels) throw std::invalid_argument("num_levels must be positive");
+    if (selection != QueueSelection::StrictPriority && selection != QueueSelection::RoundRobin)
+        throw std::invalid_argument("invalid queue selection");
     if (aging_cfg_) {
         if (aging_cfg_->threshold.count() <= 0 || aging_cfg_->interval.count() <= 0)
             throw std::invalid_argument("aging durations must be positive");
@@ -65,8 +68,15 @@ Message MultiLevelQueue::remove_locked(uint8_t level, Level::iterator it) {
 }
 
 std::optional<Message> MultiLevelQueue::dequeue_locked() {
-    for (uint8_t level = 0; level < num_levels_; ++level)
-        if (!queues_[level].empty()) return remove_locked(level, queues_[level].begin());
+    for (std::size_t offset = 0; offset < num_levels_; ++offset) {
+        const auto level = selection_ == QueueSelection::RoundRobin
+            ? (cursor_ + offset) % num_levels_ : offset;
+        if (!queues_[level].empty()) {
+            auto message = remove_locked(static_cast<uint8_t>(level), queues_[level].begin());
+            if (selection_ == QueueSelection::RoundRobin) cursor_ = (level + 1) % num_levels_;
+            return message;
+        }
+    }
     return std::nullopt;
 }
 

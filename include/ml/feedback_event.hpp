@@ -5,6 +5,9 @@
 
 #include <optional>
 #include <string_view>
+#ifdef HARBINGER_BENCHMARK_SUPPORT
+#include "benchmark/hooks.hpp"
+#endif
 
 namespace harbinger::ml {
 
@@ -27,6 +30,9 @@ struct FeedbackEvent {
     std::optional<int64_t> processing_time_ms;
     std::chrono::system_clock::time_point collected_at;
     int64_t elapsed_since_arrival_ms{0};
+#ifdef HARBINGER_BENCHMARK_SUPPORT
+    std::optional<benchmark::Observation> benchmark_observation;
+#endif
 };
 
 /// Prepare a privacy-safe snapshot; allocation failures are handled by the caller.

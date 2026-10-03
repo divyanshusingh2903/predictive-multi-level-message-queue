@@ -1,5 +1,6 @@
 # Build output
 build/
+build-*/
 out/
 cmake-build-*/
 
@@ -63,7 +64,9 @@ ml_engine/models/
 
 # Logs and benchmark output
 *.log
-benchmarks/results/
+benchmarks/results/*
+!benchmarks/results/issue4-v1/
+!benchmarks/results/issue4-v1/raw/*.tar.gz
 benchmarks/output/
 
 # Coverage / profiling

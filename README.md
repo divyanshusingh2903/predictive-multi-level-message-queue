@@ -17,7 +17,7 @@ A research messaging system that combines **online ML-based processing time pred
 
 ## Status
 
-**Phase 1 complete; Phase 2 features and feedback implemented.** The core gRPC broker includes multi-level priority queues, producer/consumer clients, DLQ, aging, retries, and in-flight management. Embedded brokers can opt into [versioned ingress features and immutable routing context](ml_engine/README.md), with matching Python validation/encoding, and [bounded persistent feedback](docs/feedback.md). Routing remains static; prediction and learning remain planned.
+**Phase 1 complete; Phase 2 features, feedback, and baseline harness implemented.** The core gRPC broker includes multi-level priority queues, producer/consumer clients, DLQ, aging, retries, and in-flight management. Embedded brokers can opt into [versioned ingress features and immutable routing context](ml_engine/README.md), with matching Python validation/encoding, and [bounded persistent feedback](docs/feedback.md). The [synthetic evaluation harness](benchmarks/README.md) compares real-broker FIFO/static/round-robin baselines and exports leakage-safe feedback datasets with frozen budgets. Production routing remains static; prediction and learning remain planned.
 
 ---
 
@@ -65,6 +65,7 @@ Producer::send()
 - [Broker and queue internals](docs/internals.md) — state transitions, priority ordering, aging, expiry, and recovery.
 - [Ingress features and encoding](ml_engine/README.md) — implemented opt-in C++ capture and matching Python representation.
 - [Persistent feedback](docs/feedback.md) — embedded static-mode collection, JSONL storage, retention, loss counters, and durability/shutdown limits.
+- [Synthetic baselines and feedback export](benchmarks/README.md) — seeded open-loop gRPC replay, outcome/fairness accounting, paired uncertainty, and frozen experiment budgets.
 - [ML contract](docs/ml-contract.md), [architecture decision](docs/adr/0001-phase2-ml-contract.md), and [validation plan](docs/phase2-validation.md) — Phase 2 design; feature capture and feedback are implemented, prediction remains planned.
 
 ---
@@ -93,7 +94,7 @@ harbinger/
 │                              # (queue, DLQ, proxy — no gRPC) and
 │                              # harbinger_integration_tests (broker, client over gRPC)
 ├── ml_engine/                 # Versioned feature validation/encoding; model/service planned
-├── benchmarks/                # Opt-in Phase 1 cleanup measurements; scheduler gate planned
+├── benchmarks/                # Opt-in cleanup + synthetic scheduler baselines and dataset export
 └── CMakeLists.txt
 ```
 
@@ -329,7 +330,8 @@ The [Phase 2 tracker](https://github.com/divyanshusingh2903/predictive-multi-lev
 - [ ] Predictive routing injected into `route_message()` in `harbinger_service.cpp`
 - [ ] `processing_time_ms` feedback from Ack/Nack fed to classifier
 - [ ] Model drift monitoring and accuracy tracking
-- [ ] Minimum synthetic workload and FIFO/static-priority/round-robin comparison gate before predictive activation
+- [x] Seeded synthetic workloads, real-broker FIFO/static-priority/round-robin baselines, temporal feedback export, and frozen numerical budgets
+- [ ] Predictive comparison and synthetic activation gate before predictive routing is enabled
 
 ### Phase 3 — Benchmarking & validation
 - [ ] Expand synthetic workload coverage beyond the Phase 2 activation gate

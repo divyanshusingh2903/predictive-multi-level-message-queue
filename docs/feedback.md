@@ -76,6 +76,15 @@ Retention removes oldest sealed/suspect files when age, byte, or segment-count l
 
 Future readers must validate record version/JSON, reject malformed complete records and incomplete final lines, and deduplicate by event identity. Do not interpret an entire `.suspect` file as confirmed durable data: even its complete prefix may have been unsynced. Model/cursor checkpointing and at-least-once ingestion belong to later issues.
 
+Issue #4 implements this sealed-segment reader in `ml_engine/feedback.py` and
+[dataset export](../benchmarks/README.md#leakage-safe-static-feedback-export).
+It validates registered schemas/label precedence, rejects conflicting duplicate
+identities, indexes message/attempt groups in SQLite, and keeps outcome,
+measurement validity, failures, and TTL censorship separate. Exact temporal
+train/evaluation splits require benchmark monotonic timing sidecars; legacy v1
+logs alone produce audit views with unresolved chronology. Event sequence gaps
+are possible incompleteness, not an exact count of lost message labels.
+
 ## Observability and durability window
 
 `broker.feedback_stats()` returns a thread-safe approximate snapshot (zero/disabled when collection is off):

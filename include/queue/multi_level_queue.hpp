@@ -11,11 +11,14 @@
 
 namespace harbinger {
 
-/// Thread-safe FIFO levels, strict priority, and optional aging.
+enum class QueueSelection { StrictPriority, RoundRobin };
+
+/// Thread-safe FIFO levels with strict-priority or cyclic selection and optional aging.
 class MultiLevelQueue {
 public:
     explicit MultiLevelQueue(uint8_t num_levels = 3,
-                             std::optional<AgingConfig> aging = std::nullopt);
+                             std::optional<AgingConfig> aging = std::nullopt,
+                             QueueSelection selection = QueueSelection::StrictPriority);
     ~MultiLevelQueue();
     MultiLevelQueue(const MultiLevelQueue&) = delete;
     MultiLevelQueue& operator=(const MultiLevelQueue&) = delete;
@@ -23,7 +26,7 @@ public:
     void enqueue(Message msg);
     /// Restore an uncommitted dequeue at its level's front, preserving all message metadata.
     void requeue_front(Message msg);
-    /// Remove the highest-priority available message.
+    /// Remove a FIFO head according to the configured selection policy.
     [[nodiscard]] std::optional<Message> try_dequeue();
     /// Wait for a message or shutdown; queued messages remain drainable after shutdown.
     [[nodiscard]] std::optional<Message> dequeue(
@@ -58,6 +61,8 @@ private:
     Message remove_locked(uint8_t level, Level::iterator it);
 
     uint8_t num_levels_;
+    QueueSelection selection_;
+    std::size_t cursor_{0};
     std::vector<Level> queues_;
     ExpiryIndex expiry_;
     mutable std::mutex mutex_;

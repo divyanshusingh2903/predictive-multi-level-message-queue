@@ -1,6 +1,6 @@
 # Phase 2 validation plan
 
-Status: planned experiments and proposed numerical gates. No benchmark results are claimed. [Issue #4](https://github.com/divyanshusingh2903/predictive-multi-level-message-queue/issues/4) implements workloads/baselines; [issue #10](https://github.com/divyanshusingh2903/predictive-multi-level-message-queue/issues/10) owns the comparative report and rollout decision. See the [ADR](adr/0001-phase2-ml-contract.md) and [ML contract](ml-contract.md).
+Status: issue #4 implements [real-broker synthetic workloads/baselines and temporal feedback export](../benchmarks/README.md), with [baseline evidence and full experiment history](../benchmarks/results/issue4-v1/README.md) and [frozen v1 numerical budgets](../benchmarks/configs/budgets-v1.json) retained in the repository. No predictive benefit or activation is claimed. [Issue #10](https://github.com/divyanshusingh2903/predictive-multi-level-message-queue/issues/10) owns the candidate comparison and rollout decision. See the [ADR](adr/0001-phase2-ml-contract.md) and [ML contract](ml-contract.md).
 
 ## Hypothesis and scope
 
@@ -22,6 +22,14 @@ The minimum synthetic comparison is part of Phase 2's activation gate. Real trac
 
 Public Submit has no priority selector. Baseline multi-tier assignments must be implemented in benchmark tooling/internal scheduler adapters, never by leaking tier knowledge to consumers. Specify a fixed job-type-to-tier map before results; include an uninformative map for the control scenario. FIFO ignores tier assignment. Report disabled production policy separately so a weak static assignment cannot masquerade as a broad win.
 
+The implemented adapter is isolated in a separately compiled benchmark broker
+library. FIFO assigns L0, metadata-static and round-robin share the frozen class
+map, and disabled retains production default priority. Every policy uses the
+same queue/settlement/expiry/aging code; no production RPC or scheduler flag is
+added. Benchmark monotonic sidecars supply exact transition/dispatch times;
+feedback v1 remains unchanged. Its UTC timestamps/publication order alone cannot
+support precise delayed-learning chronology.
+
 Use identical arrival traces, latent handler costs, consumer counts, CPU conditions, TTL/retry/lease settings, and declared aging configuration for paired runs. Inference and feedback consume measured resources. Use separate runs/ports with clean state. Baseline telemetry is enabled when comparing ML scheduling, and also run a telemetry-off production control to quantify collection overhead.
 
 ## Workload matrix
@@ -39,6 +47,14 @@ Use identical arrival traces, latent handler costs, consumer counts, CPU conditi
 | Aging | Explicit production aging configuration for fairness gates; aging-off sensitivity runs |
 
 Generate finite seeded traces independent of scheduling. Use at least five paired seeds/trials. Replay open-loop arrival schedules so a slower policy does not silently reduce offered load; report missed/late submissions and generator bottlenecks. Fix workload sizes, burst patterns, cost cap, runtime-realization method (CPU/sleep), warm-up length, and post-arrival drain deadline before the final matrix. Prefer sufficient completed messages for meaningful P99 estimates; report actual sample sizes.
+
+`benchmarks/configs/baselines-v1.json` freezes the initial feasibility matrix:
+five seeds, two repeats, sleep realization, three distributions, below/near/above
+finite-backlog disabled capacity, informative/control metadata, relationship
+shift, broker cold/warm cohorts, one/four workers, aging sensitivity, and separate
+TTL/retry/lease stress. Learner readiness/checkpoints and classifier-health cases
+remain planned. Its 200-message trials are feasibility evidence; freeze larger
+candidate-comparison samples/configuration before claiming a P99 activation gate.
 
 Estimate capacity from disabled/static baseline runs before choosing absolute arrival rates. All policies replay the same absolute rate for a paired cell; do not rescale by each policy's achieved capacity. Above-capacity results characterize overload and finite-drain behavior, not a claim of steady-state bounded latency.
 
@@ -66,11 +82,15 @@ For MAE/RMSE compare predictions against the strongest simple statistical baseli
 
 Terminal quantiles include DLQ transitions but also report success-only quantiles and outcome rates, since rapid expiry can falsely improve aggregate latency. Unfinished messages have censored ages at the common drain cutoff; never invent a terminal time or omit their counts. For fairness, a never-dispatched message older than the starvation threshold counts as starved; younger censored messages are reported separately. Primary gate runs use TTL off and require complete drains, so differential drops/censoring cannot create a latency win.
 
-## Proposed pass/fail budgets
+## Frozen v1 pass/fail budgets
 
-These numbers are design proposals, not observed results. Baseline feasibility checks may refine them before predictive comparisons; publish the final versioned budgets first. Do not tune thresholds to observed predictive results.
+The original design proposals below are adopted unchanged as `phase2-budgets-v1`,
+frozen on 2026-10-03 in the machine-readable budget manifest before predictive
+runs. They are criteria, not observed predictive results. Baseline feasibility
+evidence does not waive a gate. Any later budget change requires a new version,
+published rationale, and new comparisons; never tune to observed predictive results.
 
-| Gate | Proposed criterion |
+| Gate | Frozen v1 criterion |
 |---|---|
 | Primary benefit | At least 10% P95 terminal-latency improvement versus static priority on warmed, informative bimodal and heavy-tailed workloads below saturation |
 | Latency guardrail | No more than 5% P50/P95/P99 regression versus each FIFO/static/round-robin comparator in the declared warmed, below-saturation gate cells |

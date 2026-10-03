@@ -1,0 +1,52 @@
+{
+  "artifact_version": 1,
+  "cells": [
+    {
+      "case": "capacity-bimodal",
+      "fully_drained_trials": 5,
+      "median_full_drain_capacity_per_s": 174.99302449368002,
+      "median_p95_terminal_ms": 881.417352,
+      "median_success_per_s": 74.10151908114116,
+      "policy": "disabled",
+      "telemetry_loss": 0,
+      "trials": 5,
+      "valid_trials": 5
+    },
+    {
+      "case": "capacity-bimodal-four-workers",
+      "fully_drained_trials": 5,
+      "median_full_drain_capacity_per_s": 699.7858294972036,
+      "median_p95_terminal_ms": 73.768555,
+      "median_success_per_s": 166.80567139282735,
+      "policy": "disabled",
+      "telemetry_loss": 0,
+      "trials": 5,
+      "valid_trials": 5
+    },
+    {
+      "case": "capacity-heavy-tail",
+      "fully_drained_trials": 5,
+      "median_full_drain_capacity_per_s": 281.61960623983265,
+      "median_p95_terminal_ms": 484.15156,
+      "median_success_per_s": 74.10151908114116,
+      "policy": "disabled",
+      "telemetry_loss": 0,
+      "trials": 5,
+      "valid_trials": 5
+    },
+    {
+      "case": "capacity-uniform",
+      "fully_drained_trials": 5,
+      "median_full_drain_capacity_per_s": 86.38568341540774,
+      "median_p95_terminal_ms": 1972.86838,
+      "median_success_per_s": 74.10151908114116,
+      "policy": "disabled",
+      "telemetry_loss": 0,
+      "trials": 5,
+      "valid_trials": 5
+    }
+  ],
+  "configuration_sha256": "d075c43b8c189cc7901cb03804a52b4bde9dc6cec48fdf4f5002b171e45bf05b",
+  "total_trials": 20,
+  "valid_trials": 20
+}

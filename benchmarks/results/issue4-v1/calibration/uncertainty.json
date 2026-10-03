@@ -1,0 +1,1922 @@
+[
+  {
+    "case": "capacity-uniform",
+    "ci95": null,
+    "comparison": "static-minus-fifo",
+    "evidence_status": "unevaluable",
+    "mean": null,
+    "metric": "success_per_s",
+    "paired_seeds": 0,
+    "relative_delta": {
+      "ci95": null,
+      "evidence_status": "unevaluable",
+      "mean": null,
+      "paired_seeds": 0
+    },
+    "zero_denominator_trials": 0
+  },
+  {
+    "case": "capacity-uniform",
+    "ci95": null,
+    "comparison": "static-minus-fifo",
+    "evidence_status": "unevaluable",
+    "mean": null,
+    "metric": "terminal_latency_ms.p50",
+    "paired_seeds": 0,
+    "relative_delta": {
+      "ci95": null,
+      "evidence_status": "unevaluable",
+      "mean": null,
+      "paired_seeds": 0
+    },
+    "zero_denominator_trials": 0
+  },
+  {
+    "case": "capacity-uniform",
+    "ci95": null,
+    "comparison": "static-minus-fifo",
+    "evidence_status": "unevaluable",
+    "mean": null,
+    "metric": "terminal_latency_ms.p95",
+    "paired_seeds": 0,
+    "relative_delta": {
+      "ci95": null,
+      "evidence_status": "unevaluable",
+      "mean": null,
+      "paired_seeds": 0
+    },
+    "zero_denominator_trials": 0
+  },
+  {
+    "case": "capacity-uniform",
+    "ci95": null,
+    "comparison": "static-minus-fifo",
+    "evidence_status": "unevaluable",
+    "mean": null,
+    "metric": "terminal_latency_ms.p99",
+    "paired_seeds": 0,
+    "relative_delta": {
+      "ci95": null,
+      "evidence_status": "unevaluable",
+      "mean": null,
+      "paired_seeds": 0
+    },
+    "zero_denominator_trials": 0
+  },
+  {
+    "case": "capacity-uniform",
+    "ci95": null,
+    "comparison": "static-minus-fifo",
+    "evidence_status": "unevaluable",
+    "mean": null,
+    "metric": "classes.class0.longest_wait_ms",
+    "paired_seeds": 0,
+    "relative_delta": {
+      "ci95": null,
+      "evidence_status": "unevaluable",
+      "mean": null,
+      "paired_seeds": 0
+    },
+    "zero_denominator_trials": 0
+  },
+  {
+    "case": "capacity-uniform",
+    "ci95": null,
+    "comparison": "static-minus-fifo",
+    "evidence_status": "unevaluable",
+    "mean": null,
+    "metric": "classes.class0.starvation_rate",
+    "paired_seeds": 0,
+    "relative_delta": {
+      "ci95": null,
+      "evidence_status": "unevaluable",
+      "mean": null,
+      "paired_seeds": 0
+    },
+    "zero_denominator_trials": 0
+  },
+  {
+    "case": "capacity-uniform",
+    "ci95": null,
+    "comparison": "static-minus-fifo",
+    "evidence_status": "unevaluable",
+    "mean": null,
+    "metric": "classes.class1.longest_wait_ms",
+    "paired_seeds": 0,
+    "relative_delta": {
+      "ci95": null,
+      "evidence_status": "unevaluable",
+      "mean": null,
+      "paired_seeds": 0
+    },
+    "zero_denominator_trials": 0
+  },
+  {
+    "case": "capacity-uniform",
+    "ci95": null,
+    "comparison": "static-minus-fifo",
+    "evidence_status": "unevaluable",
+    "mean": null,
+    "metric": "classes.class1.starvation_rate",
+    "paired_seeds": 0,
+    "relative_delta": {
+      "ci95": null,
+      "evidence_status": "unevaluable",
+      "mean": null,
+      "paired_seeds": 0
+    },
+    "zero_denominator_trials": 0
+  },
+  {
+    "case": "capacity-uniform",
+    "ci95": null,
+    "comparison": "static-minus-fifo",
+    "evidence_status": "unevaluable",
+    "mean": null,
+    "metric": "classes.class2.longest_wait_ms",
+    "paired_seeds": 0,
+    "relative_delta": {
+      "ci95": null,
+      "evidence_status": "unevaluable",
+      "mean": null,
+      "paired_seeds": 0
+    },
+    "zero_denominator_trials": 0
+  },
+  {
+    "case": "capacity-uniform",
+    "ci95": null,
+    "comparison": "static-minus-fifo",
+    "evidence_status": "unevaluable",
+    "mean": null,
+    "metric": "classes.class2.starvation_rate",
+    "paired_seeds": 0,
+    "relative_delta": {
+      "ci95": null,
+      "evidence_status": "unevaluable",
+      "mean": null,
+      "paired_seeds": 0
+    },
+    "zero_denominator_trials": 0
+  },
+  {
+    "case": "capacity-uniform",
+    "ci95": null,
+    "comparison": "static-minus-round_robin",
+    "evidence_status": "unevaluable",
+    "mean": null,
+    "metric": "success_per_s",
+    "paired_seeds": 0,
+    "relative_delta": {
+      "ci95": null,
+      "evidence_status": "unevaluable",
+      "mean": null,
+      "paired_seeds": 0
+    },
+    "zero_denominator_trials": 0
+  },
+  {
+    "case": "capacity-uniform",
+    "ci95": null,
+    "comparison": "static-minus-round_robin",
+    "evidence_status": "unevaluable",
+    "mean": null,
+    "metric": "terminal_latency_ms.p50",
+    "paired_seeds": 0,
+    "relative_delta": {
+      "ci95": null,
+      "evidence_status": "unevaluable",
+      "mean": null,
+      "paired_seeds": 0
+    },
+    "zero_denominator_trials": 0
+  },
+  {
+    "case": "capacity-uniform",
+    "ci95": null,
+    "comparison": "static-minus-round_robin",
+    "evidence_status": "unevaluable",
+    "mean": null,
+    "metric": "terminal_latency_ms.p95",
+    "paired_seeds": 0,
+    "relative_delta": {
+      "ci95": null,
+      "evidence_status": "unevaluable",
+      "mean": null,
+      "paired_seeds": 0
+    },
+    "zero_denominator_trials": 0
+  },
+  {
+    "case": "capacity-uniform",
+    "ci95": null,
+    "comparison": "static-minus-round_robin",
+    "evidence_status": "unevaluable",
+    "mean": null,
+    "metric": "terminal_latency_ms.p99",
+    "paired_seeds": 0,
+    "relative_delta": {
+      "ci95": null,
+      "evidence_status": "unevaluable",
+      "mean": null,
+      "paired_seeds": 0
+    },
+    "zero_denominator_trials": 0
+  },
+  {
+    "case": "capacity-uniform",
+    "ci95": null,
+    "comparison": "static-minus-round_robin",
+    "evidence_status": "unevaluable",
+    "mean": null,
+    "metric": "classes.class0.longest_wait_ms",
+    "paired_seeds": 0,
+    "relative_delta": {
+      "ci95": null,
+      "evidence_status": "unevaluable",
+      "mean": null,
+      "paired_seeds": 0
+    },
+    "zero_denominator_trials": 0
+  },
+  {
+    "case": "capacity-uniform",
+    "ci95": null,
+    "comparison": "static-minus-round_robin",
+    "evidence_status": "unevaluable",
+    "mean": null,
+    "metric": "classes.class0.starvation_rate",
+    "paired_seeds": 0,
+    "relative_delta": {
+      "ci95": null,
+      "evidence_status": "unevaluable",
+      "mean": null,
+      "paired_seeds": 0
+    },
+    "zero_denominator_trials": 0
+  },
+  {
+    "case": "capacity-uniform",
+    "ci95": null,
+    "comparison": "static-minus-round_robin",
+    "evidence_status": "unevaluable",
+    "mean": null,
+    "metric": "classes.class1.longest_wait_ms",
+    "paired_seeds": 0,
+    "relative_delta": {
+      "ci95": null,
+      "evidence_status": "unevaluable",
+      "mean": null,
+      "paired_seeds": 0
+    },
+    "zero_denominator_trials": 0
+  },
+  {
+    "case": "capacity-uniform",
+    "ci95": null,
+    "comparison": "static-minus-round_robin",
+    "evidence_status": "unevaluable",
+    "mean": null,
+    "metric": "classes.class1.starvation_rate",
+    "paired_seeds": 0,
+    "relative_delta": {
+      "ci95": null,
+      "evidence_status": "unevaluable",
+      "mean": null,
+      "paired_seeds": 0
+    },
+    "zero_denominator_trials": 0
+  },
+  {
+    "case": "capacity-uniform",
+    "ci95": null,
+    "comparison": "static-minus-round_robin",
+    "evidence_status": "unevaluable",
+    "mean": null,
+    "metric": "classes.class2.longest_wait_ms",
+    "paired_seeds": 0,
+    "relative_delta": {
+      "ci95": null,
+      "evidence_status": "unevaluable",
+      "mean": null,
+      "paired_seeds": 0
+    },
+    "zero_denominator_trials": 0
+  },
+  {
+    "case": "capacity-uniform",
+    "ci95": null,
+    "comparison": "static-minus-round_robin",
+    "evidence_status": "unevaluable",
+    "mean": null,
+    "metric": "classes.class2.starvation_rate",
+    "paired_seeds": 0,
+    "relative_delta": {
+      "ci95": null,
+      "evidence_status": "unevaluable",
+      "mean": null,
+      "paired_seeds": 0
+    },
+    "zero_denominator_trials": 0
+  },
+  {
+    "case": "capacity-uniform",
+    "ci95": null,
+    "comparison": "static-minus-disabled",
+    "evidence_status": "unevaluable",
+    "mean": null,
+    "metric": "success_per_s",
+    "paired_seeds": 0,
+    "relative_delta": {
+      "ci95": null,
+      "evidence_status": "unevaluable",
+      "mean": null,
+      "paired_seeds": 0
+    },
+    "zero_denominator_trials": 0
+  },
+  {
+    "case": "capacity-uniform",
+    "ci95": null,
+    "comparison": "static-minus-disabled",
+    "evidence_status": "unevaluable",
+    "mean": null,
+    "metric": "terminal_latency_ms.p50",
+    "paired_seeds": 0,
+    "relative_delta": {
+      "ci95": null,
+      "evidence_status": "unevaluable",
+      "mean": null,
+      "paired_seeds": 0
+    },
+    "zero_denominator_trials": 0
+  },
+  {
+    "case": "capacity-uniform",
+    "ci95": null,
+    "comparison": "static-minus-disabled",
+    "evidence_status": "unevaluable",
+    "mean": null,
+    "metric": "terminal_latency_ms.p95",
+    "paired_seeds": 0,
+    "relative_delta": {
+      "ci95": null,
+      "evidence_status": "unevaluable",
+      "mean": null,
+      "paired_seeds": 0
+    },
+    "zero_denominator_trials": 0
+  },
+  {
+    "case": "capacity-uniform",
+    "ci95": null,
+    "comparison": "static-minus-disabled",
+    "evidence_status": "unevaluable",
+    "mean": null,
+    "metric": "terminal_latency_ms.p99",
+    "paired_seeds": 0,
+    "relative_delta": {
+      "ci95": null,
+      "evidence_status": "unevaluable",
+      "mean": null,
+      "paired_seeds": 0
+    },
+    "zero_denominator_trials": 0
+  },
+  {
+    "case": "capacity-uniform",
+    "ci95": null,
+    "comparison": "static-minus-disabled",
+    "evidence_status": "unevaluable",
+    "mean": null,
+    "metric": "classes.class0.longest_wait_ms",
+    "paired_seeds": 0,
+    "relative_delta": {
+      "ci95": null,
+      "evidence_status": "unevaluable",
+      "mean": null,
+      "paired_seeds": 0
+    },
+    "zero_denominator_trials": 0
+  },
+  {
+    "case": "capacity-uniform",
+    "ci95": null,
+    "comparison": "static-minus-disabled",
+    "evidence_status": "unevaluable",
+    "mean": null,
+    "metric": "classes.class0.starvation_rate",
+    "paired_seeds": 0,
+    "relative_delta": {
+      "ci95": null,
+      "evidence_status": "unevaluable",
+      "mean": null,
+      "paired_seeds": 0
+    },
+    "zero_denominator_trials": 0
+  },
+  {
+    "case": "capacity-uniform",
+    "ci95": null,
+    "comparison": "static-minus-disabled",
+    "evidence_status": "unevaluable",
+    "mean": null,
+    "metric": "classes.class1.longest_wait_ms",
+    "paired_seeds": 0,
+    "relative_delta": {
+      "ci95": null,
+      "evidence_status": "unevaluable",
+      "mean": null,
+      "paired_seeds": 0
+    },
+    "zero_denominator_trials": 0
+  },
+  {
+    "case": "capacity-uniform",
+    "ci95": null,
+    "comparison": "static-minus-disabled",
+    "evidence_status": "unevaluable",
+    "mean": null,
+    "metric": "classes.class1.starvation_rate",
+    "paired_seeds": 0,
+    "relative_delta": {
+      "ci95": null,
+      "evidence_status": "unevaluable",
+      "mean": null,
+      "paired_seeds": 0
+    },
+    "zero_denominator_trials": 0
+  },
+  {
+    "case": "capacity-uniform",
+    "ci95": null,
+    "comparison": "static-minus-disabled",
+    "evidence_status": "unevaluable",
+    "mean": null,
+    "metric": "classes.class2.longest_wait_ms",
+    "paired_seeds": 0,
+    "relative_delta": {
+      "ci95": null,
+      "evidence_status": "unevaluable",
+      "mean": null,
+      "paired_seeds": 0
+    },
+    "zero_denominator_trials": 0
+  },
+  {
+    "case": "capacity-uniform",
+    "ci95": null,
+    "comparison": "static-minus-disabled",
+    "evidence_status": "unevaluable",
+    "mean": null,
+    "metric": "classes.class2.starvation_rate",
+    "paired_seeds": 0,
+    "relative_delta": {
+      "ci95": null,
+      "evidence_status": "unevaluable",
+      "mean": null,
+      "paired_seeds": 0
+    },
+    "zero_denominator_trials": 0
+  },
+  {
+    "case": "capacity-bimodal",
+    "ci95": null,
+    "comparison": "static-minus-fifo",
+    "evidence_status": "unevaluable",
+    "mean": null,
+    "metric": "success_per_s",
+    "paired_seeds": 0,
+    "relative_delta": {
+      "ci95": null,
+      "evidence_status": "unevaluable",
+      "mean": null,
+      "paired_seeds": 0
+    },
+    "zero_denominator_trials": 0
+  },
+  {
+    "case": "capacity-bimodal",
+    "ci95": null,
+    "comparison": "static-minus-fifo",
+    "evidence_status": "unevaluable",
+    "mean": null,
+    "metric": "terminal_latency_ms.p50",
+    "paired_seeds": 0,
+    "relative_delta": {
+      "ci95": null,
+      "evidence_status": "unevaluable",
+      "mean": null,
+      "paired_seeds": 0
+    },
+    "zero_denominator_trials": 0
+  },
+  {
+    "case": "capacity-bimodal",
+    "ci95": null,
+    "comparison": "static-minus-fifo",
+    "evidence_status": "unevaluable",
+    "mean": null,
+    "metric": "terminal_latency_ms.p95",
+    "paired_seeds": 0,
+    "relative_delta": {
+      "ci95": null,
+      "evidence_status": "unevaluable",
+      "mean": null,
+      "paired_seeds": 0
+    },
+    "zero_denominator_trials": 0
+  },
+  {
+    "case": "capacity-bimodal",
+    "ci95": null,
+    "comparison": "static-minus-fifo",
+    "evidence_status": "unevaluable",
+    "mean": null,
+    "metric": "terminal_latency_ms.p99",
+    "paired_seeds": 0,
+    "relative_delta": {
+      "ci95": null,
+      "evidence_status": "unevaluable",
+      "mean": null,
+      "paired_seeds": 0
+    },
+    "zero_denominator_trials": 0
+  },
+  {
+    "case": "capacity-bimodal",
+    "ci95": null,
+    "comparison": "static-minus-fifo",
+    "evidence_status": "unevaluable",
+    "mean": null,
+    "metric": "classes.class0.longest_wait_ms",
+    "paired_seeds": 0,
+    "relative_delta": {
+      "ci95": null,
+      "evidence_status": "unevaluable",
+      "mean": null,
+      "paired_seeds": 0
+    },
+    "zero_denominator_trials": 0
+  },
+  {
+    "case": "capacity-bimodal",
+    "ci95": null,
+    "comparison": "static-minus-fifo",
+    "evidence_status": "unevaluable",
+    "mean": null,
+    "metric": "classes.class0.starvation_rate",
+    "paired_seeds": 0,
+    "relative_delta": {
+      "ci95": null,
+      "evidence_status": "unevaluable",
+      "mean": null,
+      "paired_seeds": 0
+    },
+    "zero_denominator_trials": 0
+  },
+  {
+    "case": "capacity-bimodal",
+    "ci95": null,
+    "comparison": "static-minus-fifo",
+    "evidence_status": "unevaluable",
+    "mean": null,
+    "metric": "classes.class1.longest_wait_ms",
+    "paired_seeds": 0,
+    "relative_delta": {
+      "ci95": null,
+      "evidence_status": "unevaluable",
+      "mean": null,
+      "paired_seeds": 0
+    },
+    "zero_denominator_trials": 0
+  },
+  {
+    "case": "capacity-bimodal",
+    "ci95": null,
+    "comparison": "static-minus-fifo",
+    "evidence_status": "unevaluable",
+    "mean": null,
+    "metric": "classes.class1.starvation_rate",
+    "paired_seeds": 0,
+    "relative_delta": {
+      "ci95": null,
+      "evidence_status": "unevaluable",
+      "mean": null,
+      "paired_seeds": 0
+    },
+    "zero_denominator_trials": 0
+  },
+  {
+    "case": "capacity-bimodal",
+    "ci95": null,
+    "comparison": "static-minus-fifo",
+    "evidence_status": "unevaluable",
+    "mean": null,
+    "metric": "classes.class2.longest_wait_ms",
+    "paired_seeds": 0,
+    "relative_delta": {
+      "ci95": null,
+      "evidence_status": "unevaluable",
+      "mean": null,
+      "paired_seeds": 0
+    },
+    "zero_denominator_trials": 0
+  },
+  {
+    "case": "capacity-bimodal",
+    "ci95": null,
+    "comparison": "static-minus-fifo",
+    "evidence_status": "unevaluable",
+    "mean": null,
+    "metric": "classes.class2.starvation_rate",
+    "paired_seeds": 0,
+    "relative_delta": {
+      "ci95": null,
+      "evidence_status": "unevaluable",
+      "mean": null,
+      "paired_seeds": 0
+    },
+    "zero_denominator_trials": 0
+  },
+  {
+    "case": "capacity-bimodal",
+    "ci95": null,
+    "comparison": "static-minus-round_robin",
+    "evidence_status": "unevaluable",
+    "mean": null,
+    "metric": "success_per_s",
+    "paired_seeds": 0,
+    "relative_delta": {
+      "ci95": null,
+      "evidence_status": "unevaluable",
+      "mean": null,
+      "paired_seeds": 0
+    },
+    "zero_denominator_trials": 0
+  },
+  {
+    "case": "capacity-bimodal",
+    "ci95": null,
+    "comparison": "static-minus-round_robin",
+    "evidence_status": "unevaluable",
+    "mean": null,
+    "metric": "terminal_latency_ms.p50",
+    "paired_seeds": 0,
+    "relative_delta": {
+      "ci95": null,
+      "evidence_status": "unevaluable",
+      "mean": null,
+      "paired_seeds": 0
+    },
+    "zero_denominator_trials": 0
+  },
+  {
+    "case": "capacity-bimodal",
+    "ci95": null,
+    "comparison": "static-minus-round_robin",
+    "evidence_status": "unevaluable",
+    "mean": null,
+    "metric": "terminal_latency_ms.p95",
+    "paired_seeds": 0,
+    "relative_delta": {
+      "ci95": null,
+      "evidence_status": "unevaluable",
+      "mean": null,
+      "paired_seeds": 0
+    },
+    "zero_denominator_trials": 0
+  },
+  {
+    "case": "capacity-bimodal",
+    "ci95": null,
+    "comparison": "static-minus-round_robin",
+    "evidence_status": "unevaluable",
+    "mean": null,
+    "metric": "terminal_latency_ms.p99",
+    "paired_seeds": 0,
+    "relative_delta": {
+      "ci95": null,
+      "evidence_status": "unevaluable",
+      "mean": null,
+      "paired_seeds": 0
+    },
+    "zero_denominator_trials": 0
+  },
+  {
+    "case": "capacity-bimodal",
+    "ci95": null,
+    "comparison": "static-minus-round_robin",
+    "evidence_status": "unevaluable",
+    "mean": null,
+    "metric": "classes.class0.longest_wait_ms",
+    "paired_seeds": 0,
+    "relative_delta": {
+      "ci95": null,
+      "evidence_status": "unevaluable",
+      "mean": null,
+      "paired_seeds": 0
+    },
+    "zero_denominator_trials": 0
+  },
+  {
+    "case": "capacity-bimodal",
+    "ci95": null,
+    "comparison": "static-minus-round_robin",
+    "evidence_status": "unevaluable",
+    "mean": null,
+    "metric": "classes.class0.starvation_rate",
+    "paired_seeds": 0,
+    "relative_delta": {
+      "ci95": null,
+      "evidence_status": "unevaluable",
+      "mean": null,
+      "paired_seeds": 0
+    },
+    "zero_denominator_trials": 0
+  },
+  {
+    "case": "capacity-bimodal",
+    "ci95": null,
+    "comparison": "static-minus-round_robin",
+    "evidence_status": "unevaluable",
+    "mean": null,
+    "metric": "classes.class1.longest_wait_ms",
+    "paired_seeds": 0,
+    "relative_delta": {
+      "ci95": null,
+      "evidence_status": "unevaluable",
+      "mean": null,
+      "paired_seeds": 0
+    },
+    "zero_denominator_trials": 0
+  },
+  {
+    "case": "capacity-bimodal",
+    "ci95": null,
+    "comparison": "static-minus-round_robin",
+    "evidence_status": "unevaluable",
+    "mean": null,
+    "metric": "classes.class1.starvation_rate",
+    "paired_seeds": 0,
+    "relative_delta": {
+      "ci95": null,
+      "evidence_status": "unevaluable",
+      "mean": null,
+      "paired_seeds": 0
+    },
+    "zero_denominator_trials": 0
+  },
+  {
+    "case": "capacity-bimodal",
+    "ci95": null,
+    "comparison": "static-minus-round_robin",
+    "evidence_status": "unevaluable",
+    "mean": null,
+    "metric": "classes.class2.longest_wait_ms",
+    "paired_seeds": 0,
+    "relative_delta": {
+      "ci95": null,
+      "evidence_status": "unevaluable",
+      "mean": null,
+      "paired_seeds": 0
+    },
+    "zero_denominator_trials": 0
+  },
+  {
+    "case": "capacity-bimodal",
+    "ci95": null,
+    "comparison": "static-minus-round_robin",
+    "evidence_status": "unevaluable",
+    "mean": null,
+    "metric": "classes.class2.starvation_rate",
+    "paired_seeds": 0,
+    "relative_delta": {
+      "ci95": null,
+      "evidence_status": "unevaluable",
+      "mean": null,
+      "paired_seeds": 0
+    },
+    "zero_denominator_trials": 0
+  },
+  {
+    "case": "capacity-bimodal",
+    "ci95": null,
+    "comparison": "static-minus-disabled",
+    "evidence_status": "unevaluable",
+    "mean": null,
+    "metric": "success_per_s",
+    "paired_seeds": 0,
+    "relative_delta": {
+      "ci95": null,
+      "evidence_status": "unevaluable",
+      "mean": null,
+      "paired_seeds": 0
+    },
+    "zero_denominator_trials": 0
+  },
+  {
+    "case": "capacity-bimodal",
+    "ci95": null,
+    "comparison": "static-minus-disabled",
+    "evidence_status": "unevaluable",
+    "mean": null,
+    "metric": "terminal_latency_ms.p50",
+    "paired_seeds": 0,
+    "relative_delta": {
+      "ci95": null,
+      "evidence_status": "unevaluable",
+      "mean": null,
+      "paired_seeds": 0
+    },
+    "zero_denominator_trials": 0
+  },
+  {
+    "case": "capacity-bimodal",
+    "ci95": null,
+    "comparison": "static-minus-disabled",
+    "evidence_status": "unevaluable",
+    "mean": null,
+    "metric": "terminal_latency_ms.p95",
+    "paired_seeds": 0,
+    "relative_delta": {
+      "ci95": null,
+      "evidence_status": "unevaluable",
+      "mean": null,
+      "paired_seeds": 0
+    },
+    "zero_denominator_trials": 0
+  },
+  {
+    "case": "capacity-bimodal",
+    "ci95": null,
+    "comparison": "static-minus-disabled",
+    "evidence_status": "unevaluable",
+    "mean": null,
+    "metric": "terminal_latency_ms.p99",
+    "paired_seeds": 0,
+    "relative_delta": {
+      "ci95": null,
+      "evidence_status": "unevaluable",
+      "mean": null,
+      "paired_seeds": 0
+    },
+    "zero_denominator_trials": 0
+  },
+  {
+    "case": "capacity-bimodal",
+    "ci95": null,
+    "comparison": "static-minus-disabled",
+    "evidence_status": "unevaluable",
+    "mean": null,
+    "metric": "classes.class0.longest_wait_ms",
+    "paired_seeds": 0,
+    "relative_delta": {
+      "ci95": null,
+      "evidence_status": "unevaluable",
+      "mean": null,
+      "paired_seeds": 0
+    },
+    "zero_denominator_trials": 0
+  },
+  {
+    "case": "capacity-bimodal",
+    "ci95": null,
+    "comparison": "static-minus-disabled",
+    "evidence_status": "unevaluable",
+    "mean": null,
+    "metric": "classes.class0.starvation_rate",
+    "paired_seeds": 0,
+    "relative_delta": {
+      "ci95": null,
+      "evidence_status": "unevaluable",
+      "mean": null,
+      "paired_seeds": 0
+    },
+    "zero_denominator_trials": 0
+  },
+  {
+    "case": "capacity-bimodal",
+    "ci95": null,
+    "comparison": "static-minus-disabled",
+    "evidence_status": "unevaluable",
+    "mean": null,
+    "metric": "classes.class1.longest_wait_ms",
+    "paired_seeds": 0,
+    "relative_delta": {
+      "ci95": null,
+      "evidence_status": "unevaluable",
+      "mean": null,
+      "paired_seeds": 0
+    },
+    "zero_denominator_trials": 0
+  },
+  {
+    "case": "capacity-bimodal",
+    "ci95": null,
+    "comparison": "static-minus-disabled",
+    "evidence_status": "unevaluable",
+    "mean": null,
+    "metric": "classes.class1.starvation_rate",
+    "paired_seeds": 0,
+    "relative_delta": {
+      "ci95": null,
+      "evidence_status": "unevaluable",
+      "mean": null,
+      "paired_seeds": 0
+    },
+    "zero_denominator_trials": 0
+  },
+  {
+    "case": "capacity-bimodal",
+    "ci95": null,
+    "comparison": "static-minus-disabled",
+    "evidence_status": "unevaluable",
+    "mean": null,
+    "metric": "classes.class2.longest_wait_ms",
+    "paired_seeds": 0,
+    "relative_delta": {
+      "ci95": null,
+      "evidence_status": "unevaluable",
+      "mean": null,
+      "paired_seeds": 0
+    },
+    "zero_denominator_trials": 0
+  },
+  {
+    "case": "capacity-bimodal",
+    "ci95": null,
+    "comparison": "static-minus-disabled",
+    "evidence_status": "unevaluable",
+    "mean": null,
+    "metric": "classes.class2.starvation_rate",
+    "paired_seeds": 0,
+    "relative_delta": {
+      "ci95": null,
+      "evidence_status": "unevaluable",
+      "mean": null,
+      "paired_seeds": 0
+    },
+    "zero_denominator_trials": 0
+  },
+  {
+    "case": "capacity-heavy-tail",
+    "ci95": null,
+    "comparison": "static-minus-fifo",
+    "evidence_status": "unevaluable",
+    "mean": null,
+    "metric": "success_per_s",
+    "paired_seeds": 0,
+    "relative_delta": {
+      "ci95": null,
+      "evidence_status": "unevaluable",
+      "mean": null,
+      "paired_seeds": 0
+    },
+    "zero_denominator_trials": 0
+  },
+  {
+    "case": "capacity-heavy-tail",
+    "ci95": null,
+    "comparison": "static-minus-fifo",
+    "evidence_status": "unevaluable",
+    "mean": null,
+    "metric": "terminal_latency_ms.p50",
+    "paired_seeds": 0,
+    "relative_delta": {
+      "ci95": null,
+      "evidence_status": "unevaluable",
+      "mean": null,
+      "paired_seeds": 0
+    },
+    "zero_denominator_trials": 0
+  },
+  {
+    "case": "capacity-heavy-tail",
+    "ci95": null,
+    "comparison": "static-minus-fifo",
+    "evidence_status": "unevaluable",
+    "mean": null,
+    "metric": "terminal_latency_ms.p95",
+    "paired_seeds": 0,
+    "relative_delta": {
+      "ci95": null,
+      "evidence_status": "unevaluable",
+      "mean": null,
+      "paired_seeds": 0
+    },
+    "zero_denominator_trials": 0
+  },
+  {
+    "case": "capacity-heavy-tail",
+    "ci95": null,
+    "comparison": "static-minus-fifo",
+    "evidence_status": "unevaluable",
+    "mean": null,
+    "metric": "terminal_latency_ms.p99",
+    "paired_seeds": 0,
+    "relative_delta": {
+      "ci95": null,
+      "evidence_status": "unevaluable",
+      "mean": null,
+      "paired_seeds": 0
+    },
+    "zero_denominator_trials": 0
+  },
+  {
+    "case": "capacity-heavy-tail",
+    "ci95": null,
+    "comparison": "static-minus-fifo",
+    "evidence_status": "unevaluable",
+    "mean": null,
+    "metric": "classes.class0.longest_wait_ms",
+    "paired_seeds": 0,
+    "relative_delta": {
+      "ci95": null,
+      "evidence_status": "unevaluable",
+      "mean": null,
+      "paired_seeds": 0
+    },
+    "zero_denominator_trials": 0
+  },
+  {
+    "case": "capacity-heavy-tail",
+    "ci95": null,
+    "comparison": "static-minus-fifo",
+    "evidence_status": "unevaluable",
+    "mean": null,
+    "metric": "classes.class0.starvation_rate",
+    "paired_seeds": 0,
+    "relative_delta": {
+      "ci95": null,
+      "evidence_status": "unevaluable",
+      "mean": null,
+      "paired_seeds": 0
+    },
+    "zero_denominator_trials": 0
+  },
+  {
+    "case": "capacity-heavy-tail",
+    "ci95": null,
+    "comparison": "static-minus-fifo",
+    "evidence_status": "unevaluable",
+    "mean": null,
+    "metric": "classes.class1.longest_wait_ms",
+    "paired_seeds": 0,
+    "relative_delta": {
+      "ci95": null,
+      "evidence_status": "unevaluable",
+      "mean": null,
+      "paired_seeds": 0
+    },
+    "zero_denominator_trials": 0
+  },
+  {
+    "case": "capacity-heavy-tail",
+    "ci95": null,
+    "comparison": "static-minus-fifo",
+    "evidence_status": "unevaluable",
+    "mean": null,
+    "metric": "classes.class1.starvation_rate",
+    "paired_seeds": 0,
+    "relative_delta": {
+      "ci95": null,
+      "evidence_status": "unevaluable",
+      "mean": null,
+      "paired_seeds": 0
+    },
+    "zero_denominator_trials": 0
+  },
+  {
+    "case": "capacity-heavy-tail",
+    "ci95": null,
+    "comparison": "static-minus-fifo",
+    "evidence_status": "unevaluable",
+    "mean": null,
+    "metric": "classes.class2.longest_wait_ms",
+    "paired_seeds": 0,
+    "relative_delta": {
+      "ci95": null,
+      "evidence_status": "unevaluable",
+      "mean": null,
+      "paired_seeds": 0
+    },
+    "zero_denominator_trials": 0
+  },
+  {
+    "case": "capacity-heavy-tail",
+    "ci95": null,
+    "comparison": "static-minus-fifo",
+    "evidence_status": "unevaluable",
+    "mean": null,
+    "metric": "classes.class2.starvation_rate",
+    "paired_seeds": 0,
+    "relative_delta": {
+      "ci95": null,
+      "evidence_status": "unevaluable",
+      "mean": null,
+      "paired_seeds": 0
+    },
+    "zero_denominator_trials": 0
+  },
+  {
+    "case": "capacity-heavy-tail",
+    "ci95": null,
+    "comparison": "static-minus-round_robin",
+    "evidence_status": "unevaluable",
+    "mean": null,
+    "metric": "success_per_s",
+    "paired_seeds": 0,
+    "relative_delta": {
+      "ci95": null,
+      "evidence_status": "unevaluable",
+      "mean": null,
+      "paired_seeds": 0
+    },
+    "zero_denominator_trials": 0
+  },
+  {
+    "case": "capacity-heavy-tail",
+    "ci95": null,
+    "comparison": "static-minus-round_robin",
+    "evidence_status": "unevaluable",
+    "mean": null,
+    "metric": "terminal_latency_ms.p50",
+    "paired_seeds": 0,
+    "relative_delta": {
+      "ci95": null,
+      "evidence_status": "unevaluable",
+      "mean": null,
+      "paired_seeds": 0
+    },
+    "zero_denominator_trials": 0
+  },
+  {
+    "case": "capacity-heavy-tail",
+    "ci95": null,
+    "comparison": "static-minus-round_robin",
+    "evidence_status": "unevaluable",
+    "mean": null,
+    "metric": "terminal_latency_ms.p95",
+    "paired_seeds": 0,
+    "relative_delta": {
+      "ci95": null,
+      "evidence_status": "unevaluable",
+      "mean": null,
+      "paired_seeds": 0
+    },
+    "zero_denominator_trials": 0
+  },
+  {
+    "case": "capacity-heavy-tail",
+    "ci95": null,
+    "comparison": "static-minus-round_robin",
+    "evidence_status": "unevaluable",
+    "mean": null,
+    "metric": "terminal_latency_ms.p99",
+    "paired_seeds": 0,
+    "relative_delta": {
+      "ci95": null,
+      "evidence_status": "unevaluable",
+      "mean": null,
+      "paired_seeds": 0
+    },
+    "zero_denominator_trials": 0
+  },
+  {
+    "case": "capacity-heavy-tail",
+    "ci95": null,
+    "comparison": "static-minus-round_robin",
+    "evidence_status": "unevaluable",
+    "mean": null,
+    "metric": "classes.class0.longest_wait_ms",
+    "paired_seeds": 0,
+    "relative_delta": {
+      "ci95": null,
+      "evidence_status": "unevaluable",
+      "mean": null,
+      "paired_seeds": 0
+    },
+    "zero_denominator_trials": 0
+  },
+  {
+    "case": "capacity-heavy-tail",
+    "ci95": null,
+    "comparison": "static-minus-round_robin",
+    "evidence_status": "unevaluable",
+    "mean": null,
+    "metric": "classes.class0.starvation_rate",
+    "paired_seeds": 0,
+    "relative_delta": {
+      "ci95": null,
+      "evidence_status": "unevaluable",
+      "mean": null,
+      "paired_seeds": 0
+    },
+    "zero_denominator_trials": 0
+  },
+  {
+    "case": "capacity-heavy-tail",
+    "ci95": null,
+    "comparison": "static-minus-round_robin",
+    "evidence_status": "unevaluable",
+    "mean": null,
+    "metric": "classes.class1.longest_wait_ms",
+    "paired_seeds": 0,
+    "relative_delta": {
+      "ci95": null,
+      "evidence_status": "unevaluable",
+      "mean": null,
+      "paired_seeds": 0
+    },
+    "zero_denominator_trials": 0
+  },
+  {
+    "case": "capacity-heavy-tail",
+    "ci95": null,
+    "comparison": "static-minus-round_robin",
+    "evidence_status": "unevaluable",
+    "mean": null,
+    "metric": "classes.class1.starvation_rate",
+    "paired_seeds": 0,
+    "relative_delta": {
+      "ci95": null,
+      "evidence_status": "unevaluable",
+      "mean": null,
+      "paired_seeds": 0
+    },
+    "zero_denominator_trials": 0
+  },
+  {
+    "case": "capacity-heavy-tail",
+    "ci95": null,
+    "comparison": "static-minus-round_robin",
+    "evidence_status": "unevaluable",
+    "mean": null,
+    "metric": "classes.class2.longest_wait_ms",
+    "paired_seeds": 0,
+    "relative_delta": {
+      "ci95": null,
+      "evidence_status": "unevaluable",
+      "mean": null,
+      "paired_seeds": 0
+    },
+    "zero_denominator_trials": 0
+  },
+  {
+    "case": "capacity-heavy-tail",
+    "ci95": null,
+    "comparison": "static-minus-round_robin",
+    "evidence_status": "unevaluable",
+    "mean": null,
+    "metric": "classes.class2.starvation_rate",
+    "paired_seeds": 0,
+    "relative_delta": {
+      "ci95": null,
+      "evidence_status": "unevaluable",
+      "mean": null,
+      "paired_seeds": 0
+    },
+    "zero_denominator_trials": 0
+  },
+  {
+    "case": "capacity-heavy-tail",
+    "ci95": null,
+    "comparison": "static-minus-disabled",
+    "evidence_status": "unevaluable",
+    "mean": null,
+    "metric": "success_per_s",
+    "paired_seeds": 0,
+    "relative_delta": {
+      "ci95": null,
+      "evidence_status": "unevaluable",
+      "mean": null,
+      "paired_seeds": 0
+    },
+    "zero_denominator_trials": 0
+  },
+  {
+    "case": "capacity-heavy-tail",
+    "ci95": null,
+    "comparison": "static-minus-disabled",
+    "evidence_status": "unevaluable",
+    "mean": null,
+    "metric": "terminal_latency_ms.p50",
+    "paired_seeds": 0,
+    "relative_delta": {
+      "ci95": null,
+      "evidence_status": "unevaluable",
+      "mean": null,
+      "paired_seeds": 0
+    },
+    "zero_denominator_trials": 0
+  },
+  {
+    "case": "capacity-heavy-tail",
+    "ci95": null,
+    "comparison": "static-minus-disabled",
+    "evidence_status": "unevaluable",
+    "mean": null,
+    "metric": "terminal_latency_ms.p95",
+    "paired_seeds": 0,
+    "relative_delta": {
+      "ci95": null,
+      "evidence_status": "unevaluable",
+      "mean": null,
+      "paired_seeds": 0
+    },
+    "zero_denominator_trials": 0
+  },
+  {
+    "case": "capacity-heavy-tail",
+    "ci95": null,
+    "comparison": "static-minus-disabled",
+    "evidence_status": "unevaluable",
+    "mean": null,
+    "metric": "terminal_latency_ms.p99",
+    "paired_seeds": 0,
+    "relative_delta": {
+      "ci95": null,
+      "evidence_status": "unevaluable",
+      "mean": null,
+      "paired_seeds": 0
+    },
+    "zero_denominator_trials": 0
+  },
+  {
+    "case": "capacity-heavy-tail",
+    "ci95": null,
+    "comparison": "static-minus-disabled",
+    "evidence_status": "unevaluable",
+    "mean": null,
+    "metric": "classes.class0.longest_wait_ms",
+    "paired_seeds": 0,
+    "relative_delta": {
+      "ci95": null,
+      "evidence_status": "unevaluable",
+      "mean": null,
+      "paired_seeds": 0
+    },
+    "zero_denominator_trials": 0
+  },
+  {
+    "case": "capacity-heavy-tail",
+    "ci95": null,
+    "comparison": "static-minus-disabled",
+    "evidence_status": "unevaluable",
+    "mean": null,
+    "metric": "classes.class0.starvation_rate",
+    "paired_seeds": 0,
+    "relative_delta": {
+      "ci95": null,
+      "evidence_status": "unevaluable",
+      "mean": null,
+      "paired_seeds": 0
+    },
+    "zero_denominator_trials": 0
+  },
+  {
+    "case": "capacity-heavy-tail",
+    "ci95": null,
+    "comparison": "static-minus-disabled",
+    "evidence_status": "unevaluable",
+    "mean": null,
+    "metric": "classes.class1.longest_wait_ms",
+    "paired_seeds": 0,
+    "relative_delta": {
+      "ci95": null,
+      "evidence_status": "unevaluable",
+      "mean": null,
+      "paired_seeds": 0
+    },
+    "zero_denominator_trials": 0
+  },
+  {
+    "case": "capacity-heavy-tail",
+    "ci95": null,
+    "comparison": "static-minus-disabled",
+    "evidence_status": "unevaluable",
+    "mean": null,
+    "metric": "classes.class1.starvation_rate",
+    "paired_seeds": 0,
+    "relative_delta": {
+      "ci95": null,
+      "evidence_status": "unevaluable",
+      "mean": null,
+      "paired_seeds": 0
+    },
+    "zero_denominator_trials": 0
+  },
+  {
+    "case": "capacity-heavy-tail",
+    "ci95": null,
+    "comparison": "static-minus-disabled",
+    "evidence_status": "unevaluable",
+    "mean": null,
+    "metric": "classes.class2.longest_wait_ms",
+    "paired_seeds": 0,
+    "relative_delta": {
+      "ci95": null,
+      "evidence_status": "unevaluable",
+      "mean": null,
+      "paired_seeds": 0
+    },
+    "zero_denominator_trials": 0
+  },
+  {
+    "case": "capacity-heavy-tail",
+    "ci95": null,
+    "comparison": "static-minus-disabled",
+    "evidence_status": "unevaluable",
+    "mean": null,
+    "metric": "classes.class2.starvation_rate",
+    "paired_seeds": 0,
+    "relative_delta": {
+      "ci95": null,
+      "evidence_status": "unevaluable",
+      "mean": null,
+      "paired_seeds": 0
+    },
+    "zero_denominator_trials": 0
+  },
+  {
+    "case": "capacity-bimodal-four-workers",
+    "ci95": null,
+    "comparison": "static-minus-fifo",
+    "evidence_status": "unevaluable",
+    "mean": null,
+    "metric": "success_per_s",
+    "paired_seeds": 0,
+    "relative_delta": {
+      "ci95": null,
+      "evidence_status": "unevaluable",
+      "mean": null,
+      "paired_seeds": 0
+    },
+    "zero_denominator_trials": 0
+  },
+  {
+    "case": "capacity-bimodal-four-workers",
+    "ci95": null,
+    "comparison": "static-minus-fifo",
+    "evidence_status": "unevaluable",
+    "mean": null,
+    "metric": "terminal_latency_ms.p50",
+    "paired_seeds": 0,
+    "relative_delta": {
+      "ci95": null,
+      "evidence_status": "unevaluable",
+      "mean": null,
+      "paired_seeds": 0
+    },
+    "zero_denominator_trials": 0
+  },
+  {
+    "case": "capacity-bimodal-four-workers",
+    "ci95": null,
+    "comparison": "static-minus-fifo",
+    "evidence_status": "unevaluable",
+    "mean": null,
+    "metric": "terminal_latency_ms.p95",
+    "paired_seeds": 0,
+    "relative_delta": {
+      "ci95": null,
+      "evidence_status": "unevaluable",
+      "mean": null,
+      "paired_seeds": 0
+    },
+    "zero_denominator_trials": 0
+  },
+  {
+    "case": "capacity-bimodal-four-workers",
+    "ci95": null,
+    "comparison": "static-minus-fifo",
+    "evidence_status": "unevaluable",
+    "mean": null,
+    "metric": "terminal_latency_ms.p99",
+    "paired_seeds": 0,
+    "relative_delta": {
+      "ci95": null,
+      "evidence_status": "unevaluable",
+      "mean": null,
+      "paired_seeds": 0
+    },
+    "zero_denominator_trials": 0
+  },
+  {
+    "case": "capacity-bimodal-four-workers",
+    "ci95": null,
+    "comparison": "static-minus-fifo",
+    "evidence_status": "unevaluable",
+    "mean": null,
+    "metric": "classes.class0.longest_wait_ms",
+    "paired_seeds": 0,
+    "relative_delta": {
+      "ci95": null,
+      "evidence_status": "unevaluable",
+      "mean": null,
+      "paired_seeds": 0
+    },
+    "zero_denominator_trials": 0
+  },
+  {
+    "case": "capacity-bimodal-four-workers",
+    "ci95": null,
+    "comparison": "static-minus-fifo",
+    "evidence_status": "unevaluable",
+    "mean": null,
+    "metric": "classes.class0.starvation_rate",
+    "paired_seeds": 0,
+    "relative_delta": {
+      "ci95": null,
+      "evidence_status": "unevaluable",
+      "mean": null,
+      "paired_seeds": 0
+    },
+    "zero_denominator_trials": 0
+  },
+  {
+    "case": "capacity-bimodal-four-workers",
+    "ci95": null,
+    "comparison": "static-minus-fifo",
+    "evidence_status": "unevaluable",
+    "mean": null,
+    "metric": "classes.class1.longest_wait_ms",
+    "paired_seeds": 0,
+    "relative_delta": {
+      "ci95": null,
+      "evidence_status": "unevaluable",
+      "mean": null,
+      "paired_seeds": 0
+    },
+    "zero_denominator_trials": 0
+  },
+  {
+    "case": "capacity-bimodal-four-workers",
+    "ci95": null,
+    "comparison": "static-minus-fifo",
+    "evidence_status": "unevaluable",
+    "mean": null,
+    "metric": "classes.class1.starvation_rate",
+    "paired_seeds": 0,
+    "relative_delta": {
+      "ci95": null,
+      "evidence_status": "unevaluable",
+      "mean": null,
+      "paired_seeds": 0
+    },
+    "zero_denominator_trials": 0
+  },
+  {
+    "case": "capacity-bimodal-four-workers",
+    "ci95": null,
+    "comparison": "static-minus-fifo",
+    "evidence_status": "unevaluable",
+    "mean": null,
+    "metric": "classes.class2.longest_wait_ms",
+    "paired_seeds": 0,
+    "relative_delta": {
+      "ci95": null,
+      "evidence_status": "unevaluable",
+      "mean": null,
+      "paired_seeds": 0
+    },
+    "zero_denominator_trials": 0
+  },
+  {
+    "case": "capacity-bimodal-four-workers",
+    "ci95": null,
+    "comparison": "static-minus-fifo",
+    "evidence_status": "unevaluable",
+    "mean": null,
+    "metric": "classes.class2.starvation_rate",
+    "paired_seeds": 0,
+    "relative_delta": {
+      "ci95": null,
+      "evidence_status": "unevaluable",
+      "mean": null,
+      "paired_seeds": 0
+    },
+    "zero_denominator_trials": 0
+  },
+  {
+    "case": "capacity-bimodal-four-workers",
+    "ci95": null,
+    "comparison": "static-minus-round_robin",
+    "evidence_status": "unevaluable",
+    "mean": null,
+    "metric": "success_per_s",
+    "paired_seeds": 0,
+    "relative_delta": {
+      "ci95": null,
+      "evidence_status": "unevaluable",
+      "mean": null,
+      "paired_seeds": 0
+    },
+    "zero_denominator_trials": 0
+  },
+  {
+    "case": "capacity-bimodal-four-workers",
+    "ci95": null,
+    "comparison": "static-minus-round_robin",
+    "evidence_status": "unevaluable",
+    "mean": null,
+    "metric": "terminal_latency_ms.p50",
+    "paired_seeds": 0,
+    "relative_delta": {
+      "ci95": null,
+      "evidence_status": "unevaluable",
+      "mean": null,
+      "paired_seeds": 0
+    },
+    "zero_denominator_trials": 0
+  },
+  {
+    "case": "capacity-bimodal-four-workers",
+    "ci95": null,
+    "comparison": "static-minus-round_robin",
+    "evidence_status": "unevaluable",
+    "mean": null,
+    "metric": "terminal_latency_ms.p95",
+    "paired_seeds": 0,
+    "relative_delta": {
+      "ci95": null,
+      "evidence_status": "unevaluable",
+      "mean": null,
+      "paired_seeds": 0
+    },
+    "zero_denominator_trials": 0
+  },
+  {
+    "case": "capacity-bimodal-four-workers",
+    "ci95": null,
+    "comparison": "static-minus-round_robin",
+    "evidence_status": "unevaluable",
+    "mean": null,
+    "metric": "terminal_latency_ms.p99",
+    "paired_seeds": 0,
+    "relative_delta": {
+      "ci95": null,
+      "evidence_status": "unevaluable",
+      "mean": null,
+      "paired_seeds": 0
+    },
+    "zero_denominator_trials": 0
+  },
+  {
+    "case": "capacity-bimodal-four-workers",
+    "ci95": null,
+    "comparison": "static-minus-round_robin",
+    "evidence_status": "unevaluable",
+    "mean": null,
+    "metric": "classes.class0.longest_wait_ms",
+    "paired_seeds": 0,
+    "relative_delta": {
+      "ci95": null,
+      "evidence_status": "unevaluable",
+      "mean": null,
+      "paired_seeds": 0
+    },
+    "zero_denominator_trials": 0
+  },
+  {
+    "case": "capacity-bimodal-four-workers",
+    "ci95": null,
+    "comparison": "static-minus-round_robin",
+    "evidence_status": "unevaluable",
+    "mean": null,
+    "metric": "classes.class0.starvation_rate",
+    "paired_seeds": 0,
+    "relative_delta": {
+      "ci95": null,
+      "evidence_status": "unevaluable",
+      "mean": null,
+      "paired_seeds": 0
+    },
+    "zero_denominator_trials": 0
+  },
+  {
+    "case": "capacity-bimodal-four-workers",
+    "ci95": null,
+    "comparison": "static-minus-round_robin",
+    "evidence_status": "unevaluable",
+    "mean": null,
+    "metric": "classes.class1.longest_wait_ms",
+    "paired_seeds": 0,
+    "relative_delta": {
+      "ci95": null,
+      "evidence_status": "unevaluable",
+      "mean": null,
+      "paired_seeds": 0
+    },
+    "zero_denominator_trials": 0
+  },
+  {
+    "case": "capacity-bimodal-four-workers",
+    "ci95": null,
+    "comparison": "static-minus-round_robin",
+    "evidence_status": "unevaluable",
+    "mean": null,
+    "metric": "classes.class1.starvation_rate",
+    "paired_seeds": 0,
+    "relative_delta": {
+      "ci95": null,
+      "evidence_status": "unevaluable",
+      "mean": null,
+      "paired_seeds": 0
+    },
+    "zero_denominator_trials": 0
+  },
+  {
+    "case": "capacity-bimodal-four-workers",
+    "ci95": null,
+    "comparison": "static-minus-round_robin",
+    "evidence_status": "unevaluable",
+    "mean": null,
+    "metric": "classes.class2.longest_wait_ms",
+    "paired_seeds": 0,
+    "relative_delta": {
+      "ci95": null,
+      "evidence_status": "unevaluable",
+      "mean": null,
+      "paired_seeds": 0
+    },
+    "zero_denominator_trials": 0
+  },
+  {
+    "case": "capacity-bimodal-four-workers",
+    "ci95": null,
+    "comparison": "static-minus-round_robin",
+    "evidence_status": "unevaluable",
+    "mean": null,
+    "metric": "classes.class2.starvation_rate",
+    "paired_seeds": 0,
+    "relative_delta": {
+      "ci95": null,
+      "evidence_status": "unevaluable",
+      "mean": null,
+      "paired_seeds": 0
+    },
+    "zero_denominator_trials": 0
+  },
+  {
+    "case": "capacity-bimodal-four-workers",
+    "ci95": null,
+    "comparison": "static-minus-disabled",
+    "evidence_status": "unevaluable",
+    "mean": null,
+    "metric": "success_per_s",
+    "paired_seeds": 0,
+    "relative_delta": {
+      "ci95": null,
+      "evidence_status": "unevaluable",
+      "mean": null,
+      "paired_seeds": 0
+    },
+    "zero_denominator_trials": 0
+  },
+  {
+    "case": "capacity-bimodal-four-workers",
+    "ci95": null,
+    "comparison": "static-minus-disabled",
+    "evidence_status": "unevaluable",
+    "mean": null,
+    "metric": "terminal_latency_ms.p50",
+    "paired_seeds": 0,
+    "relative_delta": {
+      "ci95": null,
+      "evidence_status": "unevaluable",
+      "mean": null,
+      "paired_seeds": 0
+    },
+    "zero_denominator_trials": 0
+  },
+  {
+    "case": "capacity-bimodal-four-workers",
+    "ci95": null,
+    "comparison": "static-minus-disabled",
+    "evidence_status": "unevaluable",
+    "mean": null,
+    "metric": "terminal_latency_ms.p95",
+    "paired_seeds": 0,
+    "relative_delta": {
+      "ci95": null,
+      "evidence_status": "unevaluable",
+      "mean": null,
+      "paired_seeds": 0
+    },
+    "zero_denominator_trials": 0
+  },
+  {
+    "case": "capacity-bimodal-four-workers",
+    "ci95": null,
+    "comparison": "static-minus-disabled",
+    "evidence_status": "unevaluable",
+    "mean": null,
+    "metric": "terminal_latency_ms.p99",
+    "paired_seeds": 0,
+    "relative_delta": {
+      "ci95": null,
+      "evidence_status": "unevaluable",
+      "mean": null,
+      "paired_seeds": 0
+    },
+    "zero_denominator_trials": 0
+  },
+  {
+    "case": "capacity-bimodal-four-workers",
+    "ci95": null,
+    "comparison": "static-minus-disabled",
+    "evidence_status": "unevaluable",
+    "mean": null,
+    "metric": "classes.class0.longest_wait_ms",
+    "paired_seeds": 0,
+    "relative_delta": {
+      "ci95": null,
+      "evidence_status": "unevaluable",
+      "mean": null,
+      "paired_seeds": 0
+    },
+    "zero_denominator_trials": 0
+  },
+  {
+    "case": "capacity-bimodal-four-workers",
+    "ci95": null,
+    "comparison": "static-minus-disabled",
+    "evidence_status": "unevaluable",
+    "mean": null,
+    "metric": "classes.class0.starvation_rate",
+    "paired_seeds": 0,
+    "relative_delta": {
+      "ci95": null,
+      "evidence_status": "unevaluable",
+      "mean": null,
+      "paired_seeds": 0
+    },
+    "zero_denominator_trials": 0
+  },
+  {
+    "case": "capacity-bimodal-four-workers",
+    "ci95": null,
+    "comparison": "static-minus-disabled",
+    "evidence_status": "unevaluable",
+    "mean": null,
+    "metric": "classes.class1.longest_wait_ms",
+    "paired_seeds": 0,
+    "relative_delta": {
+      "ci95": null,
+      "evidence_status": "unevaluable",
+      "mean": null,
+      "paired_seeds": 0
+    },
+    "zero_denominator_trials": 0
+  },
+  {
+    "case": "capacity-bimodal-four-workers",
+    "ci95": null,
+    "comparison": "static-minus-disabled",
+    "evidence_status": "unevaluable",
+    "mean": null,
+    "metric": "classes.class1.starvation_rate",
+    "paired_seeds": 0,
+    "relative_delta": {
+      "ci95": null,
+      "evidence_status": "unevaluable",
+      "mean": null,
+      "paired_seeds": 0
+    },
+    "zero_denominator_trials": 0
+  },
+  {
+    "case": "capacity-bimodal-four-workers",
+    "ci95": null,
+    "comparison": "static-minus-disabled",
+    "evidence_status": "unevaluable",
+    "mean": null,
+    "metric": "classes.class2.longest_wait_ms",
+    "paired_seeds": 0,
+    "relative_delta": {
+      "ci95": null,
+      "evidence_status": "unevaluable",
+      "mean": null,
+      "paired_seeds": 0
+    },
+    "zero_denominator_trials": 0
+  },
+  {
+    "case": "capacity-bimodal-four-workers",
+    "ci95": null,
+    "comparison": "static-minus-disabled",
+    "evidence_status": "unevaluable",
+    "mean": null,
+    "metric": "classes.class2.starvation_rate",
+    "paired_seeds": 0,
+    "relative_delta": {
+      "ci95": null,
+      "evidence_status": "unevaluable",
+      "mean": null,
+      "paired_seeds": 0
+    },
+    "zero_denominator_trials": 0
+  }
+]

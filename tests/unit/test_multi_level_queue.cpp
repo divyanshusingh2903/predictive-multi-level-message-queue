@@ -76,6 +76,36 @@ TEST(MultiLevelQueue, ZeroLevelsThrows) {
     EXPECT_THROW(MultiLevelQueue{0}, std::invalid_argument);
 }
 
+TEST(MultiLevelQueue, RoundRobinSkipsEmptyLevelsAndWrapsWithFifo) {
+    MultiLevelQueue q{3, std::nullopt, QueueSelection::RoundRobin};
+    q.enqueue(make_msg(0, "a")); q.enqueue(make_msg(0, "b"));
+    q.enqueue(make_msg(2, "c")); q.enqueue(make_msg(2, "d"));
+    for (const auto* id : {"a", "c", "b", "d"}) EXPECT_EQ(q.try_dequeue()->id, id);
+    EXPECT_FALSE(q.try_dequeue());
+}
+
+TEST(MultiLevelQueue, RoundRobinSupportsOneAnd255LevelsAndRestoration) {
+    for (const uint8_t levels : {uint8_t{1}, uint8_t{255}}) {
+        MultiLevelQueue q{levels, std::nullopt, QueueSelection::RoundRobin};
+        q.enqueue(make_msg(levels - 1, "last"));
+        auto msg = *q.try_dequeue();
+        const auto placed = msg.enqueue_time;
+        q.requeue_front(std::move(msg));
+        auto restored = *q.try_dequeue();
+        EXPECT_EQ(restored.id, "last"); EXPECT_EQ(restored.enqueue_time, placed);
+    }
+}
+
+TEST(MultiLevelQueue, RoundRobinUsesSharedAgingWithoutResettingOriginalPriority) {
+    MultiLevelQueue q{3, AgingConfig{10ms, 1h}, QueueSelection::RoundRobin};
+    auto msg = make_msg(2, "old");
+    msg.enqueue_time = std::chrono::steady_clock::now() - 100ms;
+    q.requeue_front(msg);
+    QueueTestAccess::age(q, std::chrono::steady_clock::now());
+    auto promoted = *q.try_dequeue();
+    EXPECT_EQ(promoted.priority, 1); EXPECT_EQ(promoted.original_priority, 2);
+}
+
 // ── Enqueue / Dequeue ─────────────────────────────────────────────────────────
 
 TEST(MultiLevelQueue, EnqueueIncreasesSize) {
