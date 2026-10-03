@@ -1,6 +1,6 @@
 # Ingress features and model encoding
 
-Issue #2 implements a bounded C++ feature extractor, immutable broker-only routing context, and matching Python validation/sparse encoding. There is no classifier service, learner, or persistent feedback writer yet. Routing remains static.
+Issue #2 implements a bounded C++ feature extractor, immutable broker-only routing context, and matching Python validation/sparse encoding. Issue #3 adds optional [persistent broker feedback](../docs/feedback.md). There is no classifier service or learner yet. Routing remains static.
 
 ## Enable capture in an embedded broker
 
@@ -81,4 +81,4 @@ ctest --test-dir build --output-on-failure
 
 Both suites consume `tests/fixtures/ml/features_v1.json`, including numeric bit patterns, fixed hash bins, UTF-8/escape examples, privacy exclusions, and exact size admission boundaries. Python tests are registered with CTest when Python 3.10+ is available; `HARBINGER_REQUIRE_PYTHON_TESTS=ON` makes its absence a configuration error and is required by the normal CI job.
 
-Feedback event capture/persistence and delivery ordinals follow in #3; serving follows in #6 and routing activation in #7. Use the [ML contract](../docs/ml-contract.md) for their agreed interfaces.
+Feedback event capture/persistence and delivery ordinals are implemented in #3 through embedded `HarbingerConfig::feedback`, separately from feature capture. Serving follows in #6 and routing activation in #7. Use the [feedback guide](../docs/feedback.md) and [ML contract](../docs/ml-contract.md) for their interfaces.

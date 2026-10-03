@@ -8,7 +8,7 @@ Predictive Multi-Level Message Queue: ML-predicted processing time + MLFQ routin
 
 - **Consumers are tier-blind.** Broker picks the message; levels never leak to clients.
 - **Proxy is narrow:** ID + `arrival_time` + `__producer_id` header → forwards to sink. No queue/priority/TTL knowledge.
-- **Phase 2:** `route_message()` is the sole feature/classifier hook. Opt-in static ingress capture and Python encoding are implemented; classifier calls and persistent `processing_time_ms` feedback remain planned.
+- **Phase 2:** `route_message()` is the sole feature/classifier hook. Opt-in static ingress capture, Python encoding, and embedded persistent feedback are implemented; classifier calls remain planned.
 
 ## Invariants (don't break)
 
@@ -38,7 +38,9 @@ Predictive Multi-Level Message Queue: ML-predicted processing time + MLFQ routin
 
 `num_levels=3`, `aging=nullopt` (strict-priority; use `{5000 ms, 500 ms}` to enable aging), `default_max_retries=3`, `default_ttl=0`, `default_priority=1`, `max_pull_wait=5000 ms`, `ttl_sweep_interval=100 ms` (`0` = off).
 
-`ingress_features=nullopt` disables capture. Embedded brokers may supply `ml::IngressFeatureConfig` with a schema and caller-declared static policy version; no standalone schema flag, inference, or persistence is enabled. `Message::routing_context` is `shared_ptr<const ml::RoutingContext>` and must survive all message moves/restoration/aging/retry/DLQ copies without leaking to RPCs. Disabled context has absent model/prediction/fallback/timing fields; oversized complete snapshots have null features plus `FeatureLimit`.
+`ingress_features=nullopt` disables capture. Embedded brokers may supply `ml::IngressFeatureConfig` with a schema and caller-declared static policy version; this alone enables no persistence/inference. `Message::routing_context` is `shared_ptr<const ml::RoutingContext>` and must survive all message moves/restoration/aging/retry/DLQ copies without leaking to RPCs. Disabled context has absent model/prediction/fallback/timing fields; oversized complete snapshots have null features plus `FeatureLimit`.
+
+`feedback=nullopt` disables persistence. Enabled `ml::FeedbackConfig` requires explicit `ingress_features` and an existing dedicated directory: 4096 records/32 MiB pending (including writer-owned work), 16 KiB event JSON plus newline accounting, 64 MiB segments, 1 GiB/7-day sealed retention, 256 total segments, 1-second sync/drain targets. POSIX writer owns the directory exclusively; no standalone schema/feedback flags. Capture before moves and publish only after successful transitions, outside broker locks. Nonblocking admission drops on contention/overflow; runtime disk failures isolate telemetry and count loss. Stale/damaged active segments are preserved as suspect; never append/retry ambiguous records into another segment. Quiesce callers before destruction; maintenance joins before writer close/drain/join. Blocked syscalls can exceed the drain target. Details: `docs/feedback.md`.
 
 Recovery defaults: `delivery_lease=30000 ms`, `lease_sweep_interval=100 ms`, `completion_retention=60000 ms`, `completion_cache_max_entries=10000`, `maintenance_batch_size=256`. All must be positive; extreme maintenance durations are rejected before clock conversion. Lease, queue TTL, and completion-history maintenance use bounded batches; reclamation delay grows with backlog.
 
@@ -52,7 +54,7 @@ Standalone server startup overrides: `--delivery-lease-ms`, `--lease-sweep-inter
 - Bound classifier calls with a short deadline. Any timeout, unavailable classifier, invalid prediction, or priority outside `[0, num_levels)` falls back to `default_priority`.
 - Compare prediction error, P50/P95/P99, throughput, and starvation against FIFO, static-priority, and round-robin workloads before enabling predictive routing.
 
-Design details live in [ADR 0001](docs/adr/0001-phase2-ml-contract.md), the [ML contract](docs/ml-contract.md), and the [validation plan](docs/phase2-validation.md). [Feature capture/encoding](ml_engine/README.md) is implemented; inference, feedback persistence, and proposed resource/performance budgets remain planned.
+Design details live in [ADR 0001](docs/adr/0001-phase2-ml-contract.md), the [ML contract](docs/ml-contract.md), and the [validation plan](docs/phase2-validation.md). [Feature capture/encoding](ml_engine/README.md) and [feedback persistence](docs/feedback.md) are implemented; inference and performance validation remain planned.
 
 - Modes: disabled/static by default, shadow for initial prediction experiments, predictive only by explicit opt-in after the gate. Feedback collection is separately configured so static-mode collection works without Python.
 - Predict successful handler duration, then let C++ map it to fixed versioned boundaries. Current `uint8_t` levels support 1–255; exactly `num_levels - 1` positive increasing boundaries, equality enters the next bucket. One level requires default priority 0 and no boundaries.

@@ -1,4 +1,5 @@
 #include "harbinger_service.hpp"
+#include "feedback_test_support.hpp"
 
 #include <grpcpp/grpcpp.h>
 #include <gtest/gtest.h>
@@ -9,12 +10,39 @@
 #include <thread>
 #include <barrier>
 #include <future>
+#include <limits>
+#include <set>
 
 using namespace harbinger;
 using namespace std::chrono_literals;
 
 namespace harbinger {
+struct QueueTestAccess {
+    static void expire_selected(MultiLevelQueue& queue) {
+        std::lock_guard lock{queue.mutex_};
+        for (auto& level : queue.queues_) {
+            if (level.empty()) continue;
+            // Emulate crossing TTL after the index sweep, before selected-message validation.
+            level.front().message.ttl = 1ms;
+            level.front().message.arrival_time = std::chrono::steady_clock::now() - 1s;
+            return;
+        }
+    }
+};
 struct BrokerTestAccess {
+    static void expire_selected(HarbingerService& service) { QueueTestAccess::expire_selected(service.queue_); }
+    static void close_feedback(HarbingerService& service) { service.feedback_writer_->close(); }
+    static void exhaust_delivery_count(HarbingerService& service) {
+        auto message = service.queue_.try_dequeue();
+        ASSERT_TRUE(message);
+        message->delivery_count = std::numeric_limits<uint64_t>::max();
+        service.queue_.requeue_front(std::move(*message));
+    }
+    static void replace_writer(HarbingerService& service, std::shared_ptr<feedback_test::Storage> storage) {
+        service.feedback_writer_.reset();
+        service.feedback_writer_ = ml::FeedbackWriterTestAccess::create(
+            *service.config_.feedback, service.config_.delivery_lease.count(), std::move(storage));
+    }
     static std::unique_lock<std::mutex> gate_delivery(HarbingerService& service) {
         return std::unique_lock{service.in_flight_mutex_};
     }
@@ -478,24 +506,24 @@ struct LocalBroker {
         return presp;
     }
 
-    grpc::Status ack(const harbinger_rpc::PulledMessage& delivery) {
+    grpc::Status ack(const harbinger_rpc::PulledMessage& delivery, int64_t duration = 5) {
         harbinger_rpc::AckRequest aq;
         aq.set_consumer_id(consumer_id);
         aq.set_message_id(delivery.message_id());
         aq.set_attempt_token(delivery.attempt_token());
-        aq.set_processing_time_ms(5);
+        aq.set_processing_time_ms(duration);
         harbinger_rpc::AckResponse aresp;
         grpc::ClientContext c;
         c.set_deadline(std::chrono::system_clock::now() + 3s);
         return stub->Ack(&c, aq, &aresp);
     }
 
-    grpc::Status nack(const harbinger_rpc::PulledMessage& delivery, const std::string& reason = "t") {
+    grpc::Status nack(const harbinger_rpc::PulledMessage& delivery, const std::string& reason = "t", int64_t duration = 5) {
         harbinger_rpc::NackRequest nq;
         nq.set_consumer_id(consumer_id);
         nq.set_message_id(delivery.message_id());
         nq.set_attempt_token(delivery.attempt_token());
-        nq.set_processing_time_ms(5);
+        nq.set_processing_time_ms(duration);
         nq.set_reason(reason);
         harbinger_rpc::NackResponse nresp;
         grpc::ClientContext c;
@@ -560,10 +588,11 @@ bool wait_until(Pred pred) {
 }
 
 TEST(DeliveryRecovery, CancelledSelectedPullRestoresFrontWithoutLeaseOrRetry) {
+    feedback_test::Directory feedback_directory;
     LocalBroker b{HarbingerConfig{
         .default_max_retries = 2, .ttl_sweep_interval = 0ms,
         .delivery_lease = 30s, .lease_sweep_interval = 30s,
-        .ingress_features = capture_features()}};
+        .ingress_features = capture_features(), .feedback = feedback_directory.config()}};
     const std::string payload{"\0\x80\xffX", 4};
     const std::unordered_map<std::string, std::string> headers{{"job", "binary"}, {"empty", ""}};
     const auto first_id = b.submit(payload, std::nullopt, headers);
@@ -611,6 +640,7 @@ TEST(DeliveryRecovery, CancelledSelectedPullRestoresFrontWithoutLeaseOrRetry) {
     EXPECT_EQ(restored->priority, before->priority);
     EXPECT_EQ(restored->original_priority, before->original_priority);
     EXPECT_EQ(restored->retry_count, before->retry_count);
+    EXPECT_EQ(restored->delivery_count, 0u);
     EXPECT_EQ(restored->enqueue_time, before->enqueue_time);
     EXPECT_EQ(restored->arrival_time, before->arrival_time);
     EXPECT_EQ(restored->payload, before->payload);
@@ -643,6 +673,16 @@ TEST(DeliveryRecovery, CancelledSelectedPullRestoresFrontWithoutLeaseOrRetry) {
     EXPECT_EQ(retry.message().payload(), payload);
     EXPECT_TRUE(b.ack(retry.message()).ok());
     EXPECT_LT(std::chrono::steady_clock::now() - start, 3s);
+    BrokerTestAccess::close_feedback(b.service);
+    const auto events = feedback_test::records(feedback_directory);
+    ASSERT_EQ(events.size(), 5u);
+    for (const auto& event : events) {
+        if (event.fields().at("event_type").string_value() != "outcome") continue;
+        const auto& fields = event.fields();
+        const auto expected = fields.at("message_id").string_value() == first_id &&
+            fields.at("outcome").string_value() == "ack" ? "2" : "1";
+        EXPECT_EQ(fields.at("attempt_id").string_value(), expected);
+    }
 }
 
 TEST(IngressContext, OptInStaticCapturePreservesFeaturesAcrossRetryAndDlqWithoutRpcLeakage) {
@@ -1210,4 +1250,271 @@ TEST(ConfigValidationTest, RejectsInvalidRecoveryConfiguration) {
     EXPECT_THROW((HarbingerService{HarbingerConfig{.completion_retention = 0ms}}), std::invalid_argument);
     EXPECT_THROW((HarbingerService{HarbingerConfig{.completion_cache_max_entries = 0}}), std::invalid_argument);
     EXPECT_THROW((HarbingerService{HarbingerConfig{.maintenance_batch_size = 0}}), std::invalid_argument);
+}
+
+namespace {
+HarbingerConfig feedback_config(const feedback_test::Directory& directory) {
+    HarbingerConfig config;
+    config.ttl_sweep_interval = 0ms;
+    config.lease_sweep_interval = 1h;
+    config.ingress_features = capture_features();
+    config.feedback = directory.config();
+    return config;
+}
+std::vector<google::protobuf::Struct> outcomes(const feedback_test::Directory& directory) {
+    auto rows = feedback_test::records(directory);
+    std::erase_if(rows, [](const auto& row) { return row.fields().at("event_type").string_value() != "outcome"; });
+    return rows;
+}
+}
+
+TEST(FeedbackBroker, RetriesLeaseExpiryAndReplayPreserveFirstMeasurementAndAttemptSequence) {
+    feedback_test::Directory directory;
+    LocalBroker b{feedback_config(directory)};
+    const auto id = b.submit("raw-payload-sentinel", std::nullopt,
+        {{"job", "resize"}, {"units", "2"}, {"authorization", "private-sentinel"}});
+    const auto first = b.pull().message();
+    ASSERT_TRUE(b.nack(first, "failure-text-sentinel", 0).ok());
+    const auto second = b.pull().message();
+    EXPECT_TRUE(b.nack(first, "changed", 999).ok());
+    EXPECT_EQ(b.ack(first).error_code(), grpc::StatusCode::FAILED_PRECONDITION);
+    BrokerTestAccess::expire(b.service, id);
+    EXPECT_EQ(b.ack(second, 777).error_code(), grpc::StatusCode::FAILED_PRECONDITION);
+    const auto third = b.pull().message();
+    EXPECT_TRUE(b.ack(third, 0).ok()); EXPECT_TRUE(b.ack(third, 888).ok());
+    BrokerTestAccess::close_feedback(b.service);
+    const auto rows = outcomes(directory); ASSERT_EQ(rows.size(), 3u);
+    for (std::size_t i = 0; i < rows.size(); ++i) {
+        const auto& f = rows[i].fields();
+        EXPECT_EQ(f.at("message_id").string_value(), id);
+        EXPECT_EQ(f.at("attempt_id").string_value(), std::to_string(i + 1));
+        const auto& context = f.at("routing").struct_value().fields();
+        EXPECT_EQ(context.at("ingress_priority").number_value(), 1);
+        EXPECT_EQ(context.at("features").struct_value().fields().at("headers").struct_value().fields()
+            .at("units").number_value(), 2);
+        EXPECT_EQ(rows[i].DebugString().find("sentinel"), std::string::npos);
+        EXPECT_EQ(rows[i].DebugString().find(first.attempt_token()), std::string::npos);
+    }
+    EXPECT_EQ(rows[0].fields().at("outcome").string_value(), "retry");
+    EXPECT_EQ(rows[0].fields().at("processing_time_ms").number_value(), 0);
+    EXPECT_EQ(rows[0].fields().at("label_status").string_value(), "failure");
+    EXPECT_EQ(rows[1].fields().at("trigger").string_value(), "lease_expiry");
+    EXPECT_EQ(rows[1].fields().at("processing_time_ms").kind_case(), google::protobuf::Value::kNullValue);
+    EXPECT_EQ(rows[1].fields().at("settlement_operation").kind_case(), google::protobuf::Value::kNullValue);
+    EXPECT_EQ(rows[1].fields().at("retry_count").number_value(), 2);
+    EXPECT_EQ(rows[2].fields().at("label_status").string_value(), "eligible");
+}
+
+TEST(FeedbackBroker, TtlOutcomesAndInvalidMeasurementsRespectPrecedenceWithoutChangingRpcStatus) {
+    for (const bool nack : {false, true}) {
+        for (const int64_t runtime : {int64_t{-1}, int64_t{0}, int64_t{30001}}) {
+            feedback_test::Directory directory;
+            LocalBroker b{feedback_config(directory)};
+            b.submit(); const auto delivery = b.pull().message();
+            BrokerTestAccess::expire_ttl(b.service, delivery.message_id());
+            EXPECT_TRUE((nack ? b.nack(delivery, "failure", runtime) : b.ack(delivery, runtime)).ok());
+            EXPECT_EQ(b.service.dlq_size(), 1u);
+            BrokerTestAccess::close_feedback(b.service);
+            const auto rows = outcomes(directory); ASSERT_EQ(rows.size(), 1u);
+            const auto& f = rows[0].fields();
+            EXPECT_EQ(f.at("outcome").string_value(), "dlq");
+            EXPECT_EQ(f.at("dlq_reason").string_value(), "TTL_EXPIRED");
+            EXPECT_EQ(f.at("retry_count").number_value(), 0);
+            EXPECT_EQ(f.at("settlement_operation").string_value(), nack ? "nack" : "ack");
+            EXPECT_EQ(f.at("label_status").string_value(), runtime < 0 ? "negative" : runtime > 30000 ? "out_of_range" : "censored");
+        }
+    }
+}
+
+TEST(FeedbackBroker, EveryExpiryPathIncludingNeverPulledAndPreviouslyRetriedMessagesEmitsMissingLabels) {
+    for (int path = 0; path < 6; ++path) {
+        feedback_test::Directory directory;
+        auto config = feedback_config(directory);
+        if (path == 5) { config.ttl_sweep_interval = 5ms; config.default_ttl = 10ms; }
+        LocalBroker b{config};
+        const auto id = b.submit();
+        if (path == 0 || path == 1) {
+            const auto delivery = b.pull().message();
+            if (path == 1) { EXPECT_TRUE(b.nack(delivery).ok()); }
+            if (path == 0) { BrokerTestAccess::expire(b.service, id, true); BrokerTestAccess::maintain(b.service); }
+            else BrokerTestAccess::expire_queued(b.service);
+        } else if (path == 2) {
+            BrokerTestAccess::expire_selected(b.service);
+            EXPECT_TRUE(b.pull(20).timed_out());
+        } else if (path == 3) {
+            // The helper drives the same swept-message disposition used by background maintenance.
+            BrokerTestAccess::expire_queued(b.service);
+        } else if (path == 4) {
+            b.submit("expires", 1); std::this_thread::sleep_for(5ms);
+            const auto live = b.pull().message(); EXPECT_EQ(live.message_id(), id); EXPECT_TRUE(b.ack(live).ok());
+        } else { ASSERT_TRUE(feedback_test::wait_for([&] { return b.service.dlq_size() == 1; })); }
+        BrokerTestAccess::close_feedback(b.service);
+        auto rows = outcomes(directory);
+        std::erase_if(rows, [](const auto& row) { return row.fields().at("outcome").string_value() != "dlq"; });
+        ASSERT_EQ(rows.size(), 1u) << path;
+        const auto& f = rows[0].fields();
+        EXPECT_EQ(f.at("dlq_reason").string_value(), "TTL_EXPIRED");
+        EXPECT_EQ(f.at("label_status").string_value(), "missing");
+        EXPECT_EQ(f.at("processing_time_ms").kind_case(), google::protobuf::Value::kNullValue);
+        if (path == 0) {
+            EXPECT_EQ(f.at("attempt_id").string_value(), "1");
+            EXPECT_EQ(f.at("trigger").string_value(), "lease_expiry");
+        } else {
+            EXPECT_EQ(f.at("attempt_id").kind_case(), google::protobuf::Value::kNullValue);
+            EXPECT_EQ(f.at("trigger").string_value(), path == 2 ? "pull_expiry" : "ttl_sweep");
+        }
+        EXPECT_EQ(f.at("retry_count").number_value(), path == 1 ? 1 : 0);
+    }
+}
+
+TEST(FeedbackBroker, MaxRetriesRejectedOwnersStaleTokensAndEvictedReplaysDoNotCreateExtraLabels) {
+    feedback_test::Directory directory;
+    auto config = feedback_config(directory); config.default_max_retries = 2;
+    config.completion_cache_max_entries = 1;
+    LocalBroker b{config}; b.submit(); const auto first = b.pull().message();
+    auto bad = first; bad.set_attempt_token("invalid token");
+    EXPECT_EQ(b.ack(bad, 17).error_code(), grpc::StatusCode::INVALID_ARGUMENT);
+    const auto owner = b.consumer_id;
+    harbinger_rpc::RegisterConsumerRequest req; harbinger_rpc::RegisterConsumerResponse resp;
+    grpc::ClientContext ctx; ASSERT_TRUE(b.stub->RegisterConsumer(&ctx, req, &resp).ok());
+    b.consumer_id = resp.consumer_id();
+    EXPECT_EQ(b.ack(first, 19).error_code(), grpc::StatusCode::PERMISSION_DENIED);
+    b.consumer_id = owner;
+    EXPECT_TRUE(b.nack(first).ok()); const auto second = b.pull().message();
+    b.submit(); const auto other = b.pull().message(); EXPECT_TRUE(b.ack(other).ok());
+    EXPECT_EQ(b.nack(first).error_code(), grpc::StatusCode::FAILED_PRECONDITION);
+    EXPECT_EQ(b.ack(first).error_code(), grpc::StatusCode::FAILED_PRECONDITION);
+    EXPECT_TRUE(b.nack(second).ok()); EXPECT_TRUE(b.nack(second).ok());
+    BrokerTestAccess::close_feedback(b.service);
+    const auto rows = outcomes(directory); ASSERT_EQ(rows.size(), 3u);
+    EXPECT_EQ(rows.back().fields().at("outcome").string_value(), "dlq");
+    EXPECT_EQ(rows.back().fields().at("dlq_reason").string_value(), "MAX_RETRIES_EXCEEDED");
+    EXPECT_EQ(rows.back().fields().at("retry_count").number_value(), 2);
+    EXPECT_EQ(rows.back().fields().at("attempt_id").string_value(), "2");
+}
+
+TEST(FeedbackBroker, ConcurrentSettlementAndReclamationEmitExactlyOneOutcome) {
+    for (bool expiry : {false, true}) {
+        feedback_test::Directory directory;
+        auto config = feedback_config(directory); config.default_max_retries = 1;
+        LocalBroker b{config}; b.submit(); const auto delivery = b.pull().message();
+        if (expiry) BrokerTestAccess::expire(b.service, delivery.message_id());
+        std::barrier start{3};
+        auto ack = std::async(std::launch::async, [&] { start.arrive_and_wait(); return b.ack(delivery); });
+        auto competing = std::async(std::launch::async, [&] {
+            start.arrive_and_wait();
+            if (expiry) BrokerTestAccess::maintain(b.service); else (void)b.nack(delivery);
+        });
+        start.arrive_and_wait(); const auto status = ack.get(); competing.get();
+        if (expiry) { EXPECT_EQ(status.error_code(), grpc::StatusCode::FAILED_PRECONDITION); }
+        BrokerTestAccess::close_feedback(b.service);
+        const auto rows = outcomes(directory); ASSERT_EQ(rows.size(), 1u);
+        if (expiry) {
+            EXPECT_EQ(rows[0].fields().at("trigger").string_value(), "lease_expiry");
+            EXPECT_EQ(rows[0].fields().at("processing_time_ms").kind_case(), google::protobuf::Value::kNullValue);
+        }
+    }
+}
+
+TEST(FeedbackBroker, OverflowAndDiskFailurePreserveSettlementAndExposeTelemetryLoss) {
+    for (bool disk_failure : {false, true}) {
+        feedback_test::Directory directory;
+        auto config = feedback_config(directory); config.feedback->buffer_records = 1;
+        LocalBroker b{config};
+        auto storage = std::make_shared<feedback_test::Storage>();
+        feedback_test::ReleaseStorage release{storage};
+        BrokerTestAccess::replace_writer(b.service, storage);
+        if (disk_failure) storage->fault = feedback_test::Storage::Fault::Write;
+        else storage->gate();
+        b.submit();
+        if (disk_failure) ASSERT_TRUE(feedback_test::wait_for([&] { return b.service.feedback_stats().writer_failures > 0; }));
+        else EXPECT_TRUE(storage->await_entry());
+        const auto delivery = b.pull().message();
+        EXPECT_TRUE(b.ack(delivery).ok()); EXPECT_TRUE(b.ack(delivery).ok());
+        EXPECT_EQ(b.service.in_flight_count(), 0u); EXPECT_EQ(b.service.dlq_size(), 0u);
+        const auto stats = b.service.feedback_stats();
+        EXPECT_GT(feedback_test::dropped(stats, disk_failure ? ml::FeedbackDrop::Storage : ml::FeedbackDrop::BufferFull), 0u);
+        storage->release(); BrokerTestAccess::close_feedback(b.service);
+    }
+}
+
+TEST(FeedbackBroker, InvalidCompleteFeaturesDoNotRejectSuccessfulSettlement) {
+    feedback_test::Directory directory;
+    auto config = feedback_config(directory);
+    config.ingress_features->schema.headers.clear();
+    std::unordered_map<std::string, std::string> headers;
+    for (int i = 0; i < 16; ++i) {
+        const auto key = std::string(60, 'k') + std::to_string(i);
+        config.ingress_features->schema.headers.push_back({.name = key, .type = ml::FeatureType::Categorical});
+        headers[key] = std::string(256, '\x01');
+    }
+    LocalBroker b{config}; b.submit("x", std::nullopt, headers);
+    EXPECT_TRUE(b.ack(b.pull().message(), 0).ok());
+    BrokerTestAccess::close_feedback(b.service);
+    const auto rows = outcomes(directory); ASSERT_EQ(rows.size(), 1u);
+    EXPECT_EQ(rows[0].fields().at("label_status").string_value(), "invalid_features");
+    EXPECT_EQ(rows[0].fields().at("routing").struct_value().fields().at("features").kind_case(), google::protobuf::Value::kNullValue);
+}
+
+TEST(FeedbackBroker, ConfigurationRequiresExplicitFeatureVersionsAndDisabledStatsAreZero) {
+    feedback_test::Directory directory;
+    HarbingerConfig config; config.feedback = directory.config();
+    EXPECT_THROW((HarbingerService{config}), std::invalid_argument);
+    HarbingerService disabled;
+    EXPECT_FALSE(disabled.feedback_stats().enabled);
+    EXPECT_EQ(disabled.feedback_stats().admitted, 0u);
+}
+
+TEST(FeedbackBroker, ExhaustedDeliveryOrdinalRestoresMessageWithoutLeaseOrOutcome) {
+    feedback_test::Directory directory;
+    LocalBroker b{feedback_config(directory)}; b.submit();
+    BrokerTestAccess::exhaust_delivery_count(b.service);
+    harbinger_rpc::PullRequest req; req.set_consumer_id(b.consumer_id); req.set_timeout_ms(100);
+    harbinger_rpc::PullResponse resp; grpc::ClientContext ctx;
+    EXPECT_EQ(b.stub->Pull(&ctx, req, &resp).error_code(), grpc::StatusCode::RESOURCE_EXHAUSTED);
+    EXPECT_EQ(b.service.queue_size(), 1u); EXPECT_EQ(b.service.in_flight_count(), 0u);
+    BrokerTestAccess::close_feedback(b.service);
+    EXPECT_TRUE(outcomes(directory).empty());
+}
+
+TEST(FeedbackBroker, LeaseMaintenancePublishesOnlyItsBoundedCommittedBatch) {
+    feedback_test::Directory directory;
+    auto config = feedback_config(directory); config.maintenance_batch_size = 1;
+    LocalBroker b{config};
+    for (int i = 0; i < 3; ++i) {
+        b.submit(); const auto delivery = b.pull().message();
+        BrokerTestAccess::expire(b.service, delivery.message_id());
+    }
+    BrokerTestAccess::maintain(b.service);
+    EXPECT_EQ(b.service.in_flight_count(), 2u); EXPECT_EQ(b.service.queue_size(), 1u);
+    EXPECT_EQ(b.service.feedback_stats().captured, 4u);
+    BrokerTestAccess::maintain(b.service); BrokerTestAccess::maintain(b.service);
+    BrokerTestAccess::close_feedback(b.service);
+    const auto rows = outcomes(directory); ASSERT_EQ(rows.size(), 3u);
+    for (const auto& row : rows) {
+        EXPECT_EQ(row.fields().at("trigger").string_value(), "lease_expiry");
+        EXPECT_EQ(row.fields().at("outcome").string_value(), "retry");
+        EXPECT_EQ(row.fields().at("label_status").string_value(), "missing");
+        EXPECT_EQ(row.fields().at("retry_count").number_value(), 1);
+    }
+}
+
+TEST(FeedbackBroker, EmbeddedDestructionDrainsLogsAndRestartUsesNewNamespaceWithoutPython) {
+    feedback_test::Directory directory;
+    {
+        LocalBroker b{feedback_config(directory)};
+        b.submit("baseline", std::nullopt, {{"job", "resize"}, {"units", "4"}});
+        EXPECT_TRUE(b.ack(b.pull().message(), 0).ok());
+        // Normal server/service destruction, without explicitly closing the telemetry writer.
+    }
+    auto rows = feedback_test::records(directory); ASSERT_EQ(rows.size(), 2u);
+    const auto instance = rows[0].fields().at("broker_instance_id").string_value();
+    {
+        auto config = feedback_config(directory); config.default_max_retries = 1;
+        LocalBroker b{config}; b.submit("baseline"); EXPECT_TRUE(b.nack(b.pull().message()).ok());
+    }
+    rows = feedback_test::records(directory); ASSERT_EQ(rows.size(), 4u);
+    std::set<std::string> namespaces;
+    for (const auto& row : rows) namespaces.insert(row.fields().at("broker_instance_id").string_value());
+    EXPECT_EQ(namespaces.size(), 2u); EXPECT_TRUE(namespaces.contains(instance));
 }

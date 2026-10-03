@@ -1,0 +1,30 @@
+{
+  "record_version": 1,
+  "event_id": "fixture-instance:42",
+  "broker_instance_id": "fixture-instance",
+  "message_id": "123456-0",
+  "event_type": "outcome",
+  "attempt_id": "1",
+  "collected_at_utc": "1970-01-01T00:00:00Z",
+  "routing": {
+    "feature_schema_version": "features-v1",
+    "routing_policy_version": "static-v1",
+    "model_version": null,
+    "mode": "disabled",
+    "features": {"payload_size_bytes": "4096", "headers": {}, "missing_reasons": {}},
+    "feature_validity": "valid",
+    "predicted_processing_time_ms": null,
+    "predicted_bucket": null,
+    "ingress_priority": 0,
+    "fallback_reason": null,
+    "inference_elapsed_ms": null
+  },
+  "settlement_operation": "ack",
+  "trigger": "settlement",
+  "outcome": "ack",
+  "dlq_reason": null,
+  "retry_count": 0,
+  "processing_time_ms": 0,
+  "label_status": "eligible",
+  "elapsed_since_arrival_ms": 7
+}
