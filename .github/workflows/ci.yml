@@ -14,7 +14,7 @@ jobs:
       - name: Install dependencies
         run: sudo apt-get update && sudo apt-get install -y cmake ninja-build g++ libgrpc++-dev protobuf-compiler-grpc libprotobuf-dev python3
       - name: Configure
-        run: cmake -S . -B build-ci -G Ninja -DCMAKE_BUILD_TYPE=Release -DHARBINGER_WARNINGS_AS_ERRORS=ON -DHARBINGER_REQUIRE_PYTHON_TESTS=ON
+        run: cmake -S . -B build-ci -G Ninja -DCMAKE_BUILD_TYPE=Release -DHARBINGER_WARNINGS_AS_ERRORS=ON -DHARBINGER_REQUIRE_PYTHON_TESTS=ON -DHARBINGER_BUILD_BENCHMARKS=ON
       - name: Build
         run: cmake --build build-ci --parallel
       - name: Test
@@ -33,7 +33,7 @@ jobs:
       - name: Install dependencies
         run: sudo apt-get update && sudo apt-get install -y cmake ninja-build g++ libgrpc++-dev protobuf-compiler-grpc libprotobuf-dev
       - name: Configure
-        run: cmake -S . -B build-ci -G Ninja -DCMAKE_BUILD_TYPE=Debug -DHARBINGER_SANITIZER=${{ matrix.sanitizer }} -DHARBINGER_WARNINGS_AS_ERRORS=ON
+        run: cmake -S . -B build-ci -G Ninja -DCMAKE_BUILD_TYPE=Debug -DHARBINGER_SANITIZER=${{ matrix.sanitizer }} -DHARBINGER_WARNINGS_AS_ERRORS=ON -DHARBINGER_BUILD_BENCHMARKS=ON
       - name: Build
         run: cmake --build build-ci --parallel
       - name: Test

@@ -61,6 +61,10 @@ struct HarbingerConfig {
     std::optional<ml::IngressFeatureConfig> ingress_features{};
     /// Optional asynchronous feedback; requires explicit ingress feature configuration.
     std::optional<ml::FeedbackConfig> feedback{};
+#ifdef HARBINGER_BENCHMARK_SUPPORT
+    /// Evaluation-only options, absent from the ordinary broker build.
+    std::optional<benchmark::Options> benchmark_options{};
+#endif
 };
 
 /// Thread-safe gRPC broker with attempt-fenced, at-least-once delivery recovery.
@@ -125,6 +129,13 @@ public:
     [[nodiscard]] std::size_t in_flight_count() const;
     /// Approximate bounded feedback counters; disabled collection returns zero stats.
     [[nodiscard]] ml::FeedbackStats feedback_stats() const noexcept;
+#ifdef HARBINGER_BENCHMARK_SUPPORT
+    /// Quiesced benchmark shutdown: join maintenance and seal feedback before auditing it.
+    void benchmark_close_feedback();
+    [[nodiscard]] std::string benchmark_instance() const {
+        return feedback_writer_ ? feedback_writer_->instance_id() : "telemetry-off";
+    }
+#endif
 
 private:
     friend struct BrokerTestAccess;

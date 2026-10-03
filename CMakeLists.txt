@@ -4,7 +4,7 @@ project(harbinger VERSION 0.1.0 LANGUAGES CXX)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON CACHE BOOL "Export compiler commands for editor tooling")
 
 set(HARBINGER_SANITIZER "" CACHE STRING "Sanitizer to enable: address, undefined, or thread")
-option(HARBINGER_BUILD_BENCHMARKS "Build Phase 1 cleanup measurements" OFF)
+option(HARBINGER_BUILD_BENCHMARKS "Build cleanup and synthetic scheduling benchmarks" OFF)
 option(HARBINGER_WARNINGS_AS_ERRORS "Treat first-party compiler warnings as errors" OFF)
 
 set(CMAKE_CXX_STANDARD 20)
@@ -76,7 +76,7 @@ target_link_libraries(harbinger_proto PUBLIC gRPC::grpc++ protobuf::libprotobuf)
 target_include_directories(harbinger_proto PUBLIC "${CMAKE_CURRENT_BINARY_DIR}")
 
 # ── Server-side library (queue + proxy + gRPC service impl) ───────────────────
-add_library(harbinger_server_lib STATIC
+set(HARBINGER_SERVER_SOURCES
     src/queue/multi_level_queue.cpp
     src/queue/dead_letter_queue.cpp
     src/proxy/proxy.cpp
@@ -85,9 +85,12 @@ add_library(harbinger_server_lib STATIC
     src/ml/feedback_writer.cpp
     src/harbinger_service.cpp
 )
+add_library(harbinger_server_lib STATIC ${HARBINGER_SERVER_SOURCES})
 target_include_directories(harbinger_server_lib PUBLIC include)
 target_link_libraries(harbinger_server_lib PUBLIC harbinger_proto Threads::Threads)
 harbinger_target_warnings(harbinger_server_lib)
+set_property(TARGET harbinger_server_lib PROPERTY INTERFACE_HARBINGER_SERVER_VARIANT ordinary)
+set_property(TARGET harbinger_server_lib APPEND PROPERTY COMPATIBLE_INTERFACE_STRING HARBINGER_SERVER_VARIANT)
 
 # ── Client library (Producer + Consumer gRPC clients) ─────────────────────────
 add_library(harbinger_client_lib STATIC

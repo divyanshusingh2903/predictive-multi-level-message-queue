@@ -82,3 +82,23 @@ ctest --test-dir build --output-on-failure
 Both suites consume `tests/fixtures/ml/features_v1.json`, including numeric bit patterns, fixed hash bins, UTF-8/escape examples, privacy exclusions, and exact size admission boundaries. Python tests are registered with CTest when Python 3.10+ is available; `HARBINGER_REQUIRE_PYTHON_TESTS=ON` makes its absence a configuration error and is required by the normal CI job.
 
 Feedback event capture/persistence and delivery ordinals are implemented in #3 through embedded `HarbingerConfig::feedback`, separately from feature capture. Serving follows in #6 and routing activation in #7. Use the [feedback guide](../docs/feedback.md) and [ML contract](../docs/ml-contract.md) for their interfaces.
+
+## Feedback validation and temporal datasets
+
+Issue #4 adds `feedback.validate_record()` and the disk-backed `FeedbackIndex`
+for sealed v1 records. Callers register `FeatureSchema` instances and supply the
+recorded delivery lease to audit label precedence. Duplicate event identities
+deduplicate only when contents match; conflicting records, malformed JSON,
+unknown schemas, changed per-message routing context, and incomplete tails fail
+explicitly. Active/suspect segments are not admitted. Actual disposition,
+failed-attempt status, measurement validity/missingness, feature usability, and
+TTL censorship remain distinct, overlapping dimensions.
+
+The [benchmark exporter](../benchmarks/README.md#leakage-safe-static-feedback-export)
+joins exact monotonic sidecars to production-static feedback, keeps all attempts
+of each broker-instance/message together, and embargoes labels crossing the
+training cutoff. Evaluation ingress and delayed eligible Ack labels are separate
+ordered streams. Exported model inputs are immutable ingress features only;
+oracle costs, retries, outcomes, and identities are audit metadata. No learner or
+future-label preprocessing is implemented. Legacy feedback-only export provides
+audit views, not an invented precise temporal training split.

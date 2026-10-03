@@ -1,0 +1,17 @@
+{
+  "version": "baseline-experiment-v1",
+  "seeds": [11],
+  "repeats": 1,
+  "bootstrap_samples": 200,
+  "bootstrap_seed": 42,
+  "telemetry_off_control": true,
+  "broker": {"drain_ms": 500},
+  "cases": [
+    {"name": "bimodal-smoke", "distribution": "bimodal", "count": 40, "rate_per_s": 200,
+     "min_cost_us": 1000, "cap_cost_us": 10000, "workers": 2, "warmup": 5, "informative": true},
+    {"name": "expiry-smoke", "distribution": "uniform", "count": 30, "rate_per_s": 500,
+     "min_cost_us": 2000, "cap_cost_us": 10000, "workers": 1, "warmup": 0,
+     "failure_probability": 0.3, "abandon_probability": 0.3,
+     "broker": {"lease_ms": 30, "ttl_ms": 50, "max_retries": 2}}
+  ]
+}

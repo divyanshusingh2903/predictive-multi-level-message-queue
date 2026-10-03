@@ -1,0 +1,20 @@
+{
+  "version": "baseline-experiment-v1",
+  "seeds": [11, 22, 33, 44, 55],
+  "repeats": 1,
+  "policies": ["disabled"],
+  "bootstrap_samples": 2000,
+  "bootstrap_seed": 42,
+  "telemetry_off_control": false,
+  "broker": {"drain_ms": 2500},
+  "cases": [
+    {"name": "capacity-uniform", "distribution": "uniform", "count": 200, "rate_per_s": 1000,
+     "min_cost_us": 1000, "cap_cost_us": 20000, "workers": 1},
+    {"name": "capacity-bimodal", "distribution": "bimodal", "count": 200, "rate_per_s": 1000,
+     "min_cost_us": 1000, "cap_cost_us": 20000, "workers": 1},
+    {"name": "capacity-heavy-tail", "distribution": "heavy_tail", "count": 200, "rate_per_s": 1000,
+     "min_cost_us": 1000, "cap_cost_us": 20000, "workers": 1},
+    {"name": "capacity-bimodal-four-workers", "distribution": "bimodal", "count": 200, "rate_per_s": 1000,
+     "min_cost_us": 1000, "cap_cost_us": 20000, "workers": 4, "broker": {"drain_ms": 1000}}
+  ]
+}

@@ -11,7 +11,26 @@ namespace harbinger {
 
 namespace {
 
+void mark_transition(std::optional<ml::FeedbackEvent>& event) noexcept {
+#ifdef HARBINGER_BENCHMARK_SUPPORT
+    if (event && event->benchmark_observation) event->benchmark_observation->time_ns = benchmark::now_ns();
+#else
+    (void)event;
+#endif
+}
+
 HarbingerConfig validate_config(HarbingerConfig config) {
+#ifdef HARBINGER_BENCHMARK_SUPPORT
+    if (config.benchmark_options) {
+        const auto& options = *config.benchmark_options;
+        if (!options.observations) throw std::invalid_argument("benchmark requires observations");
+        for (auto tier : options.job_tiers)
+            if (tier >= config.num_levels) throw std::invalid_argument("benchmark tier out of range");
+        if (options.policy != benchmark::Policy::Disabled && options.policy != benchmark::Policy::Fifo &&
+            options.policy != benchmark::Policy::Static && options.policy != benchmark::Policy::RoundRobin)
+            throw std::invalid_argument("invalid benchmark policy");
+    }
+#endif
     if (config.feedback && !config.ingress_features)
         throw std::invalid_argument("feedback requires ingress_features");
     if (config.ingress_features) {
@@ -66,7 +85,12 @@ HarbingerService::HarbingerService(HarbingerConfig config)
           ? std::make_optional<ml::FeatureExtractor>(config_.ingress_features->schema) : std::nullopt),
       feedback_writer_(config_.feedback
           ? std::make_unique<ml::FeedbackWriter>(*config_.feedback, config_.delivery_lease.count()) : nullptr),
-      queue_(config_.num_levels, config_.aging),
+      queue_(config_.num_levels, config_.aging
+#ifdef HARBINGER_BENCHMARK_SUPPORT
+          , config_.benchmark_options && config_.benchmark_options->policy == benchmark::Policy::RoundRobin
+              ? QueueSelection::RoundRobin : QueueSelection::StrictPriority
+#endif
+      ),
       dlq_(),
       proxy_([this](Message msg) { route_message(std::move(msg)); }),
       instance_token_(std::to_string(std::random_device{}()) + "-" + Proxy::generate_id()) {
@@ -84,6 +108,18 @@ HarbingerService::~HarbingerService() {
     }
     if (feedback_writer_) feedback_writer_->close();
 }
+
+#ifdef HARBINGER_BENCHMARK_SUPPORT
+void HarbingerService::benchmark_close_feedback() {
+    {
+        std::lock_guard lock{sweeper_mutex_};
+        stop_sweeper_.store(true, std::memory_order_release);
+    }
+    sweeper_cv_.notify_all();
+    if (sweeper_thread_.joinable()) sweeper_thread_.join();
+    if (feedback_writer_) feedback_writer_->close();
+}
+#endif
 
 void HarbingerService::run_maintenance() {
     auto next_lease = Clock::now() + config_.lease_sweep_interval;
@@ -115,6 +151,7 @@ void HarbingerService::dlq_swept(std::vector<Message> expired,
         auto event = capture_event(msg, ml::FeedbackTrigger::TtlSweep);
         if (event) { event->outcome = ml::FeedbackOutcome::Dlq; event->dlq_reason = DLQReason::TTL_EXPIRED; }
         dlq_.push(std::move(msg), DLQReason::TTL_EXPIRED, details);
+        mark_transition(event);
         publish_event(event);
     }
 }
@@ -140,18 +177,65 @@ ml::FeedbackStats HarbingerService::feedback_stats() const noexcept {
 
 std::optional<ml::FeedbackEvent> HarbingerService::capture_event(
     const Message& message, ml::FeedbackTrigger trigger) noexcept {
-    if (!feedback_writer_) return std::nullopt;
-    try { return ml::capture_feedback(message, trigger); }
-    catch (...) { feedback_writer_->record_drop(ml::FeedbackDrop::Capture); return std::nullopt; }
+    if (!feedback_writer_
+#ifdef HARBINGER_BENCHMARK_SUPPORT
+        && !config_.benchmark_options
+#endif
+    ) return std::nullopt;
+    try {
+        auto event = ml::capture_feedback(message, trigger);
+#ifdef HARBINGER_BENCHMARK_SUPPORT
+        if (config_.benchmark_options) {
+            event.benchmark_observation = benchmark::capture(message, benchmark::Kind::Ingress);
+            if (!event.benchmark_observation)
+                config_.benchmark_options->observations->drop();
+        }
+#endif
+        return event;
+    }
+    catch (...) {
+        if (feedback_writer_) feedback_writer_->record_drop(ml::FeedbackDrop::Capture);
+#ifdef HARBINGER_BENCHMARK_SUPPORT
+        if (config_.benchmark_options) config_.benchmark_options->observations->drop();
+#endif
+        return std::nullopt;
+    }
 }
 
 void HarbingerService::publish_event(const std::optional<ml::FeedbackEvent>& event) noexcept {
-    if (event) feedback_writer_->publish(*event);
+    if (!event) return;
+    if (feedback_writer_) feedback_writer_->publish(*event);
+#ifdef HARBINGER_BENCHMARK_SUPPORT
+    if (event->benchmark_observation && config_.benchmark_options) {
+        auto record = *event->benchmark_observation;
+        record.retries = event->retry_count;
+        if (event->trigger != ml::FeedbackTrigger::Submit) {
+            record.kind = event->dlq_reason == DLQReason::TTL_EXPIRED ? benchmark::Kind::Ttl
+                : event->dlq_reason ? benchmark::Kind::MaxRetries
+                : event->outcome == ml::FeedbackOutcome::Retry ? benchmark::Kind::Retry : benchmark::Kind::Ack;
+        }
+        config_.benchmark_options->observations->publish(record);
+    }
+#endif
 }
 
 void HarbingerService::route_message(Message msg) {
     msg.priority          = config_.default_priority;
-    msg.original_priority = config_.default_priority;
+#ifdef HARBINGER_BENCHMARK_SUPPORT
+    if (config_.benchmark_options) {
+        const auto& options = *config_.benchmark_options;
+        if (options.policy == benchmark::Policy::Fifo) msg.priority = 0;
+        else if (options.policy != benchmark::Policy::Disabled) {
+            const auto job = msg.headers.find("job");
+            if (job != msg.headers.end()) {
+                for (std::size_t index = 0; index < 3; ++index)
+                    if (job->second == std::string{"class"} + std::to_string(index))
+                        msg.priority = options.job_tiers[index];
+            }
+        }
+    }
+#endif
+    msg.original_priority = msg.priority;
     msg.max_retries       = config_.default_max_retries;
     if (msg.ttl == kTtlUnset) {
         msg.ttl = config_.default_ttl;
@@ -168,6 +252,7 @@ void HarbingerService::route_message(Message msg) {
     }
     auto event = capture_event(msg, ml::FeedbackTrigger::Submit);
     queue_.enqueue(std::move(msg));
+    mark_transition(event);
     publish_event(event);
 }
 
@@ -270,6 +355,7 @@ grpc::Status HarbingerService::Pull(grpc::ServerContext* ctx,
             if (event) { event->outcome = ml::FeedbackOutcome::Dlq; event->dlq_reason = DLQReason::TTL_EXPIRED; }
             dlq_.push(std::move(msg), DLQReason::TTL_EXPIRED,
                       "TTL expired at Pull time");
+            mark_transition(event);
             publish_event(event);
             continue;
         }
@@ -287,6 +373,10 @@ grpc::Status HarbingerService::Pull(grpc::ServerContext* ctx,
         for (const auto& [k, v] : msg.headers) {
             (*pulled->mutable_headers())[k] = v;
         }
+
+#ifdef HARBINGER_BENCHMARK_SUPPORT
+        std::optional<benchmark::Observation> dispatch;
+#endif
 
         {
             std::lock_guard lock{in_flight_mutex_};
@@ -314,6 +404,11 @@ grpc::Status HarbingerService::Pull(grpc::ServerContext* ctx,
                 entry->second.attempt_token = std::move(token);
                 entry->second.deadline = lease;
                 entry->second.attempt_id = entry->second.message.delivery_count;
+#ifdef HARBINGER_BENCHMARK_SUPPORT
+                if (config_.benchmark_options)
+                    dispatch = benchmark::capture(entry->second.message, benchmark::Kind::Dispatch);
+                if (config_.benchmark_options && !dispatch) config_.benchmark_options->observations->drop();
+#endif
             } catch (...) {
                 // Token allocation must occur before installation; remaining assignments are moves.
                 if (installed != in_flight_.end()) in_flight_.erase(installed);
@@ -321,6 +416,10 @@ grpc::Status HarbingerService::Pull(grpc::ServerContext* ctx,
                 return {grpc::StatusCode::INTERNAL, "Delivery installation failed"};
             }
         }
+
+#ifdef HARBINGER_BENCHMARK_SUPPORT
+        if (dispatch) config_.benchmark_options->observations->publish(*dispatch);
+#endif
 
         resp->set_timed_out(false);
         return grpc::Status::OK;
@@ -393,6 +492,7 @@ std::optional<ml::FeedbackEvent> HarbingerService::finish_locked(
     deadlines_.erase(entry.deadline);
     in_flight_.erase(it);
     prune_completions_locked(1);
+    mark_transition(event);
     return event;
 }
 
@@ -439,6 +539,9 @@ grpc::Status HarbingerService::settle(const std::string& owner, const std::strin
 void HarbingerService::maintain_deliveries() {
     std::vector<ml::FeedbackEvent> events;
     bool collect = feedback_writer_ != nullptr;
+#ifdef HARBINGER_BENCHMARK_SUPPORT
+    collect = collect || config_.benchmark_options.has_value();
+#endif
     if (collect) {
         try { events.reserve(config_.maintenance_batch_size); }
         catch (...) { collect = false; }
@@ -452,12 +555,17 @@ void HarbingerService::maintain_deliveries() {
             auto event = finish_locked(id, Settlement::Expired, "Delivery lease expired");
             if (event) {
                 if (collect) events.push_back(std::move(*event));
-                else feedback_writer_->record_drop(ml::FeedbackDrop::Capture);
+                else {
+                    if (feedback_writer_) feedback_writer_->record_drop(ml::FeedbackDrop::Capture);
+#ifdef HARBINGER_BENCHMARK_SUPPORT
+                    if (config_.benchmark_options) config_.benchmark_options->observations->drop();
+#endif
+                }
             }
         }
         prune_completions_locked(config_.maintenance_batch_size);
     }
-    for (const auto& event : events) feedback_writer_->publish(event);
+    for (const auto& event : events) publish_event(event);
 }
 
 namespace {

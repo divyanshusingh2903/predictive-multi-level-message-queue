@@ -82,11 +82,15 @@ cmake -B build -DCMAKE_BUILD_TYPE=Release && cmake --build build -j$(nproc)
 
 Targets: `harbinger_server`, `harbinger_unit_tests`, `harbinger_integration_tests`, `demo/harbinger_demo`. GTest via `FetchContent`.
 
-`HARBINGER_WARNINGS_AS_ERRORS` defaults OFF; CI enables it for first-party targets only, excluding generated protobuf and fetched dependencies. `HARBINGER_BUILD_BENCHMARKS` defaults OFF; enables `benchmarks/harbinger_cleanup_benchmark`, documented in `benchmarks/README.md`. Benchmarks report measured outcomes without timing gates in tests.
+`HARBINGER_WARNINGS_AS_ERRORS` defaults OFF; CI enables it for first-party targets only, excluding generated protobuf and fetched dependencies. `HARBINGER_BUILD_BENCHMARKS` defaults OFF; enables cleanup and synthetic replay targets, documented in `benchmarks/README.md`. CI enables benchmark correctness/pipeline checks without timing gates or the full matrix.
+
+Issue #4 baseline hooks exist only in separately compiled `harbinger_benchmark_server_lib` with target-scoped `HARBINGER_BENCHMARK_SUPPORT`; never link it and the ordinary server library into one binary. Production configuration/RPCs retain static defaults. Queue selection defaults strict; optional round-robin cycles across nonempty FIFO levels and shares aging/TTL indexes. Benchmark FIFO assigns L0; metadata-static/round-robin share frozen job tiers in `route_message()`. Consumers remain tier-blind. Bounded lock-free slot reservation captures fixed observations; snapshot only after publishers quiesce. No filesystem/user callback runs under broker locks. Accepted replay and cancelled ownership installation emit no duplicate outcome/dispatch.
+
+`benchmarks/workloads.py` generates schedule-independent seeded costs/metadata; `synthetic_replay.cpp` performs bounded open-loop gRPC replay; `evaluate.py` accounts for all offered/accepted/terminal/unfinished work, per-class fairness, and paired-seed intervals. Oracle traces/handler invocation counters never enter model features. `ml_engine/feedback.py` validates sealed v1 feedback into SQLite; `benchmarks/export_feedback.py` joins timing sidecars, groups all message attempts, and embargoes future labels. Legacy v1 alone has unresolved exact chronology. Budgets/configurations are versioned under `benchmarks/configs/`; `benchmarks/results/issue4-v1/` retains summaries, reports, and checksummed raw experiment/dataset archives. Other generated results and `benchmarks/output/` remain ignored. Evidence consistency checks run in CI; no predictive activation is claimed.
 
 ## Layout
 
-`proto/harbinger.proto` · `include/{harbinger_service,proxy,queue/{message,multi_level_queue,dead_letter_queue},producer,consumer}.hpp` · `include/ml/` · `src/` mirrors `include/` · `server/main.cpp` · `demo/main.cpp` · `tests/unit/` · `tests/fixtures/ml/` · `docs/adr/` · `ml_engine/` (features implemented; model/service planned) · `benchmarks/` (Phase 2 gate + Phase 3 expansion, planned)
+`proto/harbinger.proto` · `include/{harbinger_service,proxy,queue/{message,multi_level_queue,dead_letter_queue},producer,consumer}.hpp` · `include/ml/` · `include/benchmark/` · `src/` mirrors `include/` · `server/main.cpp` · `demo/main.cpp` · `tests/unit/` · `tests/fixtures/ml/` · `docs/adr/` · `ml_engine/` (features/feedback validation implemented; model/service planned) · `benchmarks/` (synthetic baselines/export implemented; predictive gate and Phase 3 expansion planned)
 
 ## Conventions
 
