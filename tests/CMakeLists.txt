@@ -30,6 +30,9 @@ add_executable(harbinger_integration_tests
 target_link_libraries(harbinger_integration_tests
     PRIVATE harbinger_server_lib harbinger_client_lib GTest::gtest_main
 )
+target_compile_definitions(harbinger_integration_tests PRIVATE
+    PREDICTOR_REPLAY_EXECUTABLE="$<TARGET_FILE:harbinger_predictor_replay>")
+add_dependencies(harbinger_integration_tests harbinger_predictor_replay)
 harbinger_target_warnings(harbinger_integration_tests)
 
 include(GoogleTest)
