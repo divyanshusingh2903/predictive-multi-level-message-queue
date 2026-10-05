@@ -1,10 +1,15 @@
 #include "ml/duration_predictor.hpp"
 
 #include <algorithm>
+#include <cerrno>
 #include <cmath>
+#include <cstring>
+#include <fcntl.h>
+#include <fstream>
 #include <functional>
 #include <limits>
 #include <stdexcept>
+#include <unistd.h>
 
 namespace harbinger::ml {
 
@@ -374,6 +379,233 @@ std::optional<std::string> derive_predictor_key(
     }
     if (key.size() > kMaxPredictorKeyBytes) return std::nullopt;
     return key;
+}
+
+} // namespace harbinger::ml
+
+// Snapshots
+
+namespace harbinger::ml {
+
+namespace {
+
+constexpr char kSnapshotMagic[8] = {'H', 'B', 'P', 'K', 'S', 'N', 'P', '1'};
+constexpr uint32_t kSnapshotVersion = 1;
+constexpr uint32_t kByteOrder = 0x01020304;
+constexpr std::uintmax_t kMaxSnapshotBytes = 1ull << 30;
+
+uint64_t fnv1a(std::string_view data) {
+    uint64_t hash = 1469598103934665603ull;
+    for (unsigned char c : data) { hash ^= c; hash *= 1099511628211ull; }
+    return hash;
+}
+
+class Writer {
+public:
+    template <class T> void put(T value) {
+        static_assert(std::is_trivially_copyable_v<T>);
+        out.append(reinterpret_cast<const char*>(&value), sizeof value);
+    }
+    void bytes(std::string_view text) { put<uint32_t>(static_cast<uint32_t>(text.size())); out.append(text); }
+    std::string out;
+};
+
+class Reader {
+public:
+    explicit Reader(std::string_view data) : data_(data) {}
+    template <class T> T get() {
+        static_assert(std::is_trivially_copyable_v<T>);
+        if (data_.size() - pos_ < sizeof(T)) throw std::runtime_error("snapshot truncated");
+        T value;
+        std::memcpy(&value, data_.data() + pos_, sizeof value);
+        pos_ += sizeof value;
+        return value;
+    }
+    double finite() {
+        const double value = get<double>();
+        if (!std::isfinite(value) || value < 0.0) throw std::runtime_error("snapshot contains an invalid number");
+        return value;
+    }
+    std::string bytes(std::size_t limit) {
+        const auto size = get<uint32_t>();
+        if (size > limit || data_.size() - pos_ < size) throw std::runtime_error("snapshot string out of bounds");
+        std::string text(data_.substr(pos_, size));
+        pos_ += size;
+        return text;
+    }
+    [[nodiscard]] bool done() const noexcept { return pos_ == data_.size(); }
+private:
+    std::string_view data_;
+    std::size_t pos_{0};
+};
+
+void write_file_atomically(const std::filesystem::path& path, const std::string& data) {
+    const auto temporary = std::filesystem::path(path.string() + ".tmp");
+    const int fd = ::open(temporary.c_str(), O_WRONLY | O_CREAT | O_TRUNC | O_CLOEXEC, 0600);
+    if (fd < 0) throw std::runtime_error("cannot create snapshot: " + std::string(std::strerror(errno)));
+    std::size_t written = 0;
+    while (written < data.size()) {
+        const auto n = ::write(fd, data.data() + written, data.size() - written);
+        if (n < 0 && errno == EINTR) continue;
+        if (n <= 0) { ::close(fd); throw std::runtime_error("cannot write snapshot"); }
+        written += static_cast<std::size_t>(n);
+    }
+    if (::fsync(fd) != 0) { ::close(fd); throw std::runtime_error("cannot sync snapshot"); }
+    if (::close(fd) != 0) throw std::runtime_error("cannot close snapshot");
+    std::error_code ignored;
+    if (std::filesystem::exists(path)) std::filesystem::rename(path, path.string() + ".prev", ignored);
+    std::filesystem::rename(temporary, path);
+    if (const int dir = ::open(path.parent_path().empty() ? "." : path.parent_path().c_str(), O_RDONLY | O_CLOEXEC); dir >= 0) {
+        ::fsync(dir);
+        ::close(dir);
+    }
+}
+
+} // namespace
+
+void PerKeyPredictor::save(const std::filesystem::path& path, std::string_view context) const {
+    struct Copy { std::string key; DecayingHistogram histogram; int64_t age_ms; int32_t tier; };
+    const auto at = now();
+    std::vector<Copy> keys;
+    for (const auto& shard : shards_) {
+        std::lock_guard lock{shard->mutex};
+        for (const auto& [key, entry] : shard->keys)
+            keys.push_back({key, entry.histogram,
+                std::chrono::duration_cast<std::chrono::milliseconds>(at - entry.last_update).count(), entry.tier});
+    }
+    std::optional<DecayingHistogram> global;
+    uint64_t global_observations = 0;
+    {
+        std::lock_guard lock{global_mutex_};
+        global = global_;
+        global_observations = global_observations_;
+    }
+    const auto snap = snapshot_.load();
+
+    Writer w;
+    w.out.append(kSnapshotMagic, sizeof kSnapshotMagic);
+    w.put(kSnapshotVersion);
+    w.put(kByteOrder);
+    w.bytes(context);
+    w.put<uint32_t>(static_cast<uint32_t>(config_.histogram_bins));
+    w.put(config_.min_ms);
+    w.put(config_.max_ms);
+    w.put<uint32_t>(config_.num_levels);
+    const auto histogram = [&w](const DecayingHistogram& h) {
+        for (double c : h.counts_) w.put(c);
+        w.put(h.scale_); w.put(h.total_); w.put(h.sum_); w.put(h.censored_);
+        w.put<uint64_t>(h.observations_);
+    };
+    w.put<uint8_t>(snap ? 1 : 0);
+    if (snap) {
+        w.put<uint64_t>(snap->sequence);
+        w.put<uint32_t>(static_cast<uint32_t>(snap->boundaries_ms.size()));
+        for (double b : snap->boundaries_ms) w.put(b);
+    }
+    histogram(*global);
+    w.put<uint64_t>(global_observations);
+    w.put<uint64_t>(keys.size());
+    for (const auto& k : keys) {
+        w.bytes(k.key);
+        histogram(k.histogram);
+        w.put<int64_t>(std::max<int64_t>(0, k.age_ms));
+        w.put<int32_t>(k.tier);
+    }
+    w.put<uint64_t>(fnv1a(w.out));
+    write_file_atomically(path, w.out);
+}
+
+std::size_t PerKeyPredictor::load(const std::filesystem::path& path, std::string_view context) {
+    std::error_code error;
+    const auto size = std::filesystem::file_size(path, error);
+    if (error) throw std::runtime_error("cannot read snapshot: " + error.message());
+    if (size > kMaxSnapshotBytes || size < sizeof kSnapshotMagic + 8) throw std::runtime_error("snapshot size out of bounds");
+    std::string data(size, '\0');
+    {
+        std::ifstream in(path, std::ios::binary);
+        if (!in.read(data.data(), static_cast<std::streamsize>(size))) throw std::runtime_error("cannot read snapshot");
+    }
+    const std::string_view body(data.data(), data.size() - sizeof(uint64_t));
+    uint64_t checksum = 0;
+    std::memcpy(&checksum, data.data() + body.size(), sizeof checksum);
+    if (std::memcmp(data.data(), kSnapshotMagic, sizeof kSnapshotMagic) != 0) throw std::runtime_error("not a predictor snapshot");
+    if (fnv1a(body) != checksum) throw std::runtime_error("snapshot checksum mismatch");
+
+    Reader r(body.substr(sizeof kSnapshotMagic));
+    if (r.get<uint32_t>() != kSnapshotVersion) throw std::runtime_error("unsupported snapshot version");
+    if (r.get<uint32_t>() != kByteOrder) throw std::runtime_error("snapshot byte order differs");
+    if (r.bytes(4096) != context) throw std::runtime_error("snapshot was taken under a different key policy or routing version");
+    if (r.get<uint32_t>() != config_.histogram_bins || r.get<double>() != config_.min_ms ||
+        r.get<double>() != config_.max_ms || r.get<uint32_t>() != config_.num_levels)
+        throw std::runtime_error("snapshot histogram layout or level count differs");
+    const auto histogram = [&](double decay) {
+        auto h = make_histogram(decay);
+        double sum = 0.0;
+        for (double& c : h.counts_) { c = r.finite(); sum += c; }
+        h.scale_ = r.finite(); h.total_ = r.finite(); h.sum_ = r.finite(); h.censored_ = r.finite();
+        h.observations_ = r.get<uint64_t>();
+        if (h.scale_ < 1.0 || h.scale_ > kRenormalizeAt * 2 || std::abs(sum - h.total_) > 1e-6 * std::max(1.0, h.total_))
+            throw std::runtime_error("snapshot histogram is inconsistent");
+        return h;
+    };
+    std::shared_ptr<const BoundarySnapshot> boundaries;
+    if (r.get<uint8_t>()) {
+        BoundarySnapshot b;
+        b.sequence = r.get<uint64_t>();
+        const auto count = r.get<uint32_t>();
+        if (count != static_cast<uint32_t>(config_.num_levels - 1)) throw std::runtime_error("snapshot boundary count differs");
+        for (uint32_t i = 0; i < count; ++i) b.boundaries_ms.push_back(r.finite());
+        if (count && (b.boundaries_ms.front() <= 0.0 ||
+            !std::is_sorted(b.boundaries_ms.begin(), b.boundaries_ms.end(), std::less_equal<double>{})))
+            throw std::runtime_error("snapshot boundaries are not positive and increasing");
+        boundaries = std::make_shared<const BoundarySnapshot>(std::move(b));
+    }
+    auto global = histogram(config_.global_decay);
+    const auto global_observations = r.get<uint64_t>();
+    const auto key_count = r.get<uint64_t>();
+    if (key_count > config_.max_keys + config_.shards) throw std::runtime_error("snapshot holds more keys than the cap");
+    struct Restored { std::string key; DecayingHistogram histogram; int64_t age_ms; int32_t tier; };
+    std::vector<Restored> keys;
+    keys.reserve(key_count);
+    for (uint64_t i = 0; i < key_count; ++i) {
+        auto key = r.bytes(kMaxPredictorKeyBytes);
+        if (key.empty()) throw std::runtime_error("snapshot contains an empty key");
+        auto h = histogram(config_.decay);
+        const auto age = r.get<int64_t>();
+        const auto tier = r.get<int32_t>();
+        if (age < 0 || tier < -1 || tier >= config_.num_levels) throw std::runtime_error("snapshot key metadata out of range");
+        keys.push_back({std::move(key), std::move(h), age, tier});
+    }
+    if (!r.done()) throw std::runtime_error("snapshot has trailing data");
+
+    // Validation is complete; apply.
+    const auto at = now();
+    std::size_t restored = 0;
+    for (auto& shard : shards_) {
+        std::lock_guard lock{shard->mutex};
+        shard->keys.clear();
+        shard->recency.clear();
+    }
+    // Oldest first so recency order (front = most recent) survives the restore.
+    std::sort(keys.begin(), keys.end(), [](const Restored& a, const Restored& b) { return a.age_ms > b.age_ms; });
+    for (auto& k : keys) {
+        auto& shard = shard_for(k.key);
+        std::lock_guard lock{shard.mutex};
+        if (shard.keys.size() >= per_shard_cap_ || shard.keys.contains(k.key)) continue;
+        const auto updated = at - std::chrono::milliseconds(k.age_ms);
+        auto found = shard.keys.emplace(std::move(k.key), Entry{std::move(k.histogram), shard.recency.end(), updated, updated, k.tier}).first;
+        shard.recency.push_front(&found->first);
+        found->second.position = shard.recency.begin();
+        ++restored;
+    }
+    {
+        std::lock_guard lock{global_mutex_};
+        global_ = std::move(global);
+        global_observations_ = global_observations;
+        if (boundaries) snapshots_ = std::max(snapshots_, boundaries->sequence);
+    }
+    if (boundaries || config_.num_levels > 1) snapshot_.store(boundaries);
+    return restored;
 }
 
 } // namespace harbinger::ml

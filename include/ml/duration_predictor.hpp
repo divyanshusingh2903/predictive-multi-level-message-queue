@@ -3,6 +3,7 @@
 #include <atomic>
 #include <chrono>
 #include <cstdint>
+#include <filesystem>
 #include <functional>
 #include <list>
 #include <memory>
@@ -109,6 +110,7 @@ public:
     [[nodiscard]] std::size_t approximate_bytes() const noexcept;
 
 private:
+    friend class PerKeyPredictor;
     [[nodiscard]] std::size_t bin(double value_ms) const noexcept;
     [[nodiscard]] double lower(std::size_t index) const noexcept;
     [[nodiscard]] double upper(std::size_t index) const noexcept;
@@ -156,6 +158,14 @@ public:
     [[nodiscard]] const PerKeyPredictorConfig& config() const noexcept { return config_; }
     /// Upper bound on histogram and key storage implied by max_keys, not whole-process memory.
     [[nodiscard]] std::size_t memory_bound_bytes() const noexcept;
+
+    /// Write all state to path atomically (temporary file, fsync, rename); an existing file becomes path.prev.
+    /// context names the key policy and routing version; load() rejects a snapshot taken under another context.
+    void save(const std::filesystem::path& path, std::string_view context) const;
+    /// Replace all state from a snapshot written by save(). Validation completes before anything changes, so a
+    /// corrupt, truncated or incompatible file throws and leaves the predictor as it was (cold at startup).
+    /// Returns the number of keys restored; keys beyond the current per-shard cap are skipped.
+    std::size_t load(const std::filesystem::path& path, std::string_view context);
 
 private:
     using Clock = std::chrono::steady_clock;

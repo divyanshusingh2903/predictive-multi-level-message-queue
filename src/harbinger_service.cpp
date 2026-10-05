@@ -1,6 +1,8 @@
 #include "harbinger_service.hpp"
 
 #include <algorithm>
+#include <cmath>
+#include <filesystem>
 #include <stdexcept>
 #include <cctype>
 #include <random>
@@ -27,10 +29,28 @@ HarbingerConfig validate_config(HarbingerConfig config) {
         for (auto tier : options.job_tiers)
             if (tier >= config.num_levels) throw std::invalid_argument("benchmark tier out of range");
         if (options.policy != benchmark::Policy::Disabled && options.policy != benchmark::Policy::Fifo &&
-            options.policy != benchmark::Policy::Static && options.policy != benchmark::Policy::RoundRobin)
+            options.policy != benchmark::Policy::Static && options.policy != benchmark::Policy::RoundRobin &&
+            options.policy != benchmark::Policy::Oracle)
             throw std::invalid_argument("invalid benchmark policy");
+        for (const auto& [name, tier] : options.static_tiers)
+            if (tier >= config.num_levels) throw std::invalid_argument("benchmark static tier out of range");
+        if (config.predictive_routing && config.predictive_routing->mode == ml::RoutingMode::Predictive &&
+            options.policy != benchmark::Policy::Disabled)
+            throw std::invalid_argument("predictive routing cannot be combined with a benchmark ingress policy");
     }
 #endif
+    if (config.predictive_routing) {
+        auto& routing = *config.predictive_routing;
+        if (routing.mode == ml::RoutingMode::Disabled)
+            throw std::invalid_argument("predictive_routing mode must be shadow or predictive; omit it to disable");
+        ml::validate_version(routing.routing_policy_version);
+        if (routing.snapshot_path && (routing.snapshot_path->empty() || routing.snapshot_interval.count() <= 0))
+            throw std::invalid_argument("predictor snapshot needs a path and a positive interval");
+        if (routing.key.job_header.starts_with("__"))
+            throw std::invalid_argument("predictor job header must not be a reserved __ header");
+        routing.predictor.num_levels = config.num_levels;
+        routing.predictor.default_priority = config.default_priority;
+    }
     if (config.feedback && !config.ingress_features)
         throw std::invalid_argument("feedback requires ingress_features");
     if (config.ingress_features) {
@@ -94,6 +114,28 @@ HarbingerService::HarbingerService(HarbingerConfig config)
       dlq_(),
       proxy_([this](Message msg) { route_message(std::move(msg)); }),
       instance_token_(std::to_string(std::random_device{}()) + "-" + Proxy::generate_id()) {
+    if (config_.predictive_routing) {
+        const auto& routing = *config_.predictive_routing;
+        predictor_ = std::make_unique<ml::PerKeyPredictor>(routing.predictor);
+        snapshot_context_ = routing.routing_policy_version + "|key=" + routing.key.job_header +
+            (routing.key.scope_by_producer ? "|scoped" : "|unscoped");
+        if (routing.snapshot_path) {
+            std::error_code missing;
+            if (!std::filesystem::exists(*routing.snapshot_path, missing)) {
+                routing_.snapshot_status = "absent; starting cold";
+            } else {
+                try {
+                    const auto restored = predictor_->load(*routing.snapshot_path, snapshot_context_);
+                    routing_.snapshot_loaded = true;
+                    routing_.snapshot_status = "restored " + std::to_string(restored) + " keys";
+                } catch (const std::exception& error) {
+                    // A bad snapshot never blocks startup or leaks into routing: the predictor simply starts cold.
+                    predictor_ = std::make_unique<ml::PerKeyPredictor>(routing.predictor);
+                    routing_.snapshot_status = std::string("rejected; starting cold: ") + error.what();
+                }
+            }
+        }
+    }
     sweeper_thread_ = std::thread([this] { run_maintenance(); });
 }
 
@@ -106,6 +148,7 @@ HarbingerService::~HarbingerService() {
     if (sweeper_thread_.joinable()) {
         sweeper_thread_.join();
     }
+    if (predictor_ && config_.predictive_routing->snapshot_path) save_predictor_snapshot();
     if (feedback_writer_) feedback_writer_->close();
 }
 
@@ -125,9 +168,12 @@ void HarbingerService::run_maintenance() {
     auto next_lease = Clock::now() + config_.lease_sweep_interval;
     auto next_ttl = config_.ttl_sweep_interval.count() > 0
         ? Clock::now() + config_.ttl_sweep_interval : Clock::time_point::max();
+    const bool snapshots = predictor_ && config_.predictive_routing->snapshot_path;
+    auto next_snapshot = snapshots ? Clock::now() + config_.predictive_routing->snapshot_interval
+                                   : Clock::time_point::max();
     while (!stop_sweeper_.load(std::memory_order_acquire)) {
         std::unique_lock lock{sweeper_mutex_};
-        sweeper_cv_.wait_until(lock, std::min(next_lease, next_ttl), [this] {
+        sweeper_cv_.wait_until(lock, std::min({next_lease, next_ttl, next_snapshot}), [this] {
             return stop_sweeper_.load(std::memory_order_acquire);
         });
         if (stop_sweeper_.load(std::memory_order_acquire)) break;
@@ -141,6 +187,10 @@ void HarbingerService::run_maintenance() {
             dlq_swept(queue_.sweep_expired_batch(config_.maintenance_batch_size),
                       "TTL expired in queue (sweeper)");
             next_ttl = Clock::now() + config_.ttl_sweep_interval;
+        }
+        if (now >= next_snapshot) {
+            save_predictor_snapshot();  // predictor locks only; no queue, settlement or feedback lock is held
+            next_snapshot = Clock::now() + config_.predictive_routing->snapshot_interval;
         }
     }
 }
@@ -219,6 +269,136 @@ void HarbingerService::publish_event(const std::optional<ml::FeedbackEvent>& eve
 #endif
 }
 
+ml::RoutingStats HarbingerService::routing_stats() const {
+    ml::RoutingStats out;
+    if (!predictor_) return out;
+    out.enabled = true;
+    out.mode = config_.predictive_routing->mode;
+    out.lookups = routing_.lookups.load(std::memory_order_relaxed);
+    for (std::size_t i = 0; i < out.outcomes.size(); ++i) out.outcomes[i] = routing_.outcomes[i].load(std::memory_order_relaxed);
+    for (std::size_t i = 0; i < out.latency_buckets.size(); ++i)
+        out.latency_buckets[i] = routing_.latency[i].load(std::memory_order_relaxed);
+    out.routed_by_prediction = routing_.routed.load(std::memory_order_relaxed);
+    out.latency_ns_total = routing_.latency_total.load(std::memory_order_relaxed);
+    out.latency_ns_max = routing_.latency_max.load(std::memory_order_relaxed);
+    out.learned = routing_.learned.load(std::memory_order_relaxed);
+    out.learn_rejected = routing_.learn_rejected.load(std::memory_order_relaxed);
+    out.censored_observed = routing_.censored.load(std::memory_order_relaxed);
+    out.snapshot_saves = routing_.snapshot_saves.load(std::memory_order_relaxed);
+    out.snapshot_failures = routing_.snapshot_failures.load(std::memory_order_relaxed);
+    {
+        std::lock_guard lock{routing_.drift_mutex};
+        out.scored = routing_.scored;
+        out.tier_matches = routing_.matches;
+        out.abs_log2_error_ewma = routing_.error_ewma;
+        out.drift_alerts = routing_.drift_alerts;
+        out.snapshot_loaded = routing_.snapshot_loaded;
+        out.snapshot_status = routing_.snapshot_status;
+    }
+    out.predictor = predictor_->stats();
+    return out;
+}
+
+bool HarbingerService::save_predictor_snapshot() noexcept {
+    if (!predictor_ || !config_.predictive_routing->snapshot_path) return false;
+    try {
+        predictor_->save(*config_.predictive_routing->snapshot_path, snapshot_context_);
+        routing_.snapshot_saves.fetch_add(1, std::memory_order_relaxed);
+        return true;
+    } catch (...) {
+        routing_.snapshot_failures.fetch_add(1, std::memory_order_relaxed);
+        return false;
+    }
+}
+
+uint8_t HarbingerService::predict_route(Message& msg, ml::RoutingContext& context) noexcept {
+    const auto& routing = *config_.predictive_routing;
+    context.mode = routing.mode;
+    context.routing_policy_version = routing.routing_policy_version;
+    try {
+        context.predictor_key = ml::derive_predictor_key(msg.headers, routing.key);
+        context.model_version = predictor_->model_version();
+    } catch (...) {
+        context.predictor_key.reset();
+    }
+    const auto start = Clock::now();
+    ml::DurationPrediction prediction{std::nullopt, config_.default_priority, ml::PredictionStatus::InvalidKey, 0};
+    if (context.predictor_key) {
+        try { prediction = predictor_->predict(*context.predictor_key); }
+        catch (...) { prediction.status = ml::PredictionStatus::InvalidKey; }
+    }
+    const auto elapsed = static_cast<uint64_t>(std::chrono::duration_cast<std::chrono::nanoseconds>(Clock::now() - start).count());
+    context.inference_elapsed_ms = static_cast<double>(elapsed) / 1e6;
+
+    routing_.lookups.fetch_add(1, std::memory_order_relaxed);
+    routing_.latency_total.fetch_add(elapsed, std::memory_order_relaxed);
+    for (auto seen = routing_.latency_max.load(std::memory_order_relaxed);
+         elapsed > seen && !routing_.latency_max.compare_exchange_weak(seen, elapsed, std::memory_order_relaxed);) {}
+    std::size_t bucket = 0;
+    for (uint64_t limit = 1000; bucket + 1 < ml::kLatencyBuckets && elapsed >= limit; limit *= 10) ++bucket;
+    routing_.latency[bucket].fetch_add(1, std::memory_order_relaxed);
+    routing_.outcomes[static_cast<std::size_t>(prediction.status)].fetch_add(1, std::memory_order_relaxed);
+
+    using ml::PredictionStatus;
+    if (prediction.status == PredictionStatus::Predicted && prediction.bucket >= config_.num_levels)
+        prediction.status = PredictionStatus::InvalidKey, context.fallback_reason = ml::FallbackReason::InvalidPrediction;
+    switch (prediction.status) {
+        case PredictionStatus::Predicted:
+            context.predicted_processing_time_ms = prediction.estimate_ms;
+            context.predicted_bucket = prediction.bucket;
+            break;
+        case PredictionStatus::Unready: context.fallback_reason = ml::FallbackReason::Unready; break;
+        case PredictionStatus::ColdKey: context.fallback_reason = ml::FallbackReason::ColdKey; break;
+        case PredictionStatus::HighSpread: context.fallback_reason = ml::FallbackReason::HighSpread; break;
+        case PredictionStatus::Censored: context.fallback_reason = ml::FallbackReason::Censored; break;
+        case PredictionStatus::StaleKey: context.fallback_reason = ml::FallbackReason::StaleKey; break;
+        case PredictionStatus::InvalidKey:
+            if (!context.fallback_reason) context.fallback_reason = ml::FallbackReason::InvalidKey;
+            break;
+    }
+    if (routing.mode == ml::RoutingMode::Predictive && context.predicted_bucket) {
+        routing_.routed.fetch_add(1, std::memory_order_relaxed);
+        return *context.predicted_bucket;
+    }
+    return msg.priority;
+}
+
+void HarbingerService::learn(const PredictorUpdate& update) noexcept {
+    try {
+        if (update.censored) {
+            if (predictor_->observe_censored(update.key)) routing_.censored.fetch_add(1, std::memory_order_relaxed);
+            return;
+        }
+        if (!update.duration_ms || !predictor_->observe(update.key, *update.duration_ms)) {
+            routing_.learn_rejected.fetch_add(1, std::memory_order_relaxed);
+            return;
+        }
+        routing_.learned.fetch_add(1, std::memory_order_relaxed);
+        if (!update.predicted_ms || !update.predicted_bucket) return;
+        const auto snapshot = predictor_->snapshot();
+        const bool match = snapshot && ml::tier_of(snapshot->boundaries_ms, *update.duration_ms) == *update.predicted_bucket;
+        // Error in octaves; 1 ms floor matches the wire resolution so zero-duration jobs stay finite.
+        const double error = std::abs(std::log2(std::max(*update.predicted_ms, 1.0) / std::max(*update.duration_ms, 1.0)));
+        std::lock_guard lock{routing_.drift_mutex};
+        ++routing_.scored;
+        routing_.matches += match;
+        routing_.error_ewma = routing_.scored == 1 ? error : routing_.error_ewma + 0.01 * (error - routing_.error_ewma);
+        auto& slot = routing_.window[routing_.window_next];
+        if (routing_.window_size == routing_.window.size()) routing_.window_hits -= slot;
+        else ++routing_.window_size;
+        slot = match;
+        routing_.window_hits += match;
+        routing_.window_next = (routing_.window_next + 1) % routing_.window.size();
+        if (routing_.window_size == routing_.window.size()) {
+            const double agreement = static_cast<double>(routing_.window_hits) / static_cast<double>(routing_.window_size);
+            if (!routing_.drift_latched && agreement < 0.5) { routing_.drift_latched = true; ++routing_.drift_alerts; }
+            else if (routing_.drift_latched && agreement > 0.6) routing_.drift_latched = false;
+        }
+    } catch (...) {
+        routing_.learn_rejected.fetch_add(1, std::memory_order_relaxed);
+    }
+}
+
 void HarbingerService::route_message(Message msg) {
     msg.priority          = config_.default_priority;
 #ifdef HARBINGER_BENCHMARK_SUPPORT
@@ -226,11 +406,24 @@ void HarbingerService::route_message(Message msg) {
         const auto& options = *config_.benchmark_options;
         if (options.policy == benchmark::Policy::Fifo) msg.priority = 0;
         else if (options.policy != benchmark::Policy::Disabled) {
-            const auto job = msg.headers.find("job");
-            if (job != msg.headers.end()) {
-                for (std::size_t index = 0; index < 3; ++index)
-                    if (job->second == std::string{"class"} + std::to_string(index))
-                        msg.priority = options.job_tiers[index];
+            if (options.policy == benchmark::Policy::Oracle) {
+                const auto tier = msg.headers.find(benchmark::kOracleTierHeader);
+                if (tier != msg.headers.end() && tier->second.size() == 1 && tier->second[0] >= '0' &&
+                    static_cast<uint8_t>(tier->second[0] - '0') < config_.num_levels)
+                    msg.priority = static_cast<uint8_t>(tier->second[0] - '0');
+            } else if (!options.static_tiers.empty()) {
+                const auto job = msg.headers.find(options.static_header);
+                if (job != msg.headers.end()) {
+                    const auto mapped = options.static_tiers.find(job->second);
+                    if (mapped != options.static_tiers.end()) msg.priority = mapped->second;
+                }
+            } else {
+                const auto job = msg.headers.find("job");
+                if (job != msg.headers.end()) {
+                    for (std::size_t index = 0; index < 3; ++index)
+                        if (job->second == std::string{"class"} + std::to_string(index))
+                            msg.priority = options.job_tiers[index];
+                }
             }
         }
     }
@@ -240,15 +433,21 @@ void HarbingerService::route_message(Message msg) {
     if (msg.ttl == kTtlUnset) {
         msg.ttl = config_.default_ttl;
     }
-    if (feature_extractor_) {
-        auto extracted = feature_extractor_->extract(msg.payload.size(), msg.headers);
-        msg.routing_context = std::make_shared<const ml::RoutingContext>(ml::RoutingContext{
-            .feature_schema_version = feature_extractor_->schema().version,
-            .routing_policy_version = config_.ingress_features->routing_policy_version,
-            .features = std::move(extracted.features),
-            .feature_validity = extracted.validity,
-            .ingress_priority = msg.priority,
-        });
+    if (feature_extractor_ || predictor_) {
+        ml::RoutingContext context;
+        if (feature_extractor_) {
+            auto extracted = feature_extractor_->extract(msg.payload.size(), msg.headers);
+            context.feature_schema_version = feature_extractor_->schema().version;
+            context.routing_policy_version = config_.ingress_features->routing_policy_version;
+            context.features = std::move(extracted.features);
+            context.feature_validity = extracted.validity;
+        } else {
+            context.feature_schema_version = "none";
+        }
+        if (predictor_) msg.priority = predict_route(msg, context);
+        msg.original_priority = msg.priority;
+        context.ingress_priority = msg.priority;
+        msg.routing_context = std::make_shared<const ml::RoutingContext>(std::move(context));
     }
     auto event = capture_event(msg, ml::FeedbackTrigger::Submit);
     queue_.enqueue(std::move(msg));
@@ -455,12 +654,25 @@ void HarbingerService::prune_completions_locked(std::size_t budget) {
 
 std::optional<ml::FeedbackEvent> HarbingerService::finish_locked(
     const std::string& id, Settlement kind, const std::string& reason,
-    std::optional<int64_t> measurement) {
+    std::optional<int64_t> measurement, std::optional<PredictorUpdate>* update) {
     auto it = in_flight_.find(id);
     auto& entry = it->second;
     // Lock order is settlement -> queue/DLQ; no queue operation takes settlement.
     auto& msg = entry.message;
     const bool ttl_expired = msg.is_expired();
+    // Learning rules: a successful Ack within the lease and TTL is a duration; a delivered attempt that overran its
+    // lease is censored; Nack, Ack-after-TTL and anything without a key teach nothing. Applied after unlocking.
+    const auto* context = msg.routing_context.get();
+    if (update && predictor_ && context && context->predictor_key) {
+        const bool features_ok = !feature_extractor_ || context->feature_validity == ml::FeatureValidity::Valid;
+        if (kind == Settlement::Ack && !ttl_expired && features_ok && measurement && *measurement >= 0 &&
+            *measurement <= config_.delivery_lease.count()) {
+            *update = PredictorUpdate{*context->predictor_key, static_cast<double>(*measurement), false,
+                                      context->predicted_processing_time_ms, context->predicted_bucket};
+        } else if (kind == Settlement::Expired) {
+            *update = PredictorUpdate{*context->predictor_key, std::nullopt, true, std::nullopt, std::nullopt};
+        }
+    }
     auto event = capture_event(msg, kind == Settlement::Expired
         ? ml::FeedbackTrigger::LeaseExpiry : ml::FeedbackTrigger::Settlement);
     if (event) {
@@ -526,18 +738,22 @@ grpc::Status HarbingerService::settle(const std::string& owner, const std::strin
         return {grpc::StatusCode::PERMISSION_DENIED, "Different delivery owner"};
     if (live->second.attempt_token != token)
         return {grpc::StatusCode::FAILED_PRECONDITION, "Stale attempt token"};
+    std::optional<PredictorUpdate> update;
     if (Clock::now() >= live->second.deadline->first) {
-        auto event = finish_locked(id, Settlement::Expired, "Delivery lease expired");
+        auto event = finish_locked(id, Settlement::Expired, "Delivery lease expired", std::nullopt, &update);
         lock.unlock(); publish_event(event);
+        if (update) learn(*update);
         return {grpc::StatusCode::FAILED_PRECONDITION, "Delivery lease expired"};
     }
-    auto event = finish_locked(id, kind, reason, processing_time_ms);
+    auto event = finish_locked(id, kind, reason, processing_time_ms, &update);
     lock.unlock(); publish_event(event);
+    if (update) learn(*update);
     return grpc::Status::OK;
 }
 
 void HarbingerService::maintain_deliveries() {
     std::vector<ml::FeedbackEvent> events;
+    std::vector<PredictorUpdate> updates;
     bool collect = feedback_writer_ != nullptr;
 #ifdef HARBINGER_BENCHMARK_SUPPORT
     collect = collect || config_.benchmark_options.has_value();
@@ -552,7 +768,12 @@ void HarbingerService::maintain_deliveries() {
         const auto now = Clock::now();
         while (budget-- && !deadlines_.empty() && deadlines_.begin()->first <= now) {
             const auto id = deadlines_.begin()->second;
-            auto event = finish_locked(id, Settlement::Expired, "Delivery lease expired");
+            std::optional<PredictorUpdate> update;
+            auto event = finish_locked(id, Settlement::Expired, "Delivery lease expired", std::nullopt,
+                                       predictor_ ? &update : nullptr);
+            if (update) {
+                try { updates.push_back(std::move(*update)); } catch (...) {}
+            }
             if (event) {
                 if (collect) events.push_back(std::move(*event));
                 else {
@@ -566,6 +787,7 @@ void HarbingerService::maintain_deliveries() {
         prune_completions_locked(config_.maintenance_batch_size);
     }
     for (const auto& event : events) publish_event(event);
+    for (const auto& update : updates) learn(update);
 }
 
 namespace {

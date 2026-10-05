@@ -5,7 +5,10 @@
 #include <atomic>
 #include <chrono>
 #include <cmath>
+#include <filesystem>
+#include <fstream>
 #include <functional>
+#include <unistd.h>
 #include <string>
 #include <thread>
 #include <vector>
@@ -441,6 +444,79 @@ TEST(DurationPredictor, KeysWithFrequentOverrunsAreNotTreatedAsFast) {
     // Successful completions dilute the censored share again.
     for (int i = 0; i < 400; ++i) p.observe("flaky", 3.0);
     EXPECT_EQ(p.predict("flaky").status, PredictionStatus::Predicted);
+}
+
+TEST(DurationPredictor, RecoversFromSeededRelationshipShiftWithinDocumentedWindow) {
+    // Documented recovery: with per-key decay d the new regime holds half the weight after ln(0.5)/ln(d)
+    // observations (about 138 for d = 0.995), so the median crosses into the new tier near that point.
+    PerKeyPredictor p{[] { auto c = base(); c.decay = 0.995; c.hysteresis = 0.0; return c; }()};
+    train_three_tiers(p, 1000);
+    // Pre-shift value sits below every other key so the shifting key cannot drag the boundary it is judged by.
+    for (int i = 0; i < 600; ++i) p.observe("shifting", 1.0);
+    ASSERT_EQ(p.predict("shifting").bucket, 0);
+    int recovered_after = -1;
+    for (int i = 1; i <= 400; ++i) {
+        p.observe("shifting", 200.0);
+        if (p.predict("shifting").bucket == 2) { recovered_after = i; break; }
+    }
+    const double expected = std::log(0.5) / std::log(0.995);
+    EXPECT_GT(recovered_after, expected * 0.8);
+    EXPECT_LT(recovered_after, expected * 1.2);
+}
+
+TEST(DurationPredictor, SnapshotRoundTripPreservesPredictions) {
+    const auto path = std::filesystem::temp_directory_path() / ("predictor-" + std::to_string(::getpid()) + ".snap");
+    PerKeyPredictor p{base()};
+    train_three_tiers(p);
+    p.observe_censored("slow");
+    p.save(path, "ctx");
+    PerKeyPredictor q{base()};
+    EXPECT_EQ(q.load(path, "ctx"), 3u);
+    for (const char* key : {"fast", "mid", "slow"}) {
+        EXPECT_EQ(p.predict(key).bucket, q.predict(key).bucket) << key;
+        EXPECT_EQ(p.predict(key).estimate_ms, q.predict(key).estimate_ms) << key;
+    }
+    EXPECT_EQ(p.snapshot()->boundaries_ms, q.snapshot()->boundaries_ms);
+    // Saving again keeps the previous file for rollback.
+    p.save(path, "ctx");
+    EXPECT_TRUE(std::filesystem::exists(path.string() + ".prev"));
+    std::filesystem::remove(path);
+    std::filesystem::remove(path.string() + ".prev");
+}
+
+TEST(DurationPredictor, SnapshotRejectsIncompatibleCorruptAndTruncatedFilesWithoutChangingState) {
+    const auto path = std::filesystem::temp_directory_path() / ("predictor-bad-" + std::to_string(::getpid()) + ".snap");
+    PerKeyPredictor p{base()};
+    train_three_tiers(p);
+    p.save(path, "ctx");
+    PerKeyPredictor wrong_context{base()};
+    EXPECT_THROW(wrong_context.load(path, "other"), std::runtime_error);
+    auto layout = base();
+    layout.histogram_bins = 32;
+    PerKeyPredictor wrong_layout{layout};
+    EXPECT_THROW(wrong_layout.load(path, "ctx"), std::runtime_error);
+    auto levels = base();
+    levels.num_levels = 4;
+    PerKeyPredictor wrong_levels{levels};
+    EXPECT_THROW(wrong_levels.load(path, "ctx"), std::runtime_error);
+
+    std::string bytes;
+    {
+        std::ifstream in(path, std::ios::binary);
+        bytes.assign(std::istreambuf_iterator<char>(in), {});
+    }
+    PerKeyPredictor victim{base()};
+    train_three_tiers(victim);
+    const auto before = victim.predict("slow");
+    for (const auto& damaged : {bytes.substr(0, bytes.size() / 2), [&] { auto b = bytes; b[b.size() / 2] ^= 0x55; return b; }()}) {
+        {
+            std::ofstream out(path, std::ios::binary | std::ios::trunc);
+            out << damaged;
+        }
+        EXPECT_THROW(victim.load(path, "ctx"), std::runtime_error);
+        EXPECT_EQ(victim.predict("slow").estimate_ms, before.estimate_ms);  // untouched by a failed load
+    }
+    std::filesystem::remove(path);
 }
 
 TEST(DurationPredictor, LongDurationsAreClampedConsistently) {

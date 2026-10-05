@@ -2,8 +2,8 @@
 
 Issue #6 provides the in-process C++ predictor used for tier assignment. It is a lookup over
 per-key statistics, not a trained model: no Python, RPC, or classifier service is on the serving
-path. It is **not yet connected to the broker**; `route_message()` integration, shadow mode and
-Ack-time learning belong to issue #7, and this change leaves the broker's behaviour untouched.
+path. Issue #7 connects it to the broker (see "Broker integration"), #8 adds snapshots and drift
+monitoring, and [configuration.md](configuration.md) covers enabling it from the standalone server.
 
 ## Keys
 
@@ -89,6 +89,44 @@ practice means "one key per producer". Finer keys need a header (or, later, rich
   minority's effect but a consumer that owns most of a key's traffic controls it. Measurement
   authenticity is outside this change.
 - Resolution is one millisecond. Differences below that are invisible to the predictor.
+
+## Broker integration (issue #7)
+
+`HarbingerConfig::predictive_routing` (absent = static routing, no predictor) selects `shadow` or
+`predictive`. `route_message()` stays the only place that resolves TTL and routing:
+
+- It derives the key, calls `predict()`, and records the mode, model version (`per-key-v2;boundaries=N`),
+  estimate, predicted tier, fallback reason and lookup time in the immutable routing context. The key itself is
+  kept broker-internal for learning and is never serialized into feedback or sent to consumers.
+- **Shadow** sets `priority` and `original_priority` to `default_priority`; dispatch order is identical to static
+  routing. **Predictive** sets both to the predicted tier, and to `default_priority` on any fallback.
+- Retries and lease requeues restore `original_priority`; nothing is reclassified, and later learning never
+  changes an existing message's context. Aging is unchanged. Consumers receive no tier, estimate or key.
+- Learning happens after the settlement lock is released: an accepted Ack within the lease and TTL (and with
+  valid features when capture is on) calls `observe()`; a lease expiry calls `observe_censored()`; Nack,
+  Ack-after-TTL, out-of-range durations, rejected or stale tokens and replayed settlements teach nothing.
+- `predictive` cannot be combined with a benchmark ingress policy (rejected at construction).
+- New feedback fallback reasons: `cold_key`, `high_spread`, `censored`, `stale_key`, `invalid_key`
+  (C++ and the Python validator agree; v1 exports stay valid).
+
+## Snapshots and monitoring (issue #8)
+
+- `save()` writes a versioned binary snapshot (magic, version, byte order, key-policy/routing context,
+  histogram layout, boundaries, global and per-key histograms, key ages, checksum) to a temporary file, fsyncs,
+  renames over the old file and keeps the previous one as `PATH.prev`. `load()` validates everything before
+  changing state; a corrupt, truncated or incompatible snapshot throws and the broker starts cold, reporting the
+  reason. Key ages are stored relative to save time, so staleness survives restarts.
+- The broker loads at startup, saves every `snapshot_interval` from the maintenance thread (predictor locks
+  only) and once more at shutdown.
+- `routing_stats()` exposes bounded counters: lookups, outcomes per status, lookup-latency buckets, learned,
+  rejected and censored labels, and drift signals: rolling tier agreement over the last 512 scored labels,
+  an EWMA of |log2(predicted / actual)|, and `drift_alerts` (agreement below 50%, latched until above 60%).
+  Drift signals are informational only: they never switch the routing mode or the number of levels.
+- Recovery from a relationship shift is governed by `decay`: with `d = 0.995` a key's new regime holds half the
+  weight after `ln 0.5 / ln d` ≈ 138 observations, and a tested seeded shift recovers within ±20% of that.
+  Idle keys additionally decay by `time_half_life` and are discarded after `stale_after`.
+- Rolling back predictor state (delete the snapshot or restore `.prev`) is separate from rolling back routing
+  (`--routing-mode static`); see [configuration.md](configuration.md#routing-modes-and-rollback).
 
 ## Interface
 

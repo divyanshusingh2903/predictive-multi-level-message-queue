@@ -2,13 +2,15 @@
 
 #include "queue/message.hpp"
 #include <array>
+#include <map>
+#include <memory>
 #include <atomic>
 #include <optional>
 #include <string>
 
 namespace harbinger::benchmark {
 
-enum class Policy { Disabled, Fifo, Static, RoundRobin };
+enum class Policy { Disabled, Fifo, Static, RoundRobin, Oracle };
 enum class Kind { Ingress, Dispatch, Ack, Retry, Ttl, MaxRetries };
 
 /// Fixed-size benchmark observation, without payload or settlement token.
@@ -44,10 +46,15 @@ struct Options {
     Policy policy{Policy::Disabled};
     std::array<uint8_t, 3> job_tiers{0, 1, 2};
     std::shared_ptr<Observations> observations;
+    /// When nonempty, Static maps the static_header value through this table instead of job_tiers.
+    std::map<std::string, uint8_t> static_tiers{};
+    std::string static_header{"job"};
 };
 
 [[nodiscard]] int64_t now_ns() noexcept;
 [[nodiscard]] std::optional<Observation> capture(const Message& message, Kind kind) noexcept;
 [[nodiscard]] const char* name(Kind kind) noexcept;
+/// Header carrying the true-cost tier for the Oracle policy; set only by benchmark producers.
+inline constexpr const char* kOracleTierHeader = "__benchmark_oracle_tier";
 
 } // namespace harbinger::benchmark

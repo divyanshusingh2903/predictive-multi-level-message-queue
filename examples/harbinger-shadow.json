@@ -1,0 +1,14 @@
+{
+  "config_version": 1,
+  "stats_interval_ms": 10000,
+  "broker": {
+    "num_levels": 3,
+    "default_priority": 1,
+    "aging": {"threshold_ms": 5000, "interval_ms": 500}
+  },
+  "routing": {
+    "mode": "shadow",
+    "key": {"job_header": "job_type", "scope_by_producer": true},
+    "snapshot": {"path": "/var/lib/harbinger/predictor.snap", "interval_ms": 60000}
+  }
+}

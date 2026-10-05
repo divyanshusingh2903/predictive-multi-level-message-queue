@@ -12,6 +12,9 @@
 #include <future>
 #include <limits>
 #include <set>
+#include <filesystem>
+#include <fstream>
+#include <random>
 
 using namespace harbinger;
 using namespace std::chrono_literals;
@@ -101,6 +104,7 @@ struct BrokerTestAccess {
         }
     }
     static void maintain(HarbingerService& service) { service.maintain_deliveries(); }
+    static ml::PerKeyPredictor& predictor(HarbingerService& service) { return *service.predictor_; }
     static void expire_history(HarbingerService& service) {
         std::lock_guard lock{service.in_flight_mutex_};
         for (auto& c : service.completions_) c.time -= service.config_.completion_retention;
@@ -1562,4 +1566,312 @@ TEST(FeedbackBroker, EmbeddedDestructionDrainsLogsAndRestartUsesNewNamespaceWith
     std::set<std::string> namespaces;
     for (const auto& row : rows) namespaces.insert(row.fields().at("broker_instance_id").string_value());
     EXPECT_EQ(namespaces.size(), 2u); EXPECT_TRUE(namespaces.contains(instance));
+}
+
+namespace {
+
+ml::PredictiveRoutingConfig routing(ml::RoutingMode mode) {
+    ml::PredictiveRoutingConfig config;
+    config.mode = mode;
+    config.predictor.min_samples = 3;
+    config.predictor.global_min_samples = 9;
+    config.predictor.boundary_refresh_every = 3;
+    config.predictor.decay = 1.0;
+    config.predictor.global_decay = 1.0;
+    return config;
+}
+
+HarbingerConfig predictive_config(ml::RoutingMode mode) {
+    HarbingerConfig config;
+    config.predictive_routing = routing(mode);
+    return config;
+}
+
+using Headers = std::unordered_map<std::string, std::string>;
+
+/// Submit, deliver and Ack n messages of one job type with a fixed reported duration.
+void train(LocalBroker& b, const std::string& job, int64_t duration, int n) {
+    for (int i = 0; i < n; ++i) {
+        b.submit("x", std::nullopt, {{"job_type", job}});
+        const auto delivery = b.pull();
+        ASSERT_FALSE(delivery.timed_out());
+        ASSERT_TRUE(b.ack(delivery.message(), duration).ok());
+    }
+}
+
+void train_three(LocalBroker& b, int rounds = 4) {
+    for (int i = 0; i < rounds; ++i) {
+        train(b, "fast", 2, 1);
+        train(b, "mid", 20, 1);
+        train(b, "slow", 200, 1);
+    }
+}
+
+std::shared_ptr<const ml::RoutingContext> queued_context(LocalBroker& b) {
+    const auto queued = BrokerTestAccess::queued_front(b.service);
+    return queued ? queued->routing_context : nullptr;
+}
+
+} // namespace
+
+TEST(PredictiveRouting, DisabledModeAndBadConfigurationAreRejected) {
+    EXPECT_THROW(HarbingerService{predictive_config(ml::RoutingMode::Disabled)}, std::invalid_argument);
+    auto bad_version = predictive_config(ml::RoutingMode::Shadow);
+    bad_version.predictive_routing->routing_policy_version.clear();
+    EXPECT_THROW(HarbingerService{bad_version}, std::invalid_argument);
+    auto reserved = predictive_config(ml::RoutingMode::Shadow);
+    reserved.predictive_routing->key.job_header = "__producer_id";
+    EXPECT_THROW(HarbingerService{reserved}, std::invalid_argument);
+    auto snapshot = predictive_config(ml::RoutingMode::Shadow);
+    snapshot.predictive_routing->snapshot_path = "";
+    EXPECT_THROW(HarbingerService{snapshot}, std::invalid_argument);
+}
+
+TEST(PredictiveRouting, ShadowRecordsPredictionButKeepsDefaultPriority) {
+    LocalBroker b{predictive_config(ml::RoutingMode::Shadow)};
+    train_three(b);
+    b.submit("x", std::nullopt, {{"job_type", "fast"}});
+    const auto queued = BrokerTestAccess::queued_front(b.service);
+    ASSERT_TRUE(queued);
+    EXPECT_EQ(queued->priority, 1);
+    EXPECT_EQ(queued->original_priority, 1);
+    const auto& context = *queued->routing_context;
+    EXPECT_EQ(context.mode, ml::RoutingMode::Shadow);
+    EXPECT_EQ(context.ingress_priority, 1);
+    ASSERT_TRUE(context.predicted_bucket);
+    EXPECT_EQ(*context.predicted_bucket, 0);
+    ASSERT_TRUE(context.predicted_processing_time_ms);
+    EXPECT_LT(*context.predicted_processing_time_ms, 5.0);
+    EXPECT_FALSE(context.fallback_reason);
+    ASSERT_TRUE(context.model_version);
+    EXPECT_TRUE(context.model_version->starts_with("per-key-v2;boundaries="));
+    EXPECT_EQ(context.routing_policy_version, "per-key-v2");
+    ASSERT_TRUE(context.inference_elapsed_ms);
+    ASSERT_TRUE(context.predictor_key);
+    EXPECT_EQ(*context.predictor_key, b.producer_id + '\x1f' + "fast");
+    const auto stats = b.service.routing_stats();
+    EXPECT_TRUE(stats.enabled);
+    EXPECT_EQ(stats.routed_by_prediction, 0u);
+    EXPECT_EQ(stats.learned, 12u);
+    EXPECT_GT(stats.outcomes[static_cast<std::size_t>(ml::PredictionStatus::Predicted)], 0u);
+}
+
+TEST(PredictiveRouting, ShadowDispatchOrderMatchesStaticRouting) {
+    const std::vector<std::string> jobs{"slow", "fast", "mid", "fast", "slow", "mid", "unknown", "fast"};
+    const auto order = [&](HarbingerConfig config) {
+        LocalBroker b{std::move(config)};
+        train_three(b);
+        std::vector<std::string> submitted, delivered;
+        for (const auto& job : jobs) submitted.push_back(b.submit("x", std::nullopt, {{"job_type", job}}));
+        for (std::size_t i = 0; i < jobs.size(); ++i) {
+            const auto delivery = b.pull();
+            delivered.push_back(delivery.message().message_id() == submitted[i] ? "same" : "different");
+            EXPECT_TRUE(b.ack(delivery.message()).ok());
+        }
+        return delivered;
+    };
+    const auto shadow = order(predictive_config(ml::RoutingMode::Shadow));
+    const auto fixed = order(HarbingerConfig{});
+    EXPECT_EQ(shadow, fixed);
+    EXPECT_EQ(shadow, std::vector<std::string>(jobs.size(), "same"));  // FIFO within the default tier
+}
+
+TEST(PredictiveRouting, PredictiveDispatchesShortestExpectedFirst) {
+    LocalBroker b{predictive_config(ml::RoutingMode::Predictive)};
+    train_three(b);
+    const auto routed_before = b.service.routing_stats().routed_by_prediction;
+    const auto slow = b.submit("x", std::nullopt, {{"job_type", "slow"}});
+    const auto mid = b.submit("x", std::nullopt, {{"job_type", "mid"}});
+    const auto fast = b.submit("x", std::nullopt, {{"job_type", "fast"}});
+    std::vector<std::string> delivered;
+    for (int i = 0; i < 3; ++i) {
+        const auto delivery = b.pull();
+        delivered.push_back(delivery.message().message_id());
+        // Consumers stay tier-blind: no prediction, tier or key is added to what they receive.
+        for (const auto& [key, value] : delivery.message().headers())
+            EXPECT_TRUE(key == "job_type" || key == "__producer_id") << key;
+        EXPECT_TRUE(b.ack(delivery.message(), 1).ok());
+    }
+    EXPECT_EQ(delivered, (std::vector<std::string>{fast, mid, slow}));
+    EXPECT_EQ(b.service.routing_stats().routed_by_prediction - routed_before, 3u);
+}
+
+TEST(PredictiveRouting, PredictiveRoutingSetsBothPrioritiesAndRetryDoesNotReclassify) {
+    LocalBroker b{predictive_config(ml::RoutingMode::Predictive)};
+    train_three(b);
+    const auto id = b.submit("x", std::nullopt, {{"job_type", "fast"}});
+    auto queued = BrokerTestAccess::queued_front(b.service);
+    ASSERT_TRUE(queued);
+    EXPECT_EQ(queued->priority, 0);
+    EXPECT_EQ(queued->original_priority, 0);
+    const auto context = queued->routing_context;
+    auto delivery = b.pull();
+    // The key's history changes completely before the retry: the queued message must keep its ingress decision.
+    for (int i = 0; i < 40; ++i) BrokerTestAccess::predictor(b.service).observe(*context->predictor_key, 900.0);
+    ASSERT_TRUE(b.nack(delivery.message()).ok());
+    queued = BrokerTestAccess::queued_front(b.service);
+    ASSERT_TRUE(queued);
+    EXPECT_EQ(queued->id, id);
+    EXPECT_EQ(queued->priority, 0);
+    EXPECT_EQ(queued->routing_context, context);
+    // A new message of the same key now sees the new history.
+    b.submit("x", std::nullopt, {{"job_type", "fast"}});
+    EXPECT_EQ(b.service.routing_stats().outcomes[static_cast<std::size_t>(ml::PredictionStatus::Predicted)] > 0, true);
+}
+
+TEST(PredictiveRouting, EveryFallbackUsesDefaultPriority) {
+    using ml::FallbackReason;
+    // Unready: no boundaries yet.
+    {
+        LocalBroker b{predictive_config(ml::RoutingMode::Predictive)};
+        b.submit("x", std::nullopt, {{"job_type", "fast"}});
+        const auto context = queued_context(b);
+        ASSERT_TRUE(context);
+        EXPECT_EQ(context->fallback_reason, FallbackReason::Unready);
+        EXPECT_EQ(context->ingress_priority, 1);
+        EXPECT_FALSE(context->predicted_bucket);
+    }
+    LocalBroker b{predictive_config(ml::RoutingMode::Predictive)};
+    train_three(b);
+    const auto expect_fallback = [&](const Headers& headers, FallbackReason reason) {
+        b.submit("x", std::nullopt, headers);
+        const auto queued = BrokerTestAccess::queued_front(b.service);
+        ASSERT_TRUE(queued);
+        EXPECT_EQ(queued->routing_context->fallback_reason, reason);
+        EXPECT_EQ(queued->priority, 1);
+        EXPECT_EQ(queued->original_priority, 1);
+        EXPECT_FALSE(queued->routing_context->predicted_bucket);
+        const auto delivery = b.pull();
+        EXPECT_TRUE(b.ack(delivery.message(), 1).ok());
+    };
+    expect_fallback({{"job_type", "never-seen"}}, FallbackReason::ColdKey);
+    train(b, "bimodal", 2, 20);
+    train(b, "bimodal", 3000, 2);
+    expect_fallback({{"job_type", "bimodal"}}, FallbackReason::HighSpread);
+    // Censored: delivered attempts that overrun their lease.
+    train(b, "overruns", 3, 6);
+    for (int i = 0; i < 2; ++i) {
+        const auto id = b.submit("x", std::nullopt, {{"job_type", "overruns"}});
+        ASSERT_FALSE(b.pull().timed_out());
+        BrokerTestAccess::expire(b.service, id);
+        BrokerTestAccess::maintain(b.service);
+        // The expired attempt is retried; drain it again as an overrun so it ends in the DLQ path or queue.
+        while (BrokerTestAccess::queued_front(b.service)) {
+            const auto again = b.pull();
+            BrokerTestAccess::expire(b.service, again.message().message_id());
+            BrokerTestAccess::maintain(b.service);
+        }
+    }
+    EXPECT_GE(b.service.routing_stats().censored_observed, 2u);
+    expect_fallback({{"job_type", "overruns"}}, FallbackReason::Censored);
+}
+
+TEST(PredictiveRouting, MissingKeyFallsBackAsInvalidKey) {
+    auto config = predictive_config(ml::RoutingMode::Predictive);
+    config.predictive_routing->key.scope_by_producer = false;
+    config.predictive_routing->key.producer_header.clear();  // job label only
+    LocalBroker b{config};
+    for (int i = 0; i < 4; ++i) { train(b, "fast", 2, 1); train(b, "mid", 20, 1); train(b, "slow", 200, 1); }
+    b.submit("x");  // no job_type header and producer is not a key source
+    const auto context = queued_context(b);
+    ASSERT_TRUE(context);
+    EXPECT_FALSE(context->predictor_key);
+    EXPECT_EQ(context->fallback_reason, ml::FallbackReason::InvalidKey);
+    EXPECT_EQ(context->ingress_priority, 1);
+}
+
+TEST(PredictiveRouting, StaleKeyFallsBack) {
+    auto clock = std::make_shared<std::chrono::steady_clock::time_point>(std::chrono::steady_clock::now());
+    auto config = predictive_config(ml::RoutingMode::Predictive);
+    config.predictive_routing->predictor.clock = [clock] { return *clock; };
+    LocalBroker b{config};
+    train_three(b);
+    *clock += config.predictive_routing->predictor.stale_after + 1s;
+    b.submit("x", std::nullopt, {{"job_type", "fast"}});
+    const auto context = queued_context(b);
+    ASSERT_TRUE(context);
+    EXPECT_EQ(context->fallback_reason, ml::FallbackReason::StaleKey);
+}
+
+TEST(PredictiveRouting, OnlyAcceptedSuccessfulAcksWithinLeaseAndTtlAreLearned) {
+    LocalBroker b{predictive_config(ml::RoutingMode::Shadow)};
+    const auto learned = [&] { return b.service.routing_stats().learned; };
+    // Nack teaches nothing.
+    b.submit("x", std::nullopt, {{"job_type", "k"}});
+    auto delivery = b.pull();
+    ASSERT_TRUE(b.nack(delivery.message(), "fail", 7).ok());
+    EXPECT_EQ(learned(), 0u);
+    // Ack is learned once; an identical replayed Ack is accepted but not learned again.
+    delivery = b.pull();
+    ASSERT_TRUE(b.ack(delivery.message(), 7).ok());
+    EXPECT_EQ(learned(), 1u);
+    ASSERT_TRUE(b.ack(delivery.message(), 7).ok());
+    EXPECT_EQ(learned(), 1u);
+    // A stale token is rejected and teaches nothing.
+    b.submit("x", std::nullopt, {{"job_type", "k"}});
+    auto first = b.pull();
+    BrokerTestAccess::expire(b.service, first.message().message_id());
+    BrokerTestAccess::maintain(b.service);
+    auto second = b.pull();
+    EXPECT_FALSE(b.ack(first.message(), 7).ok());
+    EXPECT_EQ(learned(), 1u);
+    EXPECT_EQ(b.service.routing_stats().censored_observed, 1u);
+    // Ack-after-TTL goes to the DLQ and is not learned.
+    BrokerTestAccess::expire_ttl(b.service, second.message().message_id());
+    ASSERT_TRUE(b.ack(second.message(), 7).ok());
+    EXPECT_EQ(learned(), 1u);
+    // An out-of-range duration (longer than the lease) is not learned.
+    b.submit("x", std::nullopt, {{"job_type", "k"}});
+    delivery = b.pull();
+    ASSERT_TRUE(b.ack(delivery.message(), 10'000'000).ok());
+    EXPECT_EQ(learned(), 1u);
+}
+
+TEST(PredictiveRouting, SnapshotRestoresWarmStateAndBadSnapshotStartsCold) {
+    const auto directory = std::filesystem::temp_directory_path() /
+        ("harbinger-predictor-" + std::to_string(std::random_device{}()));
+    std::filesystem::create_directories(directory);
+    const auto path = directory / "predictor.snap";
+    auto config = predictive_config(ml::RoutingMode::Predictive);
+    config.predictive_routing->snapshot_path = path;
+    {
+        LocalBroker b{config};
+        train_three(b);
+        EXPECT_EQ(b.service.routing_stats().snapshot_status, "absent; starting cold");
+    }  // destructor writes the final snapshot
+    ASSERT_TRUE(std::filesystem::exists(path));
+    {
+        LocalBroker b{config};
+        const auto stats = b.service.routing_stats();
+        EXPECT_TRUE(stats.snapshot_loaded) << stats.snapshot_status;
+        // Keys are producer-scoped, and producer ids restart at producer-0, so the restored key matches.
+        b.submit("x", std::nullopt, {{"job_type", "slow"}});
+        const auto context = queued_context(b);
+        ASSERT_TRUE(context);
+        EXPECT_EQ(context->predicted_bucket, std::optional<uint8_t>{2});
+        EXPECT_EQ(context->ingress_priority, 2);
+    }
+    // A different key policy refuses the snapshot rather than misreading it.
+    {
+        auto other = config;
+        other.predictive_routing->key.job_header = "task";
+        LocalBroker b{other};
+        EXPECT_FALSE(b.service.routing_stats().snapshot_loaded);
+        EXPECT_NE(b.service.routing_stats().snapshot_status.find("rejected"), std::string::npos);
+    }
+    // Corruption: flip a byte; the broker starts cold instead of failing or routing on garbage.
+    {
+        std::fstream file(path, std::ios::in | std::ios::out | std::ios::binary);
+        file.seekp(40);
+        file.put('\x7f');
+    }
+    {
+        LocalBroker b{config};
+        const auto stats = b.service.routing_stats();
+        EXPECT_FALSE(stats.snapshot_loaded);
+        EXPECT_NE(stats.snapshot_status.find("checksum"), std::string::npos) << stats.snapshot_status;
+        b.submit("x", std::nullopt, {{"job_type", "slow"}});
+        EXPECT_EQ(queued_context(b)->fallback_reason, ml::FallbackReason::Unready);
+    }
+    std::filesystem::remove_all(directory);
 }

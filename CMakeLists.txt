@@ -84,6 +84,7 @@ set(HARBINGER_SERVER_SOURCES
     src/ml/feedback_event.cpp
     src/ml/feedback_writer.cpp
     src/ml/duration_predictor.cpp
+    src/config_file.cpp
     src/harbinger_service.cpp
 )
 add_library(harbinger_server_lib STATIC ${HARBINGER_SERVER_SOURCES})

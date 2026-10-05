@@ -283,3 +283,8 @@ Full admission buffer and admission contention drop newest events with a reason 
 After broker handlers/maintenance stop emitting, stop telemetry admission, attempt the proposed one-second drain, discard remaining queued records on budget exhaustion, and join resources safely. The one-second drain is a target for healthy storage, not a way to interrupt blocked syscalls. Do not detach a thread that owns broker references. Any hard deadline requirement needs storage isolation and a revised ADR; document measured shutdown behavior in #3/#9.
 
 For persisted events, #6/#8 define at-least-once log delivery, acknowledged ingest, and model replay: learning and its deduplication/cursor state must be checkpointed together. Store-and-forward never waits on a classifier during settlement. On log retention gaps, surface lost ranges and reset/reconcile the cursor explicitly. Broker crashes can still lose telemetry and all broker messages; no atomic settlement/log or exactly-once side-effect guarantee is introduced.
+
+
+## Per-key predictor fallback reasons
+
+The in-process predictor (issues #6/#7) adds `cold_key`, `high_spread`, `censored`, `stale_key` and `invalid_key` to the `fallback_reason` vocabulary. Earlier values remain valid; v1 exports are unchanged.
