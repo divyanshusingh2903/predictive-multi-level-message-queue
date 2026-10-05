@@ -5,6 +5,16 @@ on:
     branches: [main]
   pull_request:
 
+# A newer commit on the same branch or PR supersedes the older run, so queued jobs do not pile up and compete for
+# hosted runners. Runs on main are never cancelled.
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+# CI only reads the repository.
+permissions:
+  contents: read
+
 jobs:
   online-models:
     runs-on: ubuntu-24.04
@@ -73,6 +83,6 @@ jobs:
       # 24.04 runners use 32-bit mmap ASLR, which GCC's TSan rejects as an unexpected mapping.
       - name: Reduce ASLR entropy for TSan
         run: sudo sysctl vm.mmap_rnd_bits=28
-      # Transport TSan tests require instrumented gRPC/Protobuf, not distro binaries.
-      - name: Test queue concurrency
-        run: ./build-ci/tests/harbinger_unit_tests --gtest_filter='MultiLevelQueue.*'
+      # Transport TSan tests require instrumented gRPC/Protobuf, not distro binaries; these suites use neither.
+      - name: Test queue and predictor concurrency
+        run: ./build-ci/tests/harbinger_unit_tests --gtest_filter='MultiLevelQueue.*:DurationPredictor.*:PredictorKey.*:ConfigFile.*'
