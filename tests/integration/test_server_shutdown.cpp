@@ -10,6 +10,8 @@
 #include <sys/wait.h>
 #include <unistd.h>
 #include <chrono>
+#include <filesystem>
+#include <fstream>
 #include <future>
 #include <stdexcept>
 #include <string>
@@ -71,6 +73,18 @@ public:
         return 0;
     }
     void signal(int value) { ASSERT_EQ(kill(pid_, value), 0); }
+    /// Read remaining output until the child closes it (after exit) or a short deadline passes.
+    void drain() {
+        const auto deadline = std::chrono::steady_clock::now() + 3s;
+        while (std::chrono::steady_clock::now() < deadline) {
+            pollfd fd{output_, POLLIN, 0};
+            if (poll(&fd, 1, 100) <= 0) continue;
+            char buffer[4096];
+            const auto count = read(output_, buffer, sizeof(buffer));
+            if (count <= 0) return;
+            output.append(buffer, static_cast<std::size_t>(count));
+        }
+    }
     int wait() {
         const auto deadline = std::chrono::steady_clock::now() + 8s;
         while (std::chrono::steady_clock::now() < deadline) {
@@ -212,4 +226,84 @@ TEST(ServerShutdown, BindFailureExitsNonzero) {
     ServerChild child{"127.0.0.1:" + std::to_string(ntohs(address.sin_port))};
     EXPECT_EQ(child.ready_port(), 0);
     EXPECT_EQ(child.wait(), EXIT_FAILURE) << child.output;
+}
+
+namespace {
+
+std::filesystem::path write_config(const std::string& name, const std::string& body) {
+    const auto directory = std::filesystem::temp_directory_path() / ("harbinger-server-config-" + std::to_string(::getpid()));
+    std::filesystem::create_directories(directory);
+    const auto path = directory / name;
+    std::ofstream(path) << body;
+    return path;
+}
+
+} // namespace
+
+TEST(ServerConfiguration, ConfigFileEnablesShadowRoutingAndStatsReporting) {
+    const auto path = write_config("shadow.json", R"({"config_version": 1, "stats_interval_ms": 100,
+        "routing": {"mode": "shadow", "key": {"job_header": "job_type"}}})");
+    ServerChild child{"127.0.0.1:0", {"--config", path.string()}};
+    ASSERT_GT(child.ready_port(), 0) << child.output;
+    EXPECT_NE(child.output.find("routing=shadow"), std::string::npos) << child.output;
+    std::this_thread::sleep_for(350ms);
+    child.signal(SIGTERM);
+    EXPECT_EQ(child.wait(), EXIT_SUCCESS);
+    child.drain();
+    EXPECT_NE(child.output.find("[harbinger] stats {\"queued\":0"), std::string::npos) << child.output;
+    EXPECT_NE(child.output.find("\"routing\":{\"enabled\":true"), std::string::npos) << child.output;
+}
+
+TEST(ServerConfiguration, CommandLineOverridesFileAndStaticFeedbackCollectionStarts) {
+    const auto feedback = std::filesystem::temp_directory_path() / ("harbinger-feedback-" + std::to_string(::getpid()));
+    std::filesystem::create_directories(feedback);
+    const auto path = write_config("collect.json", R"({"config_version": 1,
+        "broker": {"delivery_lease_ms": 40000},
+        "features": {"schema_version": "orders-v1", "routing_policy_version": "static-v1",
+                     "headers": [{"name": "job_type", "type": "categorical", "encoding": "hash"}]},
+        "feedback": {"directory": ")" + feedback.string() + R"("},
+        "routing": {"mode": "predictive"}})");
+    ServerChild child{"127.0.0.1:0", {"--delivery-lease-ms", "41000", "--config", path.string(), "--routing-mode", "static"}};
+    ASSERT_GT(child.ready_port(), 0) << child.output;
+    EXPECT_NE(child.output.find("routing=static"), std::string::npos) << child.output;
+    EXPECT_NE(child.output.find("delivery_lease_ms=41000"), std::string::npos) << child.output;
+    EXPECT_NE(child.output.find("feedback=" + feedback.string()), std::string::npos) << child.output;
+    child.signal(SIGTERM);
+    EXPECT_EQ(child.wait(), EXIT_SUCCESS);
+    std::filesystem::remove_all(feedback);
+}
+
+TEST(ServerConfiguration, PredictorSnapshotSurvivesRestart) {
+    const auto snapshot = std::filesystem::temp_directory_path() / ("harbinger-snap-" + std::to_string(::getpid()));
+    std::filesystem::remove(snapshot);
+    const auto path = write_config("snapshot.json", R"({"config_version": 1,
+        "routing": {"mode": "shadow", "snapshot": {"path": ")" + snapshot.string() + R"(", "interval_ms": 60000}}})");
+    for (const char* expected : {"absent; starting cold", "restored 0 keys"}) {
+        ServerChild child{"127.0.0.1:0", {"--config", path.string()}};
+        ASSERT_GT(child.ready_port(), 0) << child.output;
+        EXPECT_NE(child.output.find(expected), std::string::npos) << child.output;
+        child.signal(SIGTERM);
+        EXPECT_EQ(child.wait(), EXIT_SUCCESS);
+        EXPECT_TRUE(std::filesystem::exists(snapshot));
+    }
+    std::filesystem::remove(snapshot);
+    std::filesystem::remove(snapshot.string() + ".prev");
+}
+
+TEST(ServerConfiguration, InvalidConfigFilesExitBeforeListening) {
+    const std::vector<std::vector<std::string>> invalid{
+        {"--config", "/nonexistent/harbinger.json"},
+        {"--config", write_config("malformed.json", "{not json").string()},
+        {"--config", write_config("unknown.json", R"({"config_version": 1, "brokr": {}})").string()},
+        {"--config", write_config("feedback.json", R"({"config_version": 1, "feedback": {"directory": "/tmp"}})").string()},
+        {"--routing-mode", "aggressive"},
+        {"--config"},
+    };
+    for (const auto& options : invalid) {
+        SCOPED_TRACE(options.back());
+        ServerChild child{"127.0.0.1:0", options};
+        EXPECT_EQ(child.ready_port(), 0) << child.output;
+        EXPECT_EQ(child.wait(), EXIT_FAILURE) << child.output;
+        EXPECT_NE(child.output.find("Use --help"), std::string::npos) << child.output;
+    }
 }

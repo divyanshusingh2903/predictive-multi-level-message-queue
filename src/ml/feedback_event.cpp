@@ -87,6 +87,11 @@ std::string_view name(FallbackReason value) {
         case FallbackReason::InvalidPrediction: return "invalid_prediction";
         case FallbackReason::FeatureLimit: return "feature_limit";
         case FallbackReason::ClientError: return "client_error";
+        case FallbackReason::ColdKey: return "cold_key";
+        case FallbackReason::HighSpread: return "high_spread";
+        case FallbackReason::Censored: return "censored";
+        case FallbackReason::StaleKey: return "stale_key";
+        case FallbackReason::InvalidKey: return "invalid_key";
     }
     throw std::invalid_argument("feedback fallback");
 }

@@ -78,7 +78,8 @@ def validate_record(record: dict, schemas: dict[str, FeatureSchema], lease_ms: i
         if value is not None and (type(value) not in (int, float) or not __import__("math").isfinite(value) or value < 0):
             raise ValueError("invalid routing measurement")
     if routing["fallback_reason"] not in (None, "timeout", "unavailable", "overloaded", "unready", "incompatible_version",
-                                           "invalid_prediction", "feature_limit", "client_error"):
+                                           "invalid_prediction", "feature_limit", "client_error", "cold_key",
+                                           "high_spread", "censored", "stale_key", "invalid_key"):
         raise ValueError("invalid fallback reason")
     schema = schemas.get(routing["feature_schema_version"])
     if schema is None: raise ValueError("unregistered feature schema")

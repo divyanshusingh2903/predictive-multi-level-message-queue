@@ -25,6 +25,18 @@ class Feedback(unittest.TestCase):
         self.assertTrue(dimensions(row)["censored"])
         self.assertTrue(dimensions(row)["missing_measurement"])
 
+    def test_shadow_predictor_fallbacks_are_valid(self):
+        shadow = json.loads(FIXTURE.with_name("feedback_v1_shadow.json").read_text())
+        validate_record(shadow, self.schemas, 100)
+        for reason in ("cold_key", "high_spread", "censored", "stale_key", "invalid_key", "unready"):
+            row = copy.deepcopy(shadow)
+            row["routing"]["fallback_reason"] = reason
+            validate_record(row, self.schemas, 100)
+        row = copy.deepcopy(shadow)
+        row["routing"]["fallback_reason"] = "made_up"
+        with self.assertRaises(ValueError):
+            validate_record(row, self.schemas, 100)
+
     def test_precedence_and_corrupt_records(self):
         for change in ({"record_version": True}, {"attempt_id": "0"}, {"processing_time_ms": -1},
                        {"outcome": "dlq"}, {"event_id": "wrong:1"}, {"retry_count": True},

@@ -8,6 +8,7 @@ The operational guides below describe the core broker and implemented Phase 2 fe
 | [Consumers](consumers.md) | Handler callbacks, polling, Ack/Nack, delivery leases, retries, and shutdown |
 | [Broker and queue internals](internals.md) | The full message state machine, scheduling, aging, TTL, leases, DLQ, and concurrency |
 | [Ingress features and encoding](../ml_engine/README.md) | Implemented programmatic feature capture, schema validation, and Python sparse encoding |
+| [Server configuration](configuration.md) | `--config` file format, routing modes, stats line, and rollback |
 | [Persistent feedback](feedback.md) | Embedded configuration, event labels, bounded JSONL, retention/recovery, and durability limits |
 
 ## Phase 2 design and validation
@@ -16,6 +17,7 @@ The operational guides below describe the core broker and implemented Phase 2 fe
 |---|---|
 | [ML architecture decision](adr/0001-phase2-ml-contract.md) | Routing modes, Python service boundary, alternatives, and preserved invariants |
 | [ML contract](ml-contract.md) | Versioned features, prediction/feedback records, proposed limits, and persistence semantics |
+| [Per-key duration predictor](duration-predictor.md) | The in-process C++ predictor, bounds, fallbacks, replay CLI and what is not yet wired into the broker |
 | [Online predictors](online-predictor.md) | Literature, incremental regressors, delayed evaluation, readiness/fallback and selection evidence |
 | [Validation plan](phase2-validation.md) | Baselines, workloads, metrics, proposed gates, and activation/rollback criteria |
 

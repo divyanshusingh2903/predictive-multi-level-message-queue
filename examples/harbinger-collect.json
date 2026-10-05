@@ -1,0 +1,12 @@
+{
+  "config_version": 1,
+  "features": {
+    "schema_version": "orders-v1",
+    "routing_policy_version": "static-v1",
+    "headers": [
+      {"name": "job_type", "type": "categorical", "encoding": "hash"},
+      {"name": "units", "type": "numeric", "minimum": 0, "maximum": 1000000}
+    ]
+  },
+  "feedback": {"directory": "/var/lib/harbinger/feedback"}
+}

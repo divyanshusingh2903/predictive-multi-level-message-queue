@@ -1,8 +1,13 @@
+#include "config_file.hpp"
 #include "harbinger_service.hpp"
 
 #include <grpcpp/grpcpp.h>
 
+#include <atomic>
+#include <condition_variable>
 #include <csignal>
+#include <mutex>
+#include <thread>
 #include <charconv>
 #include <cstdlib>
 #include <iostream>
@@ -32,28 +37,53 @@ void print_help() {
               << "  --maintenance-batch-size N       Default: " << defaults.maintenance_batch_size << '\n'
               << "  --ttl-sweep-interval-ms N        Default: " << defaults.ttl_sweep_interval.count() << '\n'
               << "All values must be positive; TTL sweep interval alone accepts 0 (off).\n"
+              << "  --config PATH                    Version-1 JSON configuration (see docs/configuration.md)\n"
+              << "  --routing-mode static|shadow|predictive\n"
+              << "                                   Override the file's routing mode; shadow/predictive need no file\n"
+              << "  --stats-interval-ms N            Print a JSON stats line every N ms (0 = off, default)\n"
+              << "Precedence: built-in defaults, then --config, then the other options (in any order).\n"
               << "  --help                          Show this help and exit\n";
 }
 }
 
 int main(int argc, char* argv[]) try {
-    std::string addr = "0.0.0.0:50051";
+    harbinger::ServerSettings settings;
     bool address_set = false;
     harbinger::HarbingerConfig config;
     config.aging = harbinger::AgingConfig{
         .threshold = std::chrono::milliseconds{5000},
         .interval = std::chrono::milliseconds{500},
     };
+    // The config file is applied first wherever it appears, so explicit options always win.
     for (int i = 1; i < argc; ++i) {
         const std::string_view option{argv[i]};
         if (option == "--help") {
             print_help();
             return EXIT_SUCCESS;
         }
+        if (option == "--config") {
+            if (i + 1 == argc) throw std::invalid_argument("Missing value for --config");
+            harbinger::apply_config_file(argv[i + 1], config, settings);
+        }
+    }
+    for (int i = 1; i < argc; ++i) {
+        const std::string_view option{argv[i]};
         if (!option.starts_with("-")) {
             if (address_set) throw std::invalid_argument("Only one listen address is allowed");
-            addr = option;
+            settings.listen_address = option;
             address_set = true;
+            continue;
+        }
+        if (option == "--config") { ++i; continue; }
+        if (option == "--routing-mode") {
+            if (++i == argc) throw std::invalid_argument("Missing value for --routing-mode");
+            const std::string_view mode{argv[i]};
+            if (mode == "static") config.predictive_routing.reset();
+            else if (mode == "shadow" || mode == "predictive") {
+                if (!config.predictive_routing) config.predictive_routing.emplace();
+                config.predictive_routing->mode = mode == "shadow" ? harbinger::ml::RoutingMode::Shadow
+                                                                   : harbinger::ml::RoutingMode::Predictive;
+            } else throw std::invalid_argument("--routing-mode must be static, shadow or predictive");
             continue;
         }
         std::chrono::milliseconds* duration = nullptr;
@@ -62,6 +92,7 @@ int main(int argc, char* argv[]) try {
         else if (option == "--lease-sweep-interval-ms") duration = &config.lease_sweep_interval;
         else if (option == "--completion-retention-ms") duration = &config.completion_retention;
         else if (option == "--ttl-sweep-interval-ms") duration = &config.ttl_sweep_interval;
+        else if (option == "--stats-interval-ms") duration = &settings.stats_interval;
         else if (option == "--completion-cache-max-entries") size = &config.completion_cache_max_entries;
         else if (option == "--maintenance-batch-size") size = &config.maintenance_batch_size;
         else throw std::invalid_argument("Unknown option: " + std::string{option});
@@ -77,6 +108,7 @@ int main(int argc, char* argv[]) try {
             *size = static_cast<std::size_t>(number);
         }
     }
+    const std::string addr = settings.listen_address;
     sigset_t signals;
     sigemptyset(&signals);
     sigaddset(&signals, SIGINT);
@@ -103,11 +135,31 @@ int main(int argc, char* argv[]) try {
               << " completion_cache_max_entries=" << config.completion_cache_max_entries
               << " maintenance_batch_size=" << config.maintenance_batch_size
               << " ttl_sweep_interval_ms=" << config.ttl_sweep_interval.count() << '\n';
+    std::cout << "[harbinger] Config: " << harbinger::describe_config(config, settings) << '\n';
+    if (config.predictive_routing && config.predictive_routing->snapshot_path)
+        std::cout << "[harbinger] Predictor snapshot: " << service.routing_stats().snapshot_status << '\n';
     std::cout << "[harbinger] Ready port=" << port << std::endl;
+    std::mutex stats_mutex;
+    std::condition_variable stats_cv;
+    bool stopping = false;
+    std::thread reporter;
+    if (settings.stats_interval.count() > 0) {
+        reporter = std::thread([&] {
+            std::unique_lock lock{stats_mutex};
+            while (!stats_cv.wait_for(lock, settings.stats_interval, [&] { return stopping; }))
+                std::cout << "[harbinger] stats " << harbinger::stats_json(service) << std::endl;
+        });
+    }
     std::cout << "[harbinger] Send SIGINT or SIGTERM to shut down gracefully.\n";
 
     int signal = 0;
     const int result = sigwait(&signals, &signal);
+    {
+        std::lock_guard lock{stats_mutex};
+        stopping = true;
+    }
+    stats_cv.notify_all();
+    if (reporter.joinable()) reporter.join();
     server->Shutdown(std::chrono::system_clock::now() + std::chrono::seconds{5});
     server->Wait();
 

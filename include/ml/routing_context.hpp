@@ -7,7 +7,8 @@ namespace harbinger::ml {
 enum class RoutingMode { Disabled, Shadow, Predictive };
 enum class FallbackReason {
     Timeout, Unavailable, Overloaded, Unready, IncompatibleVersion,
-    InvalidPrediction, FeatureLimit, ClientError
+    InvalidPrediction, FeatureLimit, ClientError,
+    ColdKey, HighSpread, Censored, StaleKey, InvalidKey
 };
 
 /// Opt-in static-mode ingress capture; classifier and persistence wiring belong to later issues.
@@ -29,6 +30,8 @@ struct RoutingContext {
     uint8_t ingress_priority{0};
     std::optional<FallbackReason> fallback_reason{};
     std::optional<double> inference_elapsed_ms{};
+    /// Broker-internal predictor key used to learn from this message's outcome; never serialized or exported.
+    std::optional<std::string> predictor_key{};
 };
 
 } // namespace harbinger::ml

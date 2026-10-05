@@ -15,6 +15,23 @@ TEST(FeedbackEvent, VersionOneFixtureMatchesGeneratedRecord) {
         parse(fixture), parse(feedback_json(e, "fixture-instance", 42, 100))));
 }
 
+TEST(FeedbackEvent, ShadowFallbackFixtureMatchesGeneratedRecord) {
+    std::ifstream input(ML_FEEDBACK_SHADOW_FIXTURE);
+    ASSERT_TRUE(input.good());
+    const std::string fixture{std::istreambuf_iterator<char>(input), std::istreambuf_iterator<char>()};
+    auto e = event(); e.collected_at = std::chrono::system_clock::from_time_t(0); e.elapsed_since_arrival_ms = 7;
+    auto context = *e.routing;
+    context.mode = harbinger::ml::RoutingMode::Shadow;
+    context.model_version = "per-key-v2;boundaries=3";
+    context.fallback_reason = harbinger::ml::FallbackReason::ColdKey;
+    context.inference_elapsed_ms = 0.25;
+    context.predictor_key = "producer-0\x1fsecret-job";  // broker-internal: must not appear in the record
+    e.routing = std::make_shared<const harbinger::ml::RoutingContext>(context);
+    const auto json = feedback_json(e, "fixture-instance", 42, 100);
+    EXPECT_EQ(json.find("secret-job"), std::string::npos);
+    EXPECT_TRUE(google::protobuf::util::MessageDifferencer::Equals(parse(fixture), parse(json)));
+}
+
 TEST(FeedbackEvent, OrderedLabelRulesKeepActualOutcomeIndependent) {
     auto e = event();
     EXPECT_EQ(classify_label(e, 100), LabelStatus::Eligible);
