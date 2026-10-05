@@ -15,6 +15,7 @@
 #include <filesystem>
 #include <fstream>
 #include <random>
+#include <unistd.h>
 
 using namespace harbinger;
 using namespace std::chrono_literals;
@@ -1874,4 +1875,152 @@ TEST(PredictiveRouting, SnapshotRestoresWarmStateAndBadSnapshotStartsCold) {
         EXPECT_EQ(queued_context(b)->fallback_reason, ml::FallbackReason::Unready);
     }
     std::filesystem::remove_all(directory);
+}
+
+TEST(PredictiveRouting, InBrokerPredictionsMatchOfflineReplayOfTheSameStream) {
+    // The broker and harbinger_predictor_replay must make identical predictions for the same chronological stream.
+    auto config = predictive_config(ml::RoutingMode::Shadow);
+    config.predictive_routing->key.scope_by_producer = false;
+    config.predictive_routing->key.job_header = "job";
+    config.ingress_features = capture_features();
+    LocalBroker b{config};
+    struct Seen { std::string id, job; std::shared_ptr<const ml::RoutingContext> context; int64_t duration; };
+    std::vector<Seen> stream;
+    std::mt19937 rng(7);
+    const std::vector<std::pair<std::string, int64_t>> jobs{{"binary", 3}, {"resize", 40}};
+    for (int i = 0; i < 160; ++i) {
+        const auto& [job, base] = jobs[rng() % jobs.size()];
+        const int64_t duration = base + static_cast<int64_t>(rng() % 5);
+        const auto id = b.submit("x", std::nullopt, {{"job", job}});
+        const auto context = queued_context(b);
+        const auto delivery = b.pull();
+        ASSERT_EQ(delivery.message().message_id(), id);
+        ASSERT_TRUE(b.ack(delivery.message(), duration).ok());
+        stream.push_back({id, job, context, duration});
+    }
+    // 1. A standalone predictor fed the same calls agrees exactly.
+    ml::PerKeyPredictor offline{config.predictive_routing->predictor};
+    for (const auto& seen : stream) {
+        const auto p = offline.predict(seen.job);
+        EXPECT_EQ(p.estimate_ms, seen.context->predicted_processing_time_ms) << seen.id;
+        EXPECT_EQ(p.status == ml::PredictionStatus::Predicted ? std::optional<uint8_t>{p.bucket} : std::nullopt,
+                  seen.context->predicted_bucket) << seen.id;
+        offline.observe(seen.job, static_cast<double>(seen.duration));
+    }
+    // 2. The replay CLI, given the stream in export form, agrees exactly too.
+    const auto directory = std::filesystem::temp_directory_path() / ("harbinger-equivalence-" + std::to_string(::getpid()));
+    std::filesystem::create_directories(directory);
+    {
+        std::ofstream events(directory / "events.jsonl");
+        int64_t time = 0;
+        int sequence = 0;
+        for (const auto& seen : stream) {
+            const auto common = std::string("\"run\":\"equivalence-s1-r1-disabled\",\"broker_instance_id\":\"i\",") +
+                "\"message_id\":\"" + seen.id + "\",\"split\":\"train\",\"routing\":{\"features\":{\"headers\":{\"job\":\"" +
+                seen.job + "\"}}}";
+            events << "{" << common << ",\"event_type\":\"ingress\",\"event_id\":\"i:" << ++sequence
+                   << "\",\"benchmark_time_ns\":" << (time += 1000) << ",\"label_status\":null,\"processing_time_ms\":null}\n";
+            events << "{" << common << ",\"event_type\":\"outcome\",\"event_id\":\"i:" << ++sequence
+                   << "\",\"benchmark_time_ns\":" << (time += 1000) << ",\"label_status\":\"eligible\","
+                   << "\"trigger\":\"settlement\",\"attempt_id\":\"1\",\"processing_time_ms\":" << seen.duration << "}\n";
+        }
+    }
+    const auto& p = config.predictive_routing->predictor;
+    const std::string command = std::string(PREDICTOR_REPLAY_EXECUTABLE) + " --export " + directory.string() +
+        " --output " + (directory / "out.jsonl").string() + " --key-header job --min-samples " + std::to_string(p.min_samples) +
+        " --global-min-samples " + std::to_string(p.global_min_samples) + " --refresh-every " +
+        std::to_string(p.boundary_refresh_every) + " --decay 1 --global-decay 1";
+    ASSERT_EQ(std::system(command.c_str()), 0) << command;
+    std::ifstream output(directory / "out.jsonl");
+    std::string line;
+    std::size_t index = 0;
+    while (std::getline(output, line)) {
+        if (line.find("\"kind\":\"prediction\"") == std::string::npos) continue;
+        ASSERT_LT(index, stream.size());
+        const auto& context = *stream[index++].context;
+        const auto bucket_at = line.find("\"bucket\":");
+        const auto fallback_at = line.find("\"fallback\":");
+        const bool predicted = line.compare(fallback_at, 15, "\"fallback\":null") == 0;
+        EXPECT_EQ(predicted, context.predicted_bucket.has_value()) << line;
+        if (predicted) {
+            EXPECT_EQ(std::stoi(line.substr(bucket_at + 9)), *context.predicted_bucket) << line;
+            const auto duration_at = line.find("\"duration_ms\":");
+            EXPECT_DOUBLE_EQ(std::stod(line.substr(duration_at + 14)), *context.predicted_processing_time_ms) << line;
+        }
+    }
+    EXPECT_EQ(index, stream.size());
+    std::filesystem::remove_all(directory);
+}
+
+TEST(PredictiveRouting, ConcurrentSubmitSettleAndMaintenanceKeepAccountingWithPredictorOn) {
+    auto config = predictive_config(ml::RoutingMode::Predictive);
+    config.default_max_retries = 2;
+    config.lease_sweep_interval = 5ms;
+    config.delivery_lease = 200ms;
+    config.predictive_routing->snapshot_path = std::filesystem::temp_directory_path() /
+        ("harbinger-stress-" + std::to_string(::getpid()) + ".snap");
+    config.predictive_routing->snapshot_interval = 20ms;  // snapshots race with routing and learning
+    LocalBroker b{config};
+    constexpr int kProducers = 3, kPerProducer = 150, kConsumers = 4;
+    std::atomic<int> acked{0}, nacked{0}, abandoned{0};
+    std::atomic<bool> producing{true};
+    std::vector<std::thread> threads;
+    for (int p = 0; p < kProducers; ++p)
+        threads.emplace_back([&, p] {
+            for (int i = 0; i < kPerProducer; ++i)
+                b.submit("x", std::nullopt, {{"job_type", "job" + std::to_string((p * 7 + i) % 5)}});
+        });
+    for (int c = 0; c < kConsumers; ++c)
+        threads.emplace_back([&, c] {
+            std::mt19937 rng(c);
+            while (producing || b.service.queue_size() || b.service.in_flight_count()) {
+                harbinger_rpc::PullRequest request;
+                request.set_consumer_id(b.consumer_id);
+                request.set_timeout_ms(50);
+                harbinger_rpc::PullResponse response;
+                grpc::ClientContext context;
+                if (!b.stub->Pull(&context, request, &response).ok() || response.timed_out()) continue;
+                const auto roll = rng() % 20;
+                if (roll == 0) { abandoned++; continue; }  // lease expiry reclaims it (censored learning)
+                if (roll < 4) { if (b.nack(response.message(), "x", 3).ok()) nacked++; continue; }
+                if (b.ack(response.message(), 1 + static_cast<int64_t>(rng() % 50)).ok()) acked++;
+            }
+        });
+    for (int p = 0; p < kProducers; ++p) threads[p].join();
+    producing = false;
+    for (std::size_t t = kProducers; t < threads.size(); ++t) threads[t].join();
+    const auto stats = b.service.routing_stats();
+    // Every message ended Acked or in the DLQ; learning saw exactly the accepted Acks; leases became censored.
+    EXPECT_EQ(static_cast<std::size_t>(acked) + b.service.dlq_size(), static_cast<std::size_t>(kProducers * kPerProducer));
+    EXPECT_EQ(stats.learned, static_cast<uint64_t>(acked));
+    EXPECT_GE(stats.censored_observed, 1u);
+    EXPECT_EQ(stats.lookups, static_cast<uint64_t>(kProducers * kPerProducer));
+    EXPECT_GE(stats.snapshot_saves, 1u);
+    EXPECT_EQ(stats.snapshot_failures, 0u);
+    std::filesystem::remove(*config.predictive_routing->snapshot_path);
+    std::filesystem::remove(config.predictive_routing->snapshot_path->string() + ".prev");
+}
+
+TEST(PredictiveRouting, FeedbackDiskFailureDoesNotAffectSettlementOrLearning) {
+    feedback_test::Directory directory;
+    auto config = feedback_config(directory);
+    config.predictive_routing = routing(ml::RoutingMode::Predictive);
+    config.predictive_routing->key.job_header = "job";
+    LocalBroker b{config};
+    auto storage = std::make_shared<feedback_test::Storage>();
+    feedback_test::ReleaseStorage release{storage};
+    BrokerTestAccess::replace_writer(b.service, storage);
+    storage->fault = feedback_test::Storage::Fault::Write;
+    for (int i = 0; i < 12; ++i) {
+        b.submit("x", std::nullopt, {{"job", i % 2 ? "binary" : "resize"}});
+        const auto delivery = b.pull();
+        ASSERT_FALSE(delivery.timed_out());
+        ASSERT_TRUE(b.ack(delivery.message(), i % 2 ? 2 : 90).ok());
+    }
+    EXPECT_TRUE(feedback_test::wait_for([&] { return b.service.feedback_stats().writer_failures > 0; }));
+    EXPECT_EQ(b.service.routing_stats().learned, 12u);
+    EXPECT_EQ(b.service.in_flight_count(), 0u);
+    EXPECT_EQ(b.service.dlq_size(), 0u);
+    storage->release();
+    BrokerTestAccess::close_feedback(b.service);
 }
