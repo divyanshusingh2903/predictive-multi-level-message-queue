@@ -8,6 +8,7 @@ add_executable(harbinger_unit_tests
     unit/test_ml_features.cpp
     unit/test_ml_feedback.cpp
     unit/test_feedback_writer.cpp
+    unit/test_duration_predictor.cpp
 )
 target_compile_definitions(harbinger_unit_tests PRIVATE
     ML_FEATURE_FIXTURES="${CMAKE_CURRENT_SOURCE_DIR}/fixtures/ml/features_v1.json"
@@ -43,7 +44,8 @@ if(Python3_Interpreter_FOUND)
     add_test(NAME ml_feature_python_tests COMMAND "${Python3_EXECUTABLE}"
         -m unittest discover -s ml_engine/tests -v)
     set_tests_properties(ml_feature_python_tests PROPERTIES
-        WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}" TIMEOUT 60)
+        WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}" TIMEOUT 60
+        ENVIRONMENT "HARBINGER_PREDICTOR_REPLAY=$<TARGET_FILE:harbinger_predictor_replay>")
 endif()
 
 if(UNIX)

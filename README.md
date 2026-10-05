@@ -66,7 +66,7 @@ Producer::send()
 - **Consumers are tier-blind** — the broker picks which message each `Pull()` receives; consumers never see queue levels.
 - **Proxy is narrowly scoped** — stamps ID and `arrival_time`, stores `producer_id` in headers, then hands off to `route_message()`.
 - **In-flight tracking** — messages are held in an `unordered_map` between `Pull` and `Ack/Nack`; on `Nack` they are re-queued or DLQ'd.
-- **Phase 2 hook** — `route_message()` in `harbinger_service.cpp` is the single injection point for the planned per-key duration predictor; opt-in feedback persists accepted `processing_time_ms` observations and actual outcomes without changing delivery semantics. Offline learners consume validated temporal exports; no live predictor is connected to the broker yet.
+- **Phase 2 hook** — `route_message()` in `harbinger_service.cpp` is the single injection point for the planned per-key duration predictor; opt-in feedback persists accepted `processing_time_ms` observations and actual outcomes without changing delivery semantics. Offline learners consume validated temporal exports; the C++ [per-key predictor](docs/duration-predictor.md) exists but is not connected to the broker yet.
 - **`harbinger_rpc` proto package** — kept distinct from the `harbinger` C++ namespace to avoid symbol collisions.
 
 ---
@@ -340,7 +340,7 @@ idempotency and durable storage are not implemented.
 The [Phase 2 tracker](https://github.com/divyanshusingh2903/predictive-multi-level-message-queue/issues/11) sequences implementation from the [ML contract](docs/ml-contract.md). Prediction begins in shadow mode; explicit predictive routing requires the [synthetic validation gate](docs/phase2-validation.md).
 
 - [x] Versioned, bounded ingress features and immutable routing context with C++/Python fixtures
-- [ ] In-process C++ per-key duration predictor (decaying histograms, adaptive tier boundaries, bounded key state)
+- [x] In-process C++ per-key duration predictor (decaying histograms, adaptive tier boundaries, bounded key state); broker wiring is issue #7
 - [ ] Shadow and predictive routing injected into `route_message()` in `harbinger_service.cpp`
 - [ ] `processing_time_ms` feedback from Ack/Nack updates the per-key statistics
 - [ ] State persistence and drift handling for the predictor

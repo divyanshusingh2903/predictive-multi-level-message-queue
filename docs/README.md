@@ -16,6 +16,7 @@ The operational guides below describe the core broker and implemented Phase 2 fe
 |---|---|
 | [ML architecture decision](adr/0001-phase2-ml-contract.md) | Routing modes, Python service boundary, alternatives, and preserved invariants |
 | [ML contract](ml-contract.md) | Versioned features, prediction/feedback records, proposed limits, and persistence semantics |
+| [Per-key duration predictor](duration-predictor.md) | The in-process C++ predictor, bounds, fallbacks, replay CLI and what is not yet wired into the broker |
 | [Online predictors](online-predictor.md) | Literature, incremental regressors, delayed evaluation, readiness/fallback and selection evidence |
 | [Validation plan](phase2-validation.md) | Baselines, workloads, metrics, proposed gates, and activation/rollback criteria |
 

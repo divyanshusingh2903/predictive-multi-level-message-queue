@@ -83,6 +83,7 @@ set(HARBINGER_SERVER_SOURCES
     src/ml/features.cpp
     src/ml/feedback_event.cpp
     src/ml/feedback_writer.cpp
+    src/ml/duration_predictor.cpp
     src/harbinger_service.cpp
 )
 add_library(harbinger_server_lib STATIC ${HARBINGER_SERVER_SOURCES})
@@ -105,6 +106,11 @@ harbinger_target_warnings(harbinger_client_lib)
 add_executable(harbinger_server server/main.cpp)
 target_link_libraries(harbinger_server PRIVATE harbinger_server_lib gRPC::grpc++)
 harbinger_target_warnings(harbinger_server)
+
+# ── Offline predictor replay (shares the broker's predictor, no gRPC use) ─────
+add_executable(harbinger_predictor_replay tools/predictor_replay.cpp)
+target_link_libraries(harbinger_predictor_replay PRIVATE harbinger_server_lib)
+harbinger_target_warnings(harbinger_predictor_replay)
 
 # ── Tests ────────────────────────────────────────────────────────────────────
 include(FetchContent)
