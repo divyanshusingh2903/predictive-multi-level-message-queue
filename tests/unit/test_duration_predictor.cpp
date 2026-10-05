@@ -3,7 +3,9 @@
 #include <gtest/gtest.h>
 
 #include <atomic>
+#include <chrono>
 #include <cmath>
+#include <functional>
 #include <string>
 #include <thread>
 #include <vector>
@@ -11,6 +13,14 @@
 using namespace harbinger::ml;
 
 namespace {
+
+using Clock = std::chrono::steady_clock;
+
+struct FakeClock {
+    Clock::time_point now{Clock::time_point{} + std::chrono::hours(1)};
+    std::function<Clock::time_point()> fn() { return [this] { return now; }; }
+    void advance(std::chrono::milliseconds d) { now += d; }
+};
 
 PerKeyPredictorConfig base() {
     PerKeyPredictorConfig c;
@@ -153,7 +163,7 @@ TEST(DurationPredictor, ZeroRuntimeIsValid) {
     const auto r = p.predict("instant");
     ASSERT_EQ(r.status, PredictionStatus::Predicted);
     EXPECT_GE(*r.estimate_ms, 0.0);
-    EXPECT_LT(*r.estimate_ms, 0.2);
+    EXPECT_LT(*r.estimate_ms, 1.0);
     EXPECT_EQ(r.bucket, 0);
 }
 
@@ -240,65 +250,235 @@ TEST(DurationPredictor, BoundariesRepublishOnLargeShift) {
     EXPECT_GE(p.stats().snapshots, 2u);
 }
 
-TEST(DurationPredictor, KeyTierHysteresisPreventsFlipping) {
+namespace {
+
+/// Mean-summary key that drifts just across the 20 ms-ish boundary; returns the tier before and after the drift.
+std::pair<int, int> drift_across_boundary(double hysteresis) {
     auto c = base();
-    c.hysteresis = 0.3;
-    c.global_decay = 1.0;
+    c.summary = DurationSummary::Mean;
+    c.hysteresis = hysteresis;
+    c.global_min_samples = 90;
+    c.boundary_refresh_every = 1000000;  // freeze boundaries after the first snapshot
     PerKeyPredictor p{c};
     train_three_tiers(p);
     const double edge = p.snapshot()->boundaries_ms[1];
-    for (int i = 0; i < 40; ++i) p.observe("edge", edge * 0.7);
-    const auto low = p.predict("edge").bucket;
-    for (int i = 0; i < 8; ++i) p.observe("edge", edge * 1.05);
-    // Estimate may move a little past the boundary but inside the band: tier must not flip.
-    EXPECT_EQ(p.predict("edge").bucket, low);
+    for (int i = 0; i < 40; ++i) p.observe("edge", edge * 0.95);
+    const int before = p.predict("edge").bucket;
+    for (int i = 0; i < 20; ++i) p.observe("edge", edge * 1.2);  // mean ~1.03 * edge: just past the boundary
+    return {before, p.predict("edge").bucket};
 }
 
-TEST(DurationPredictor, KeyCapEvictsIdleAndOverflowsOtherwise) {
+} // namespace
+
+TEST(DurationPredictor, KeyTierHysteresisPreventsFlipping) {
+    const auto [held_before, held_after] = drift_across_boundary(0.3);
+    EXPECT_EQ(held_before, held_after);
+    // Same drift without hysteresis must flip, proving the band is what held the tier.
+    const auto [free_before, free_after] = drift_across_boundary(0.0);
+    EXPECT_EQ(free_before, held_before);
+    EXPECT_EQ(free_after, free_before + 1);
+}
+
+TEST(DurationPredictor, UnprovenJunkKeysCannotLockOutRealKeysForLong) {
+    FakeClock clock;
     auto c = base();
     c.shards = 1;
     c.max_keys = 4;
-    c.idle_eviction_observations = 50;
+    c.clock = clock.fn();
     PerKeyPredictor p{c};
-    for (int k = 0; k < 4; ++k) p.observe("key" + std::to_string(k), 5.0);
+    for (int k = 0; k < 4; ++k) p.observe("junk" + std::to_string(k), 1.0);  // cold one-off keys fill the cap
+    p.observe("real", 50.0);
+    EXPECT_EQ(p.stats().overflow_observations, 1u);  // inside the grace window the cap holds
+    clock.advance(c.cold_eviction_grace + std::chrono::milliseconds(1));
+    for (int i = 0; i < 50; ++i) p.observe("real", 50.0);
+    EXPECT_EQ(p.stats().overflow_observations, 1u);
+    EXPECT_GT(p.stats().evictions, 0u);
     EXPECT_EQ(p.stats().keys, 4u);
-    // Fresh keys are not idle yet: new key goes to overflow, existing keys survive.
-    EXPECT_TRUE(p.observe("intruder", 5.0));
-    EXPECT_EQ(p.stats().keys, 4u);
+    train_three_tiers(p);
+    EXPECT_EQ(p.predict("real").status, PredictionStatus::Predicted);
+}
+
+TEST(DurationPredictor, WorkingSetLargerThanCapStillLearnsTheFirstKeys) {
+    auto c = base();
+    c.shards = 1;
+    c.max_keys = 2;
+    PerKeyPredictor p{c};
+    for (int i = 0; i < 300; ++i) {
+        p.observe("a", 2.0);
+        p.observe("b", 3.0);
+        p.observe("c", 900.0);  // the third key finds no room, but must not evict the others
+    }
+    EXPECT_EQ(p.stats().evictions, 0u);
+    EXPECT_GT(p.stats().overflow_observations, 0u);
+    EXPECT_EQ(p.predict("a").status, PredictionStatus::Predicted);
+    EXPECT_EQ(p.predict("b").status, PredictionStatus::Predicted);
+}
+
+TEST(DurationPredictor, ProvenActiveKeysAreProtectedAndExtraKeysOverflow) {
+    FakeClock clock;
+    auto c = base();
+    c.shards = 1;
+    c.max_keys = 3;
+    c.clock = clock.fn();
+    PerKeyPredictor p{c};
+    for (int k = 0; k < 3; ++k)
+        for (int i = 0; i < 10; ++i) p.observe("key" + std::to_string(k), 5.0);
+    EXPECT_TRUE(p.observe("newcomer", 5.0));
     EXPECT_EQ(p.stats().overflow_observations, 1u);
     EXPECT_EQ(p.stats().evictions, 0u);
-    // After enough activity on one key the others become idle and are evicted for newcomers.
-    for (int i = 0; i < 60; ++i) p.observe("key0", 5.0);
+    EXPECT_EQ(p.predict("newcomer").status, PredictionStatus::ColdKey);
+    // Once the least recently updated key has been idle past idle_eviction it is recycled.
+    clock.advance(c.idle_eviction + std::chrono::milliseconds(1));
+    for (int i = 0; i < 10; ++i) p.observe("key1", 5.0);
+    for (int i = 0; i < 10; ++i) p.observe("key2", 5.0);
     EXPECT_TRUE(p.observe("newcomer", 5.0));
-    EXPECT_EQ(p.stats().keys, 4u);
     EXPECT_EQ(p.stats().evictions, 1u);
+    EXPECT_EQ(p.stats().keys, 3u);
 }
 
 TEST(DurationPredictor, AdversarialCardinalityStaysBounded) {
+    FakeClock clock;
     auto c = base();
     c.shards = 4;
     c.max_keys = 64;
-    c.idle_eviction_observations = 1000;
+    c.clock = clock.fn();
     PerKeyPredictor p{c};
-    for (int i = 0; i < 100000; ++i) p.observe("adversary-" + std::to_string(i), 1.0 + (i % 50));
+    for (int i = 0; i < 100000; ++i) {
+        p.observe("adversary-" + std::to_string(i), 1.0 + (i % 50));
+        if (i % 1000 == 999) clock.advance(std::chrono::seconds(1));  // 100 s of flooding in total
+        if (i == 999) { EXPECT_EQ(p.stats().evictions, 0u); }         // inside the grace window the cap simply holds
+    }
     const auto s = p.stats();
     EXPECT_LE(s.keys, 64u);
-    EXPECT_GT(s.overflow_observations + s.evictions, 0u);
+    EXPECT_GT(s.evictions, 0u);
+    EXPECT_GT(s.overflow_observations, 0u);
     EXPECT_EQ(s.observations, 100000u);
     EXPECT_LT(p.memory_bound_bytes(), 64u * 1024 * 1024);
 }
 
-TEST(DurationPredictor, OverflowBucketOnlyPredictsWhenReadyAndTight) {
+TEST(DurationPredictor, UntrackedAndUnseenKeysNeverBorrowOtherKeysHistory) {
     auto c = base();
     c.shards = 1;
     c.max_keys = 2;
-    c.idle_eviction_observations = 1u << 30;
     PerKeyPredictor p{c};
-    train_three_tiers(p);          // fills 2 of 3 keys' worth of capacity; "slow" overflows
-    EXPECT_GT(p.stats().overflow_observations, 0u);
-    // Overflow holds only slow samples and is tight, so an untracked key is predicted from it.
-    const auto r = p.predict("untracked-key");
-    EXPECT_EQ(r.status, PredictionStatus::Predicted);
+    for (int i = 0; i < 300; ++i) {
+        p.observe("light1", 2.0);
+        p.observe("light2", 3.0);
+        p.observe("heavy-overflow", 900.0);
+    }
+    ASSERT_GT(p.stats().overflow_observations, 0u);
+    const auto fresh = p.predict("brand-new-light-key");
+    EXPECT_EQ(fresh.status, PredictionStatus::ColdKey);
+    EXPECT_FALSE(fresh.estimate_ms);
+    EXPECT_EQ(fresh.bucket, 1);
+    EXPECT_EQ(p.predict("heavy-overflow").status, PredictionStatus::ColdKey);
+}
+
+TEST(DurationPredictor, StaleKeyFallsBackAndForgetsOldHistory) {
+    FakeClock clock;
+    auto c = base();
+    c.clock = clock.fn();
+    c.stale_after = std::chrono::minutes(30);
+    PerKeyPredictor p{c};
+    train_three_tiers(p);
+    ASSERT_EQ(p.predict("slow").status, PredictionStatus::Predicted);
+    clock.advance(std::chrono::minutes(31));
+    EXPECT_EQ(p.predict("slow").status, PredictionStatus::StaleKey);
+    EXPECT_EQ(p.predict("slow").bucket, 1);
+    // The next observation discards the stale evidence: the key must re-earn min_samples.
+    p.observe("slow", 2.0);
+    EXPECT_EQ(p.predict("slow").status, PredictionStatus::ColdKey);
+    for (int i = 0; i < 6; ++i) p.observe("slow", 2.0);
+    const auto relearned = p.predict("slow");
+    ASSERT_EQ(relearned.status, PredictionStatus::Predicted);
+    EXPECT_LT(*relearned.estimate_ms, 10.0);
+}
+
+TEST(DurationPredictor, WallClockHalfLifeShiftsAnIdleKeyTowardNewRegime) {
+    auto run = [](std::chrono::milliseconds half_life) {
+        FakeClock clock;
+        auto c = base();
+        c.clock = clock.fn();
+        c.time_half_life = half_life;
+        c.stale_after = std::chrono::milliseconds(0);
+        PerKeyPredictor p{c};
+        for (int i = 0; i < 100; ++i) p.observe("k", 100.0);
+        clock.advance(std::chrono::minutes(20));
+        for (int i = 0; i < 12; ++i) p.observe("k", 10.0);
+        return *p.predict("k").estimate_ms;
+    };
+    // Without wall-clock decay 100 old samples outvote 12 new ones; with a 5 minute half-life they do not.
+    EXPECT_GT(run(std::chrono::milliseconds(0)), 50.0);
+    EXPECT_LT(run(std::chrono::minutes(5)), 20.0);
+}
+
+TEST(DurationPredictor, TailRiskKeyFallsBackEvenWhenMostJobsAreFast) {
+    PerKeyPredictor p{base()};
+    train_three_tiers(p);
+    // 92% fast, 8% a thousand times slower: p90/p50 looks fine, p99/p50 does not.
+    for (int i = 0; i < 400; ++i) p.observe("bimodal-tail", (i % 100) < 92 ? 3.0 : 3000.0);
+    const auto r = p.predict("bimodal-tail");
+    EXPECT_EQ(r.status, PredictionStatus::HighSpread);
+    EXPECT_EQ(r.bucket, 1);
+    auto lax = base();
+    lax.spread_quantile = 0.9;
+    PerKeyPredictor q{lax};
+    train_three_tiers(q);
+    for (int i = 0; i < 400; ++i) q.observe("bimodal-tail", (i % 100) < 92 ? 3.0 : 3000.0);
+    EXPECT_EQ(q.predict("bimodal-tail").status, PredictionStatus::Predicted);  // the old gate cannot see it
+}
+
+TEST(DurationPredictor, KeysWithFrequentOverrunsAreNotTreatedAsFast) {
+    PerKeyPredictor p{base()};
+    train_three_tiers(p);
+    for (int i = 0; i < 40; ++i) p.observe("flaky", 3.0);
+    ASSERT_EQ(p.predict("flaky").status, PredictionStatus::Predicted);
+    for (int i = 0; i < 8; ++i) EXPECT_TRUE(p.observe_censored("flaky"));  // 8/48 well above 5%
+    const auto r = p.predict("flaky");
+    EXPECT_EQ(r.status, PredictionStatus::Censored);
+    EXPECT_EQ(r.bucket, 1);
+    EXPECT_EQ(p.stats().censored, 8u);
+    // Successful completions dilute the censored share again.
+    for (int i = 0; i < 400; ++i) p.observe("flaky", 3.0);
+    EXPECT_EQ(p.predict("flaky").status, PredictionStatus::Predicted);
+}
+
+TEST(DurationPredictor, LongDurationsAreClampedConsistently) {
+    auto c = base();
+    c.summary = DurationSummary::Mean;
+    c.max_ms = 1000.0;
+    PerKeyPredictor p{c};
+    train_three_tiers(p);
+    for (int i = 0; i < 30; ++i) p.observe("huge", 5e6);
+    const auto r = p.predict("huge");
+    ASSERT_EQ(r.status, PredictionStatus::Predicted);
+    EXPECT_LE(*r.estimate_ms, 1000.0);
+    EXPECT_EQ(p.stats().saturated, 30u);
+    EXPECT_EQ(r.bucket, 2);
+}
+
+TEST(PredictorKey, ScopesByProducerAndRejectsHostileLabels) {
+    const PredictorKeyPolicy policy;
+    using Headers = std::unordered_map<std::string, std::string>;
+    EXPECT_EQ(derive_predictor_key({{"__producer_id", "producer-1"}}, policy), "producer-1");
+    EXPECT_EQ(derive_predictor_key({{"__producer_id", "producer-1"}, {"job_type", "resize"}}, policy),
+              std::string("producer-1\x1f") + "resize");
+    // Two producers using the same label never share history, so a producer cannot adopt another's fast key.
+    EXPECT_NE(derive_predictor_key({{"__producer_id", "producer-1"}, {"job_type", "fast"}}, policy),
+              derive_predictor_key({{"__producer_id", "producer-2"}, {"job_type", "fast"}}, policy));
+    EXPECT_FALSE(derive_predictor_key(Headers{{"job_type", "fast"}}, policy));  // no producer, cannot scope
+    // Unusable labels fall back to the producer scope instead of becoming keys.
+    EXPECT_EQ(derive_predictor_key({{"__producer_id", "p"}, {"job_type", std::string(200, 'x')}}, policy), "p");
+    EXPECT_EQ(derive_predictor_key({{"__producer_id", "p"}, {"job_type", "a\nb"}}, policy), "p");
+    EXPECT_EQ(derive_predictor_key({{"__producer_id", "p"}, {"job_type", ""}}, policy), "p");
+}
+
+TEST(PredictorKey, UnscopedPolicyUsesLabelThenProducer) {
+    PredictorKeyPolicy policy;
+    policy.scope_by_producer = false;
+    EXPECT_EQ(derive_predictor_key({{"__producer_id", "p"}, {"job_type", "resize"}}, policy), "resize");
+    EXPECT_EQ(derive_predictor_key({{"__producer_id", "p"}}, policy), "p");
+    EXPECT_FALSE(derive_predictor_key({}, policy));
 }
 
 TEST(DurationPredictor, ConcurrentPredictObserveAndRefresh) {

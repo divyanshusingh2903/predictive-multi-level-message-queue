@@ -31,9 +31,11 @@ def run_replay(binary: str | Path, export: Path, args: list[str] | None = None) 
 
 
 def score(events, predictions: dict, summaries: dict, levels: int) -> dict:
-    """Score stored ingress predictions against eligible evaluation labels, per run then pooled."""
+    """Score stored ingress predictions against eligible evaluation labels, bucketing actual durations with the
+    boundaries in force at each message's ingress."""
     cohorts: dict[str, Quality] = {}
     pending = {}
+    pending_boundaries = {}
     for event in events:
         key = (event["run"], event["broker_instance_id"], event["message_id"])
         if event["event_type"] == "ingress":
@@ -42,6 +44,7 @@ def score(events, predictions: dict, summaries: dict, levels: int) -> dict:
                 raise ValueError("missing C++ prediction for ingress")
             prediction = Prediction(row["duration_ms"], row["bucket"], row["fallback"], row["updates"])
             pending[key] = prediction
+            pending_boundaries[key] = row.get("boundaries_ms", [])
             if event["split"] == "evaluation":
                 cohorts.setdefault("evaluation", Quality(levels)).predict(prediction)
             continue
@@ -51,6 +54,8 @@ def score(events, predictions: dict, summaries: dict, levels: int) -> dict:
         if prediction is None:
             raise ValueError("label without ingress prediction")
         actual = event["processing_time_ms"]
-        boundaries = summaries[event["run"]]["boundaries_ms"]
+        # Judge the tier against the boundaries the broker had when it routed; only an unready prediction
+        # (no boundaries yet) falls back to the run's final boundaries.
+        boundaries = pending_boundaries[key] or summaries[event["run"]]["boundaries_ms"]
         cohorts.setdefault("evaluation", Quality(levels)).score(prediction, actual, bisect_right(boundaries, actual))
     return {name: quality.report() for name, quality in sorted(cohorts.items())}
