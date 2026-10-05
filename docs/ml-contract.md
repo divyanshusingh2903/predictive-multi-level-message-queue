@@ -1,6 +1,6 @@
 # Phase 2 ML contract
 
-Status: the [issue #2 feature boundary](../ml_engine/README.md) and [issue #3 persistent feedback](feedback.md) are implemented for embedded static-mode brokers. Prediction transport and activation remain planned under [issue #1's contract](https://github.com/divyanshusingh2903/predictive-multi-level-message-queue/issues/1). Persistent fields below describe version-1 JSONL; transport fields remain design names rather than existing protobuf fields. See the [ADR](adr/0001-phase2-ml-contract.md) and [validation plan](phase2-validation.md).
+Status: the [issue #2 feature boundary](../ml_engine/README.md), [issue #3 persistent feedback](feedback.md), issue #4 baseline/export harness and [issue #5 offline predictor comparison](online-predictor.md) are implemented. Prediction transport and activation remain planned under [issue #1's contract](https://github.com/divyanshusingh2903/predictive-multi-level-message-queue/issues/1). Persistent fields below describe version-1 JSONL; transport fields remain design names rather than existing protobuf fields. See the [ADR](adr/0001-phase2-ml-contract.md) and [validation plan](phase2-validation.md).
 
 Embedded brokers enable capture through optional `HarbingerConfig::ingress_features` (`ml::IngressFeatureConfig`), with a schema and caller-declared static routing-policy version. Absent configuration allocates no ML context. Capture alone writes no events; optional `HarbingerConfig::feedback` independently enables persistence and requires explicit feature configuration. Neither enables inference. The standalone server has no feature-schema/feedback flags. Schema versions identify immutable field specifications; static policy identities must not be reused across incompatible configurations. Both priorities remain `default_priority` and prediction/model/fallback/timing fields remain absent, including when the complete snapshot exceeds its limit.
 
@@ -49,6 +49,16 @@ Inference settings remain design starting values, not runtime options. Feedback 
 | `max_segments` | `256`, including active/suspect files; bounds file count alongside retention bytes |
 
 Existing level/default-priority validation remains authoritative: levels 1–255, priority in `[0, num_levels)`. Validate feature/policy specifications at startup. Enabled inference requires explicit compatible versions and exactly `num_levels - 1` finite positive increasing boundaries. Invalid configuration fails construction; invalid runtime prediction falls back. Do not silently resize three-level boundaries for another level count.
+
+Issue #5 freezes an independent synthetic comparison policy:
+`synthetic-duration-3-10-v1`, boundaries `[3,10]` ms, default priority 1, readiness
+at 100 unique eligible successful labels and per-job global backoff until 20
+labels. Its numeric-only scaling and explicit indicator-zero adapter are
+versioned separately from the ingress schema. Invalid complete snapshots or
+predictions have absent duration and explicit fallback; individual missing
+headers remain usable. These settings and the 1 ms P99 / 32 MiB accounted-state
+budgets apply to offline candidate evaluation, not production configuration.
+See [the predictor guide](online-predictor.md) for measurement limits and results.
 
 ## Feature schema v1
 

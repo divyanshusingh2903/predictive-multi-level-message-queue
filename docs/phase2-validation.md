@@ -52,13 +52,26 @@ Generate finite seeded traces independent of scheduling. Use at least five paire
 five seeds, two repeats, sleep realization, three distributions, below/near/above
 finite-backlog disabled capacity, informative/control metadata, relationship
 shift, broker cold/warm cohorts, one/four workers, aging sensitivity, and separate
-TTL/retry/lease stress. Learner readiness/checkpoints and classifier-health cases
-remain planned. Its 200-message trials are feasibility evidence; freeze larger
+TTL/retry/lease stress. Offline learner readiness is exercised in issue #5;
+live checkpoints and classifier-health cases remain planned. Its 200-message trials are feasibility evidence; freeze larger
 candidate-comparison samples/configuration before claiming a P99 activation gate.
 
 Estimate capacity from disabled/static baseline runs before choosing absolute arrival rates. All policies replay the same absolute rate for a paired cell; do not rescale by each policy's achieved capacity. Above-capacity results characterize overload and finite-drain behavior, not a claim of steady-state bounded latency.
 
 Model evaluation uses time-ordered delayed feedback. Predict on ingress, evaluate the stored prediction when its label arrives, then learn. Do not use future feedback, actual synthetic runtime, or retry outcomes as ingress features. Group attempts by message when splitting/exporting data; report failed/censored/missing labels and success-only selection bias. Fit no preprocessing on future evaluation labels.
+
+Issue #5 implements this offline protocol in `ml_engine.compare`. The separately
+frozen `online-comparison-v1` uses eight candidate configurations, six clean
+2,000-message cells, five seeds/two repeats, a 50% temporal split, independent
+run state, and 10/100 ms availability-delay sensitivity. Its quality gates are
+warm MAE/severe-underestimate point estimates no worse than the stronger
+arithmetic baseline per metric/cell, complete warm prediction coverage, warm
+prediction P99 ≤ 1 ms and accounted model state ≤ 32 MiB. Actual eligible label
+counts must exceed the 500/run evaluation floor. Paired intervals are reported
+without interpreting point-estimate acceptance as significant superiority.
+The [predictor guide](online-predictor.md) specifies preprocessing, readiness,
+coverage-only replacements, memory-measurement limitations and publication.
+This predictor-selection gate does not satisfy the later broker activation gate.
 
 ## Metrics
 

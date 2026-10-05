@@ -1,6 +1,6 @@
 # AGENTS.md — Harbinger
 
-Predictive Multi-Level Message Queue: ML-predicted processing time + MLFQ routing to cut P50/P95/P99 vs FIFO/static-priority/round-robin.
+Predictive Multi-Level Message Queue: learned per-key processing-time statistics + multi-level routing, so operators need not hand-classify heavy/light endpoints. Goal: lower median/mean latency and head-of-line blocking vs FIFO/static-priority (well-configured, misconfigured, stale) without hand configuration. Tail (P99) gains are not expected when long jobs are common (non-preemptive shortest-job-first trade-off); claims use per-class percentiles, slowdown, mean latency, and long-job starvation, with all-message P99 as a guardrail.
 
 ## Architecture
 
@@ -8,7 +8,7 @@ Predictive Multi-Level Message Queue: ML-predicted processing time + MLFQ routin
 
 - **Consumers are tier-blind.** Broker picks the message; levels never leak to clients.
 - **Proxy is narrow:** ID + `arrival_time` + `__producer_id` header → forwards to sink. No queue/priority/TTL knowledge.
-- **Phase 2:** `route_message()` is the sole feature/classifier hook. Opt-in static ingress capture, Python encoding, and embedded persistent feedback are implemented; classifier calls remain planned.
+- **Phase 2:** `route_message()` is the sole feature/prediction hook. Opt-in static ingress capture, Python encoding, and embedded persistent feedback are implemented. The planned predictor is an **in-process C++ per-key duration model** (no Python or gRPC classifier on the serving path); it is not implemented yet. Python is the offline evaluation harness only.
 
 ## Invariants (don't break)
 
@@ -49,15 +49,15 @@ Standalone server startup overrides: `--delivery-lease-ms`, `--lease-sweep-inter
 ## Phase 2 contract
 
 - Start in shadow mode: calculate and record a prediction, but keep static-priority routing until benchmarked against the baseline.
-- Version the feature schema and exclude raw payloads by default; headers must be explicitly allowlisted before they are recorded or sent to a classifier.
+- Version the feature schema and exclude raw payloads by default; headers must be explicitly allowlisted before they are recorded or given to the predictor.
 - Persist feedback keyed by message ID with the routing version, predicted bucket, measured `processing_time_ms`, and terminal outcome (Ack, retry, or DLQ reason).
-- Bound classifier calls with a short deadline. Any timeout, unavailable classifier, invalid prediction, or priority outside `[0, num_levels)` falls back to `default_priority`.
-- Compare prediction error, P50/P95/P99, throughput, and starvation against FIFO, static-priority, and round-robin workloads before enabling predictive routing.
+- Predictor lookups are in-process, O(1), and never hold queue/settlement locks. A cold key (fewer than N_min samples), high-spread key, invalid estimate, or priority outside `[0, num_levels)` falls back to `default_priority`. Per-key state is bounded (key cap with eviction and an overflow bucket).
+- Compare per-class and all-message latency percentiles, slowdown, mean latency, throughput, and starvation against FIFO and static priority (well-configured, misconfigured, stale), plus a benchmark-only oracle, before enabling predictive routing. The v1 budgets (10% P95 gain) are superseded by a pre-registered v2 matrix (issue #23).
 
-Design details live in [ADR 0001](docs/adr/0001-phase2-ml-contract.md), the [ML contract](docs/ml-contract.md), and the [validation plan](docs/phase2-validation.md). [Feature capture/encoding](ml_engine/README.md) and [feedback persistence](docs/feedback.md) are implemented; inference and performance validation remain planned.
+Design details live in [ADR 0001](docs/adr/0001-phase2-ml-contract.md), the [ML contract](docs/ml-contract.md), and the [validation plan](docs/phase2-validation.md). [Feature capture/encoding](ml_engine/README.md), [feedback persistence](docs/feedback.md), and [offline predictor comparison](docs/online-predictor.md) are implemented; the live predictor and predictive scheduling validation remain planned. ADR 0001 and the ML contract describe the original classifier-service transport (Predict RPC, deadlines); the in-process per-key predictor supersedes that transport, while their feature, feedback, routing-context, and versioning rules still apply.
 
-- Modes: disabled/static by default, shadow for initial prediction experiments, predictive only by explicit opt-in after the gate. Feedback collection is separately configured so static-mode collection works without Python.
-- Predict successful handler duration, then let C++ map it to fixed versioned boundaries. Current `uint8_t` levels support 1–255; exactly `num_levels - 1` positive increasing boundaries, equality enters the next bucket. One level requires default priority 0 and no boundaries.
+- Modes: disabled/static by default, shadow for initial prediction experiments, predictive only by explicit opt-in after the gate. Feedback collection is separately configured so static-mode collection works without any predictor.
+- Predict successful handler duration per key (queue/topic name by default, or an optional `job_type` header) from a decaying duration histogram, then map it to tiers. Boundaries are derived from quantiles of a global duration histogram and published as an immutable snapshot with hysteresis; the planned design has no operator-supplied millisecond thresholds. Fixed versioned boundaries remain valid for experiments (as in the offline comparison). Current `uint8_t` levels support 1–255; exactly `num_levels - 1` positive increasing boundaries, equality enters the next bucket. One level requires default priority 0 and no boundaries.
 - Store immutable ingress features and routing context internally; never put predictions/priorities into client headers. Disabled/shadow assign both priority fields to `default_priority`; predictive assigns both to the validated bucket or fallback. Retry/aging do not reclassify.
 - Separate protocol/feature-schema/model/routing-policy versions. Changing allowlists or encodings changes the schema; changing boundaries changes the policy. No silent compatibility migration.
 - Numeric headers use strict locale-independent decimal grammar and binary64; payload size stays an exact integer until model conversion. Prefer bounded fixed vocabularies for small categorical sets; optional hashing uses sparse one-hot bins. Missing and unknown are distinct, category indices are never numeric features, and encoding/vocabulary changes require a new schema version. Workload metadata supplies context; hashing does not preserve semantic meaning.
@@ -66,8 +66,8 @@ Design details live in [ADR 0001](docs/adr/0001-phase2-ml-contract.md), the [ML 
 - Internal delivery ordinals increment only with successful ownership installation under the settlement mutex after the final cancellation check. Cancelled Pull restoration emits no delivery event and consumes no ordinal; attempt identity is independent of retry count.
 - Zero duration is valid; missing duration is null. Train initially on valid successful Ack labels only, evaluating the stored prediction before learning. Ack-after-TTL is DLQ feedback; lease/queued expiry has no handler runtime.
 - Label precedence: missing observation, negative measurement, out-of-range measurement, unusable features, TTL DLQ censorship, Nack failure, then successful Ack eligibility. Keep actual outcome and feature validity separate; valid Nack-after-TTL is censored.
-- Telemetry admission and retention are bounded. No classifier/filesystem I/O under broker locks. Overflow/disk failure preserves settlement and reports telemetry loss. Persistent feedback is neither durable broker delivery nor an atomic settlement/log transaction.
-- The Phase 2 synthetic gate precedes predictive activation; Phase 3 expands to real traces/external brokers. Freeze final numerical budgets and experiment configuration before predictive comparisons, including per-class longest-wait and starvation-rate guardrails.
+- Telemetry admission and retention are bounded. No predictor-update or filesystem I/O under queue/settlement locks. Overflow/disk failure preserves settlement and reports telemetry loss. Persistent feedback is neither durable broker delivery nor an atomic settlement/log transaction.
+- The Phase 2 synthetic gate precedes predictive activation; Phase 3 expands to real traces/external brokers. Freeze final numerical budgets and experiment configuration before predictive comparisons, including per-class longest-wait and starvation-rate guardrails. v2 budgets are chosen after seeing issue #4 data; state that in the rationale. Preserve v1 results; never edit frozen configs.
 
 ## Build / Run / Test
 
@@ -90,7 +90,9 @@ Issue #4 baseline hooks exist only in separately compiled `harbinger_benchmark_s
 
 ## Layout
 
-`proto/harbinger.proto` · `include/{harbinger_service,proxy,queue/{message,multi_level_queue,dead_letter_queue},producer,consumer}.hpp` · `include/ml/` · `include/benchmark/` · `src/` mirrors `include/` · `server/main.cpp` · `demo/main.cpp` · `tests/unit/` · `tests/fixtures/ml/` · `docs/adr/` · `ml_engine/` (features/feedback validation implemented; model/service planned) · `benchmarks/` (synthetic baselines/export implemented; predictive gate and Phase 3 expansion planned)
+Issue #5 uses `ml_engine/{dataset,models,policy,replay,metrics,compare}.py` for strict temporal-export validation and stored-prediction-before-learning replay. River 0.22.0 dependencies are pinned separately in `requirements-models.txt`; core feature/feedback tests stay dependency-free, required estimator tests live in `ml_engine/model_tests/`. Numeric-only scaling preserves unscaled indicator signal; the model adapter completes bounded indicator zeros without changing the sparse ingress encoding/schema. Models reset per independent run; successful eligible Ack labels alone train. `prepare.py` admits coverage-only replacements and `publish.py` archives evidence. `online-comparison-v1` freezes eight candidates, 100-label readiness, `[3,10]` ms synthetic buckets, 1 ms warm P99 and 32 MiB accounted-state budgets; memory is an ownership/serialized-state proxy, not an allocator guarantee. Results live under `benchmarks/results/issue5-v1/`: the frozen v1 outcome is `no_qualifier` (all eight candidates met resource budgets, none passed every quality gate), so no model is selected; a no-qualifier result never enables predictive routing. Raw `*.tar.gz` archives are not tracked in git (hashes in `raw/inventory.json`/`SHA256SUMS`); tests that need them skip when absent. The only workload feature is a 3-value category with a fixed payload, so these results say nothing about richer features.
+
+`proto/harbinger.proto` · `include/{harbinger_service,proxy,queue/{message,multi_level_queue,dead_letter_queue},producer,consumer}.hpp` · `include/ml/` · `include/benchmark/` · `src/` mirrors `include/` · `server/main.cpp` · `demo/main.cpp` · `tests/unit/` · `tests/fixtures/ml/` · `docs/adr/` · `ml_engine/` (features/feedback validation and offline evaluation harness implemented; the live predictor will be C++ in the broker) · `benchmarks/` (synthetic baselines/export implemented; predictive gate and Phase 3 expansion planned)
 
 ## Conventions
 

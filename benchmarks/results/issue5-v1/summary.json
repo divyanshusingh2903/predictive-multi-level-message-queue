@@ -1,0 +1,918 @@
+{
+  "aggregation": "equal-weight mean of run metrics; repeats/seed pairing is in decision.json",
+  "artifact_version": 1,
+  "cells": [
+    {
+      "candidate": "adaptive_tree_raw",
+      "case": "bimodal-control",
+      "eligible_warm_labels": 10000,
+      "maximum_accounted_model_bytes": 76167,
+      "maximum_pending": 5,
+      "maximum_profile_prediction_p99_ms": 0.071022,
+      "mean_run_bucket_accuracy": 0.0001,
+      "mean_run_mae_ms": 5.359368997380404,
+      "mean_run_rmse_ms": 6.723970634434609,
+      "mean_run_severe_underestimate_rate": 0.205,
+      "minimum_prediction_coverage": 1.0,
+      "runs": 10,
+      "true_bucket_support": [
+        7949,
+        1,
+        2050
+      ]
+    },
+    {
+      "candidate": "adaptive_tree_raw",
+      "case": "bimodal-informative",
+      "eligible_warm_labels": 10000,
+      "maximum_accounted_model_bytes": 79745,
+      "maximum_pending": 5,
+      "maximum_profile_prediction_p99_ms": 0.073453,
+      "mean_run_bucket_accuracy": 0.9911,
+      "mean_run_mae_ms": 0.5683872747225772,
+      "mean_run_rmse_ms": 1.1696401031359578,
+      "mean_run_severe_underestimate_rate": 0.00030000000000000003,
+      "minimum_prediction_coverage": 1.0,
+      "runs": 10,
+      "true_bucket_support": [
+        7948,
+        2,
+        2050
+      ]
+    },
+    {
+      "candidate": "adaptive_tree_raw",
+      "case": "heavy-control",
+      "eligible_warm_labels": 10000,
+      "maximum_accounted_model_bytes": 79789,
+      "maximum_pending": 5,
+      "maximum_profile_prediction_p99_ms": 0.075192,
+      "mean_run_bucket_accuracy": 0.7723,
+      "mean_run_mae_ms": 1.9085750995060018,
+      "mean_run_rmse_ms": 3.2726476659015815,
+      "mean_run_severe_underestimate_rate": 0.1026,
+      "minimum_prediction_coverage": 1.0,
+      "runs": 10,
+      "true_bucket_support": [
+        7792,
+        1777,
+        431
+      ]
+    },
+    {
+      "candidate": "adaptive_tree_raw",
+      "case": "heavy-informative",
+      "eligible_warm_labels": 10000,
+      "maximum_accounted_model_bytes": 75399,
+      "maximum_pending": 5,
+      "maximum_profile_prediction_p99_ms": 0.076555,
+      "mean_run_bucket_accuracy": 0.8425,
+      "mean_run_mae_ms": 1.2039199466138932,
+      "mean_run_rmse_ms": 2.6727623145009063,
+      "mean_run_severe_underestimate_rate": 0.04,
+      "minimum_prediction_coverage": 1.0,
+      "runs": 10,
+      "true_bucket_support": [
+        7802,
+        1767,
+        431
+      ]
+    },
+    {
+      "candidate": "adaptive_tree_raw",
+      "case": "heavy-shift",
+      "eligible_warm_labels": 10000,
+      "maximum_accounted_model_bytes": 86867,
+      "maximum_pending": 5,
+      "maximum_profile_prediction_p99_ms": 0.07045,
+      "mean_run_bucket_accuracy": 0.6925,
+      "mean_run_mae_ms": 1.6955548352585372,
+      "mean_run_rmse_ms": 3.1227936689894147,
+      "mean_run_severe_underestimate_rate": 0.07780000000000001,
+      "minimum_prediction_coverage": 1.0,
+      "runs": 10,
+      "true_bucket_support": [
+        7793,
+        1776,
+        431
+      ]
+    },
+    {
+      "candidate": "adaptive_tree_raw",
+      "case": "uniform-informative",
+      "eligible_warm_labels": 10000,
+      "maximum_accounted_model_bytes": 43984,
+      "maximum_pending": 2,
+      "maximum_profile_prediction_p99_ms": 0.067507,
+      "mean_run_bucket_accuracy": 0.4965,
+      "mean_run_mae_ms": 4.7693899015009364,
+      "mean_run_rmse_ms": 5.506478252584856,
+      "mean_run_severe_underestimate_rate": 0.0011,
+      "minimum_prediction_coverage": 1.0,
+      "runs": 10,
+      "true_bucket_support": [
+        1031,
+        3670,
+        5299
+      ]
+    },
+    {
+      "candidate": "global_mean",
+      "case": "bimodal-control",
+      "eligible_warm_labels": 10000,
+      "maximum_accounted_model_bytes": 16227,
+      "maximum_pending": 5,
+      "maximum_profile_prediction_p99_ms": 0.045496,
+      "mean_run_bucket_accuracy": 0.0001,
+      "mean_run_mae_ms": 5.36608688116621,
+      "mean_run_rmse_ms": 6.717719970143982,
+      "mean_run_severe_underestimate_rate": 0.205,
+      "minimum_prediction_coverage": 1.0,
+      "runs": 10,
+      "true_bucket_support": [
+        7949,
+        1,
+        2050
+      ]
+    },
+    {
+      "candidate": "global_mean",
+      "case": "bimodal-informative",
+      "eligible_warm_labels": 10000,
+      "maximum_accounted_model_bytes": 15763,
+      "maximum_pending": 5,
+      "maximum_profile_prediction_p99_ms": 0.048738,
+      "mean_run_bucket_accuracy": 0.0002,
+      "mean_run_mae_ms": 5.358255124989997,
+      "mean_run_rmse_ms": 6.705470010842692,
+      "mean_run_severe_underestimate_rate": 0.205,
+      "minimum_prediction_coverage": 1.0,
+      "runs": 10,
+      "true_bucket_support": [
+        7948,
+        2,
+        2050
+      ]
+    },
+    {
+      "candidate": "global_mean",
+      "case": "heavy-control",
+      "eligible_warm_labels": 10000,
+      "maximum_accounted_model_bytes": 15763,
+      "maximum_pending": 5,
+      "maximum_profile_prediction_p99_ms": 0.05022,
+      "mean_run_bucket_accuracy": 0.7792,
+      "mean_run_mae_ms": 1.8905932855450176,
+      "mean_run_rmse_ms": 3.2710694222691648,
+      "mean_run_severe_underestimate_rate": 0.1055,
+      "minimum_prediction_coverage": 1.0,
+      "runs": 10,
+      "true_bucket_support": [
+        7792,
+        1777,
+        431
+      ]
+    },
+    {
+      "candidate": "global_mean",
+      "case": "heavy-informative",
+      "eligible_warm_labels": 10000,
+      "maximum_accounted_model_bytes": 15763,
+      "maximum_pending": 5,
+      "maximum_profile_prediction_p99_ms": 0.052359,
+      "mean_run_bucket_accuracy": 0.7802,
+      "mean_run_mae_ms": 1.8860726505831196,
+      "mean_run_rmse_ms": 3.2680651730526367,
+      "mean_run_severe_underestimate_rate": 0.1062,
+      "minimum_prediction_coverage": 1.0,
+      "runs": 10,
+      "true_bucket_support": [
+        7802,
+        1767,
+        431
+      ]
+    },
+    {
+      "candidate": "global_mean",
+      "case": "heavy-shift",
+      "eligible_warm_labels": 10000,
+      "maximum_accounted_model_bytes": 15763,
+      "maximum_pending": 5,
+      "maximum_profile_prediction_p99_ms": 0.051809,
+      "mean_run_bucket_accuracy": 0.7793,
+      "mean_run_mae_ms": 1.8924440494468773,
+      "mean_run_rmse_ms": 3.27260367808884,
+      "mean_run_severe_underestimate_rate": 0.1057,
+      "minimum_prediction_coverage": 1.0,
+      "runs": 10,
+      "true_bucket_support": [
+        7793,
+        1776,
+        431
+      ]
+    },
+    {
+      "candidate": "global_mean",
+      "case": "uniform-informative",
+      "eligible_warm_labels": 10000,
+      "maximum_accounted_model_bytes": 15763,
+      "maximum_pending": 2,
+      "maximum_profile_prediction_p99_ms": 0.046989,
+      "mean_run_bucket_accuracy": 0.4965,
+      "mean_run_mae_ms": 4.7693899015009364,
+      "mean_run_rmse_ms": 5.506478252584856,
+      "mean_run_severe_underestimate_rate": 0.0011,
+      "minimum_prediction_coverage": 1.0,
+      "runs": 10,
+      "true_bucket_support": [
+        1031,
+        3670,
+        5299
+      ]
+    },
+    {
+      "candidate": "job_ewma",
+      "case": "bimodal-control",
+      "eligible_warm_labels": 10000,
+      "maximum_accounted_model_bytes": 16608,
+      "maximum_pending": 5,
+      "maximum_profile_prediction_p99_ms": 0.074924,
+      "mean_run_bucket_accuracy": 0.052,
+      "mean_run_mae_ms": 5.376659563431193,
+      "mean_run_rmse_ms": 6.80912126690674,
+      "mean_run_severe_underestimate_rate": 0.205,
+      "minimum_prediction_coverage": 1.0,
+      "runs": 10,
+      "true_bucket_support": [
+        7949,
+        1,
+        2050
+      ]
+    },
+    {
+      "candidate": "job_ewma",
+      "case": "bimodal-informative",
+      "eligible_warm_labels": 10000,
+      "maximum_accounted_model_bytes": 16560,
+      "maximum_pending": 5,
+      "maximum_profile_prediction_p99_ms": 0.074809,
+      "mean_run_bucket_accuracy": 0.9998,
+      "mean_run_mae_ms": 0.3051555910521126,
+      "mean_run_rmse_ms": 0.5730437826198226,
+      "mean_run_severe_underestimate_rate": 0.0002,
+      "minimum_prediction_coverage": 1.0,
+      "runs": 10,
+      "true_bucket_support": [
+        7948,
+        2,
+        2050
+      ]
+    },
+    {
+      "candidate": "job_ewma",
+      "case": "heavy-control",
+      "eligible_warm_labels": 10000,
+      "maximum_accounted_model_bytes": 16560,
+      "maximum_pending": 5,
+      "maximum_profile_prediction_p99_ms": 0.058655,
+      "mean_run_bucket_accuracy": 0.6953,
+      "mean_run_mae_ms": 1.902044034930107,
+      "mean_run_rmse_ms": 3.3149945447120768,
+      "mean_run_severe_underestimate_rate": 0.1092,
+      "minimum_prediction_coverage": 1.0,
+      "runs": 10,
+      "true_bucket_support": [
+        7792,
+        1777,
+        431
+      ]
+    },
+    {
+      "candidate": "job_ewma",
+      "case": "heavy-informative",
+      "eligible_warm_labels": 10000,
+      "maximum_accounted_model_bytes": 16560,
+      "maximum_pending": 5,
+      "maximum_profile_prediction_p99_ms": 0.060777,
+      "mean_run_bucket_accuracy": 0.8425,
+      "mean_run_mae_ms": 1.2090143652470626,
+      "mean_run_rmse_ms": 2.70540648593477,
+      "mean_run_severe_underestimate_rate": 0.0412,
+      "minimum_prediction_coverage": 1.0,
+      "runs": 10,
+      "true_bucket_support": [
+        7802,
+        1767,
+        431
+      ]
+    },
+    {
+      "candidate": "job_ewma",
+      "case": "heavy-shift",
+      "eligible_warm_labels": 10000,
+      "maximum_accounted_model_bytes": 16560,
+      "maximum_pending": 5,
+      "maximum_profile_prediction_p99_ms": 0.051922,
+      "mean_run_bucket_accuracy": 0.8273999999999999,
+      "mean_run_mae_ms": 1.2791996922934006,
+      "mean_run_rmse_ms": 2.76634991326832,
+      "mean_run_severe_underestimate_rate": 0.0463,
+      "minimum_prediction_coverage": 1.0,
+      "runs": 10,
+      "true_bucket_support": [
+        7793,
+        1776,
+        431
+      ]
+    },
+    {
+      "candidate": "job_ewma",
+      "case": "uniform-informative",
+      "eligible_warm_labels": 10000,
+      "maximum_accounted_model_bytes": 16560,
+      "maximum_pending": 2,
+      "maximum_profile_prediction_p99_ms": 0.052694,
+      "mean_run_bucket_accuracy": 0.7415,
+      "mean_run_mae_ms": 1.6166102898632455,
+      "mean_run_rmse_ms": 1.885910591371072,
+      "mean_run_severe_underestimate_rate": 0.0063,
+      "minimum_prediction_coverage": 1.0,
+      "runs": 10,
+      "true_bucket_support": [
+        1031,
+        3670,
+        5299
+      ]
+    },
+    {
+      "candidate": "job_mean",
+      "case": "bimodal-control",
+      "eligible_warm_labels": 10000,
+      "maximum_accounted_model_bytes": 16784,
+      "maximum_pending": 5,
+      "maximum_profile_prediction_p99_ms": 0.053484,
+      "mean_run_bucket_accuracy": 0.0001,
+      "mean_run_mae_ms": 5.367485810422805,
+      "mean_run_rmse_ms": 6.721139637274048,
+      "mean_run_severe_underestimate_rate": 0.205,
+      "minimum_prediction_coverage": 1.0,
+      "runs": 10,
+      "true_bucket_support": [
+        7949,
+        1,
+        2050
+      ]
+    },
+    {
+      "candidate": "job_mean",
+      "case": "bimodal-informative",
+      "eligible_warm_labels": 10000,
+      "maximum_accounted_model_bytes": 16560,
+      "maximum_pending": 5,
+      "maximum_profile_prediction_p99_ms": 0.051439,
+      "mean_run_bucket_accuracy": 0.9998,
+      "mean_run_mae_ms": 0.3061693644037444,
+      "mean_run_rmse_ms": 0.5646095270658963,
+      "mean_run_severe_underestimate_rate": 0.0002,
+      "minimum_prediction_coverage": 1.0,
+      "runs": 10,
+      "true_bucket_support": [
+        7948,
+        2,
+        2050
+      ]
+    },
+    {
+      "candidate": "job_mean",
+      "case": "heavy-control",
+      "eligible_warm_labels": 10000,
+      "maximum_accounted_model_bytes": 16560,
+      "maximum_pending": 5,
+      "maximum_profile_prediction_p99_ms": 0.054586,
+      "mean_run_bucket_accuracy": 0.7792,
+      "mean_run_mae_ms": 1.887388292199113,
+      "mean_run_rmse_ms": 3.270911247004915,
+      "mean_run_severe_underestimate_rate": 0.1029,
+      "minimum_prediction_coverage": 1.0,
+      "runs": 10,
+      "true_bucket_support": [
+        7792,
+        1777,
+        431
+      ]
+    },
+    {
+      "candidate": "job_mean",
+      "case": "heavy-informative",
+      "eligible_warm_labels": 10000,
+      "maximum_accounted_model_bytes": 16560,
+      "maximum_pending": 5,
+      "maximum_profile_prediction_p99_ms": 0.058176,
+      "mean_run_bucket_accuracy": 0.8425,
+      "mean_run_mae_ms": 1.198098831952725,
+      "mean_run_rmse_ms": 2.6723448222511013,
+      "mean_run_severe_underestimate_rate": 0.04,
+      "minimum_prediction_coverage": 1.0,
+      "runs": 10,
+      "true_bucket_support": [
+        7802,
+        1767,
+        431
+      ]
+    },
+    {
+      "candidate": "job_mean",
+      "case": "heavy-shift",
+      "eligible_warm_labels": 10000,
+      "maximum_accounted_model_bytes": 16560,
+      "maximum_pending": 5,
+      "maximum_profile_prediction_p99_ms": 0.056248,
+      "mean_run_bucket_accuracy": 0.5973999999999999,
+      "mean_run_mae_ms": 1.9428070217805182,
+      "mean_run_rmse_ms": 3.4589452430597474,
+      "mean_run_severe_underestimate_rate": 0.1116,
+      "minimum_prediction_coverage": 1.0,
+      "runs": 10,
+      "true_bucket_support": [
+        7793,
+        1776,
+        431
+      ]
+    },
+    {
+      "candidate": "job_mean",
+      "case": "uniform-informative",
+      "eligible_warm_labels": 10000,
+      "maximum_accounted_model_bytes": 16560,
+      "maximum_pending": 2,
+      "maximum_profile_prediction_p99_ms": 0.051705,
+      "mean_run_bucket_accuracy": 0.7462,
+      "mean_run_mae_ms": 1.6009032370236351,
+      "mean_run_rmse_ms": 1.8638972868749648,
+      "mean_run_severe_underestimate_rate": 0.0,
+      "minimum_prediction_coverage": 1.0,
+      "runs": 10,
+      "true_bucket_support": [
+        1031,
+        3670,
+        5299
+      ]
+    },
+    {
+      "candidate": "linear_log",
+      "case": "bimodal-control",
+      "eligible_warm_labels": 10000,
+      "maximum_accounted_model_bytes": 20300,
+      "maximum_pending": 5,
+      "maximum_profile_prediction_p99_ms": 0.061672,
+      "mean_run_bucket_accuracy": 0.7723,
+      "mean_run_mae_ms": 4.084593514440098,
+      "mean_run_rmse_ms": 7.1012861231711275,
+      "mean_run_severe_underestimate_rate": 0.2051,
+      "minimum_prediction_coverage": 1.0,
+      "runs": 10,
+      "true_bucket_support": [
+        7949,
+        1,
+        2050
+      ]
+    },
+    {
+      "candidate": "linear_log",
+      "case": "bimodal-informative",
+      "eligible_warm_labels": 10000,
+      "maximum_accounted_model_bytes": 19748,
+      "maximum_pending": 5,
+      "maximum_profile_prediction_p99_ms": 0.063046,
+      "mean_run_bucket_accuracy": 0.9998,
+      "mean_run_mae_ms": 0.30470185465851635,
+      "mean_run_rmse_ms": 0.5778236166885727,
+      "mean_run_severe_underestimate_rate": 0.00030000000000000003,
+      "minimum_prediction_coverage": 1.0,
+      "runs": 10,
+      "true_bucket_support": [
+        7948,
+        2,
+        2050
+      ]
+    },
+    {
+      "candidate": "linear_log",
+      "case": "heavy-control",
+      "eligible_warm_labels": 10000,
+      "maximum_accounted_model_bytes": 19748,
+      "maximum_pending": 5,
+      "maximum_profile_prediction_p99_ms": 0.068464,
+      "mean_run_bucket_accuracy": 0.7792,
+      "mean_run_mae_ms": 1.6010229354822645,
+      "mean_run_rmse_ms": 3.3397478475764304,
+      "mean_run_severe_underestimate_rate": 0.1464,
+      "minimum_prediction_coverage": 1.0,
+      "runs": 10,
+      "true_bucket_support": [
+        7792,
+        1777,
+        431
+      ]
+    },
+    {
+      "candidate": "linear_log",
+      "case": "heavy-informative",
+      "eligible_warm_labels": 10000,
+      "maximum_accounted_model_bytes": 19748,
+      "maximum_pending": 5,
+      "maximum_profile_prediction_p99_ms": 0.064376,
+      "mean_run_bucket_accuracy": 0.8425,
+      "mean_run_mae_ms": 1.0888026900800076,
+      "mean_run_rmse_ms": 2.7425937745429465,
+      "mean_run_severe_underestimate_rate": 0.054,
+      "minimum_prediction_coverage": 1.0,
+      "runs": 10,
+      "true_bucket_support": [
+        7802,
+        1767,
+        431
+      ]
+    },
+    {
+      "candidate": "linear_log",
+      "case": "heavy-shift",
+      "eligible_warm_labels": 10000,
+      "maximum_accounted_model_bytes": 19748,
+      "maximum_pending": 5,
+      "maximum_profile_prediction_p99_ms": 0.070699,
+      "mean_run_bucket_accuracy": 0.816,
+      "mean_run_mae_ms": 1.2203138567036402,
+      "mean_run_rmse_ms": 2.8970490068429804,
+      "mean_run_severe_underestimate_rate": 0.0789,
+      "minimum_prediction_coverage": 1.0,
+      "runs": 10,
+      "true_bucket_support": [
+        7793,
+        1776,
+        431
+      ]
+    },
+    {
+      "candidate": "linear_log",
+      "case": "uniform-informative",
+      "eligible_warm_labels": 10000,
+      "maximum_accounted_model_bytes": 19748,
+      "maximum_pending": 2,
+      "maximum_profile_prediction_p99_ms": 0.057897,
+      "mean_run_bucket_accuracy": 0.7169,
+      "mean_run_mae_ms": 1.6293667219443957,
+      "mean_run_rmse_ms": 1.9129799839380877,
+      "mean_run_severe_underestimate_rate": 0.0223,
+      "minimum_prediction_coverage": 1.0,
+      "runs": 10,
+      "true_bucket_support": [
+        1031,
+        3670,
+        5299
+      ]
+    },
+    {
+      "candidate": "linear_raw",
+      "case": "bimodal-control",
+      "eligible_warm_labels": 10000,
+      "maximum_accounted_model_bytes": 20732,
+      "maximum_pending": 5,
+      "maximum_profile_prediction_p99_ms": 0.063147,
+      "mean_run_bucket_accuracy": 0.7663,
+      "mean_run_mae_ms": 4.14291696954293,
+      "mean_run_rmse_ms": 7.068377673719768,
+      "mean_run_severe_underestimate_rate": 0.2051,
+      "minimum_prediction_coverage": 1.0,
+      "runs": 10,
+      "true_bucket_support": [
+        7949,
+        1,
+        2050
+      ]
+    },
+    {
+      "candidate": "linear_raw",
+      "case": "bimodal-informative",
+      "eligible_warm_labels": 10000,
+      "maximum_accounted_model_bytes": 19748,
+      "maximum_pending": 5,
+      "maximum_profile_prediction_p99_ms": 0.058716,
+      "mean_run_bucket_accuracy": 0.9998,
+      "mean_run_mae_ms": 0.3256153416368247,
+      "mean_run_rmse_ms": 0.5747733994492894,
+      "mean_run_severe_underestimate_rate": 0.00030000000000000003,
+      "minimum_prediction_coverage": 1.0,
+      "runs": 10,
+      "true_bucket_support": [
+        7948,
+        2,
+        2050
+      ]
+    },
+    {
+      "candidate": "linear_raw",
+      "case": "heavy-control",
+      "eligible_warm_labels": 10000,
+      "maximum_accounted_model_bytes": 19748,
+      "maximum_pending": 5,
+      "maximum_profile_prediction_p99_ms": 0.064037,
+      "mean_run_bucket_accuracy": 0.7792,
+      "mean_run_mae_ms": 1.6829581474563509,
+      "mean_run_rmse_ms": 3.3049299373466425,
+      "mean_run_severe_underestimate_rate": 0.1308,
+      "minimum_prediction_coverage": 1.0,
+      "runs": 10,
+      "true_bucket_support": [
+        7792,
+        1777,
+        431
+      ]
+    },
+    {
+      "candidate": "linear_raw",
+      "case": "heavy-informative",
+      "eligible_warm_labels": 10000,
+      "maximum_accounted_model_bytes": 19748,
+      "maximum_pending": 5,
+      "maximum_profile_prediction_p99_ms": 0.063617,
+      "mean_run_bucket_accuracy": 0.8425,
+      "mean_run_mae_ms": 1.13314171320814,
+      "mean_run_rmse_ms": 2.717902544893301,
+      "mean_run_severe_underestimate_rate": 0.0543,
+      "minimum_prediction_coverage": 1.0,
+      "runs": 10,
+      "true_bucket_support": [
+        7802,
+        1767,
+        431
+      ]
+    },
+    {
+      "candidate": "linear_raw",
+      "case": "heavy-shift",
+      "eligible_warm_labels": 10000,
+      "maximum_accounted_model_bytes": 19748,
+      "maximum_pending": 5,
+      "maximum_profile_prediction_p99_ms": 0.071069,
+      "mean_run_bucket_accuracy": 0.8118,
+      "mean_run_mae_ms": 1.2884673548942283,
+      "mean_run_rmse_ms": 2.88014166947782,
+      "mean_run_severe_underestimate_rate": 0.0791,
+      "minimum_prediction_coverage": 1.0,
+      "runs": 10,
+      "true_bucket_support": [
+        7793,
+        1776,
+        431
+      ]
+    },
+    {
+      "candidate": "linear_raw",
+      "case": "uniform-informative",
+      "eligible_warm_labels": 10000,
+      "maximum_accounted_model_bytes": 19748,
+      "maximum_pending": 2,
+      "maximum_profile_prediction_p99_ms": 0.064697,
+      "mean_run_bucket_accuracy": 0.7422,
+      "mean_run_mae_ms": 1.6118562774110032,
+      "mean_run_rmse_ms": 1.8806714009262686,
+      "mean_run_severe_underestimate_rate": 0.005,
+      "minimum_prediction_coverage": 1.0,
+      "runs": 10,
+      "true_bucket_support": [
+        1031,
+        3670,
+        5299
+      ]
+    },
+    {
+      "candidate": "tree_log",
+      "case": "bimodal-control",
+      "eligible_warm_labels": 10000,
+      "maximum_accounted_model_bytes": 47205,
+      "maximum_pending": 5,
+      "maximum_profile_prediction_p99_ms": 0.062716,
+      "mean_run_bucket_accuracy": 0.7949,
+      "mean_run_mae_ms": 4.072310567430641,
+      "mean_run_rmse_ms": 7.08161724117056,
+      "mean_run_severe_underestimate_rate": 0.205,
+      "minimum_prediction_coverage": 1.0,
+      "runs": 10,
+      "true_bucket_support": [
+        7949,
+        1,
+        2050
+      ]
+    },
+    {
+      "candidate": "tree_log",
+      "case": "bimodal-informative",
+      "eligible_warm_labels": 10000,
+      "maximum_accounted_model_bytes": 48357,
+      "maximum_pending": 5,
+      "maximum_profile_prediction_p99_ms": 0.064569,
+      "mean_run_bucket_accuracy": 0.9842,
+      "mean_run_mae_ms": 0.6698551594086029,
+      "mean_run_rmse_ms": 1.3597931646876333,
+      "mean_run_severe_underestimate_rate": 0.002,
+      "minimum_prediction_coverage": 1.0,
+      "runs": 10,
+      "true_bucket_support": [
+        7948,
+        2,
+        2050
+      ]
+    },
+    {
+      "candidate": "tree_log",
+      "case": "heavy-control",
+      "eligible_warm_labels": 10000,
+      "maximum_accounted_model_bytes": 48357,
+      "maximum_pending": 5,
+      "maximum_profile_prediction_p99_ms": 0.06205,
+      "mean_run_bucket_accuracy": 0.7792,
+      "mean_run_mae_ms": 1.5986469509376997,
+      "mean_run_rmse_ms": 3.3263348575004112,
+      "mean_run_severe_underestimate_rate": 0.1473,
+      "minimum_prediction_coverage": 1.0,
+      "runs": 10,
+      "true_bucket_support": [
+        7792,
+        1777,
+        431
+      ]
+    },
+    {
+      "candidate": "tree_log",
+      "case": "heavy-informative",
+      "eligible_warm_labels": 10000,
+      "maximum_accounted_model_bytes": 48357,
+      "maximum_pending": 5,
+      "maximum_profile_prediction_p99_ms": 0.070036,
+      "mean_run_bucket_accuracy": 0.8425,
+      "mean_run_mae_ms": 1.0742167246083385,
+      "mean_run_rmse_ms": 2.7347035944809837,
+      "mean_run_severe_underestimate_rate": 0.052,
+      "minimum_prediction_coverage": 1.0,
+      "runs": 10,
+      "true_bucket_support": [
+        7802,
+        1767,
+        431
+      ]
+    },
+    {
+      "candidate": "tree_log",
+      "case": "heavy-shift",
+      "eligible_warm_labels": 10000,
+      "maximum_accounted_model_bytes": 48333,
+      "maximum_pending": 5,
+      "maximum_profile_prediction_p99_ms": 0.059538,
+      "mean_run_bucket_accuracy": 0.6586000000000001,
+      "mean_run_mae_ms": 1.6580778927174404,
+      "mean_run_rmse_ms": 3.173613272359562,
+      "mean_run_severe_underestimate_rate": 0.104,
+      "minimum_prediction_coverage": 1.0,
+      "runs": 10,
+      "true_bucket_support": [
+        7793,
+        1776,
+        431
+      ]
+    },
+    {
+      "candidate": "tree_log",
+      "case": "uniform-informative",
+      "eligible_warm_labels": 10000,
+      "maximum_accounted_model_bytes": 47205,
+      "maximum_pending": 2,
+      "maximum_profile_prediction_p99_ms": 0.064734,
+      "mean_run_bucket_accuracy": 0.7441,
+      "mean_run_mae_ms": 2.3720968777516953,
+      "mean_run_rmse_ms": 2.840662255519068,
+      "mean_run_severe_underestimate_rate": 0.019,
+      "minimum_prediction_coverage": 1.0,
+      "runs": 10,
+      "true_bucket_support": [
+        1031,
+        3670,
+        5299
+      ]
+    },
+    {
+      "candidate": "tree_raw",
+      "case": "bimodal-control",
+      "eligible_warm_labels": 10000,
+      "maximum_accounted_model_bytes": 48357,
+      "maximum_pending": 5,
+      "maximum_profile_prediction_p99_ms": 0.060743,
+      "mean_run_bucket_accuracy": 0.0001,
+      "mean_run_mae_ms": 5.359368997380404,
+      "mean_run_rmse_ms": 6.723970634434609,
+      "mean_run_severe_underestimate_rate": 0.205,
+      "minimum_prediction_coverage": 1.0,
+      "runs": 10,
+      "true_bucket_support": [
+        7949,
+        1,
+        2050
+      ]
+    },
+    {
+      "candidate": "tree_raw",
+      "case": "bimodal-informative",
+      "eligible_warm_labels": 10000,
+      "maximum_accounted_model_bytes": 48357,
+      "maximum_pending": 5,
+      "maximum_profile_prediction_p99_ms": 0.060132,
+      "mean_run_bucket_accuracy": 0.9998,
+      "mean_run_mae_ms": 0.6070025949267477,
+      "mean_run_rmse_ms": 1.099508402346146,
+      "mean_run_severe_underestimate_rate": 0.0002,
+      "minimum_prediction_coverage": 1.0,
+      "runs": 10,
+      "true_bucket_support": [
+        7948,
+        2,
+        2050
+      ]
+    },
+    {
+      "candidate": "tree_raw",
+      "case": "heavy-control",
+      "eligible_warm_labels": 10000,
+      "maximum_accounted_model_bytes": 47205,
+      "maximum_pending": 5,
+      "maximum_profile_prediction_p99_ms": 0.062687,
+      "mean_run_bucket_accuracy": 0.7723,
+      "mean_run_mae_ms": 1.9085750995060018,
+      "mean_run_rmse_ms": 3.2726476659015815,
+      "mean_run_severe_underestimate_rate": 0.1026,
+      "minimum_prediction_coverage": 1.0,
+      "runs": 10,
+      "true_bucket_support": [
+        7792,
+        1777,
+        431
+      ]
+    },
+    {
+      "candidate": "tree_raw",
+      "case": "heavy-informative",
+      "eligible_warm_labels": 10000,
+      "maximum_accounted_model_bytes": 47205,
+      "maximum_pending": 5,
+      "maximum_profile_prediction_p99_ms": 0.067101,
+      "mean_run_bucket_accuracy": 0.8425,
+      "mean_run_mae_ms": 1.2039199466138932,
+      "mean_run_rmse_ms": 2.6727623145009063,
+      "mean_run_severe_underestimate_rate": 0.04,
+      "minimum_prediction_coverage": 1.0,
+      "runs": 10,
+      "true_bucket_support": [
+        7802,
+        1767,
+        431
+      ]
+    },
+    {
+      "candidate": "tree_raw",
+      "case": "heavy-shift",
+      "eligible_warm_labels": 10000,
+      "maximum_accounted_model_bytes": 47181,
+      "maximum_pending": 5,
+      "maximum_profile_prediction_p99_ms": 0.0623,
+      "mean_run_bucket_accuracy": 0.6174999999999999,
+      "mean_run_mae_ms": 1.9507260388738668,
+      "mean_run_rmse_ms": 3.3148224637750148,
+      "mean_run_severe_underestimate_rate": 0.0892,
+      "minimum_prediction_coverage": 1.0,
+      "runs": 10,
+      "true_bucket_support": [
+        7793,
+        1776,
+        431
+      ]
+    },
+    {
+      "candidate": "tree_raw",
+      "case": "uniform-informative",
+      "eligible_warm_labels": 10000,
+      "maximum_accounted_model_bytes": 29105,
+      "maximum_pending": 2,
+      "maximum_profile_prediction_p99_ms": 0.062819,
+      "mean_run_bucket_accuracy": 0.4965,
+      "mean_run_mae_ms": 4.7693899015009364,
+      "mean_run_rmse_ms": 5.506478252584856,
+      "mean_run_severe_underestimate_rate": 0.0011,
+      "minimum_prediction_coverage": 1.0,
+      "runs": 10,
+      "true_bucket_support": [
+        1031,
+        3670,
+        5299
+      ]
+    }
+  ]
+}

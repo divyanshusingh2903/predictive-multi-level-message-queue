@@ -1,0 +1,12 @@
+{
+  "description": "Delayed out-of-order success labels; equal-time ingress precedes zero-runtime feedback",
+  "messages": [
+    {"id": "warm", "split": "train", "arrival": 0, "available": 1, "duration": 2},
+    {"id": "a", "split": "evaluation", "arrival": 2, "available": 10, "duration": 8},
+    {"id": "b", "split": "evaluation", "arrival": 3, "available": 4, "duration": 0},
+    {"id": "c", "split": "evaluation", "arrival": 4, "available": 5, "duration": 6}
+  ],
+  "evaluation_predictions_ms": [2, 2, 2],
+  "evaluation_mae_ms": 4,
+  "evaluation_squared_error_sum": 56
+}

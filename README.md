@@ -7,17 +7,31 @@
 
 # Harbinger — Predictive Multi-Level Message Queue
 
-*Harbinger (formerly PMLMQ) — the queue that knows what's coming: it predicts each message's cost, then prioritizes.*
+*Harbinger (formerly PMLMQ) — the queue that knows what's coming: it learns each kind of message's cost, then prioritizes.*
 
-A research messaging system that combines **online ML-based processing time prediction** with **Multi-Level Feedback Queue (MLFQ)** scheduling to reduce end-to-end message latency.
+A research messaging system that learns **per-key processing-time statistics online** and uses them for **multi-level priority scheduling**, so operators do not have to classify heavy and light endpoints by hand or benchmark them in advance.
 
-**Research hypothesis:** Predicting message processing time at ingress and routing accordingly (rather than using FIFO or static priority) measurably improves P50/P95/P99 latency.
+**Research hypothesis (revised):** Learning each key's duration distribution from observed handler times and routing short-expected work first reduces median and mean latency and head-of-line blocking relative to FIFO, and matches a well-configured static priority map without hand configuration. It is expected to stay robust where a static map is wrong or stale. Tail (P99) latency is *not* expected to improve when long jobs are common; see [Design direction](#design-direction).
 
 ---
 
 ## Status
 
-**Phase 1 complete; Phase 2 features, feedback, and baseline harness implemented.** The core gRPC broker includes multi-level priority queues, producer/consumer clients, DLQ, aging, retries, and in-flight management. Embedded brokers can opt into [versioned ingress features and immutable routing context](ml_engine/README.md), with matching Python validation/encoding, and [bounded persistent feedback](docs/feedback.md). The [synthetic evaluation harness](benchmarks/README.md) compares real-broker FIFO/static/round-robin baselines and exports leakage-safe feedback datasets with frozen budgets. Production routing remains static; prediction and learning remain planned.
+**Phase 1 complete; Phase 2 features, feedback, baseline harness, and offline predictor comparison implemented.** The core gRPC broker includes multi-level priority queues, producer/consumer clients, DLQ, aging, retries, and in-flight management. Embedded brokers can opt into [versioned ingress features and immutable routing context](ml_engine/README.md), with matching Python validation/encoding, and [bounded persistent feedback](docs/feedback.md). The [synthetic evaluation harness](benchmarks/README.md) compares real-broker FIFO/static/round-robin baselines and exports leakage-safe feedback datasets. The [online predictor comparison](docs/online-predictor.md) scores stored ingress predictions before learning delayed successful-Ack labels. Production routing remains static; the predictor and predictive activation remain planned.
+
+The first offline comparison (issue #5) found **no qualifying model** under its frozen gates, so no model was selected. The baseline data (issue #4) also shows that static priority with ground-truth classes cuts median latency but not P95/P99. See [Design direction](#design-direction) for what changed as a result.
+
+---
+
+## Design direction
+
+Evidence so far, and the resulting Phase 2 plan:
+
+- **Synthetic evidence only.** The workloads use one 3-value categorical header and a fixed 16-byte payload, so a per-key average is close to the best possible predictor there. These results do not show whether richer features help on real traffic.
+- **Shortest-job-first trade-off.** With a non-preemptive scheduler, prioritizing short jobs lowers median latency (about 40–60% in the bimodal cells) and leaves P95 flat or makes P99 worse when long jobs are a large fraction of messages. Reordering cannot reduce a long job's own service time. Primary metrics are therefore per-class percentiles, slowdown, mean latency, and long-job starvation, with all-message P99 as a guardrail.
+- **Predictor: per-key duration statistics, in C++.** Each message has a *key* (queue/topic name, or an optional producer-supplied `job_type` header). The broker keeps a decaying duration histogram per key plus a global histogram, estimates a message's duration from its key at ingress inside `route_message()`, and maps it to a tier using boundaries derived from global quantiles. Cold or high-variance keys use the middle tier; aging is unchanged. Only successful, non-replayed handler durations are learned. Per-key state is bounded in memory.
+- **Python is the offline evaluation harness**, not a serving component. River models remain optional offline challengers, and richer features are added only if real or numeric-feature workloads show the per-key model losing.
+- **Not yet shown.** No predictive scheduling benefit, real-workload generalization, or activation is claimed. The v1 budgets cannot be met even by an oracle-like static map, so Phase 2 comparisons move to a pre-registered v2 matrix.
 
 ---
 
@@ -52,7 +66,7 @@ Producer::send()
 - **Consumers are tier-blind** — the broker picks which message each `Pull()` receives; consumers never see queue levels.
 - **Proxy is narrowly scoped** — stamps ID and `arrival_time`, stores `producer_id` in headers, then hands off to `route_message()`.
 - **In-flight tracking** — messages are held in an `unordered_map` between `Pull` and `Ack/Nack`; on `Nack` they are re-queued or DLQ'd.
-- **Phase 2 hook** — `route_message()` in `harbinger_service.cpp` is the single injection point for the future ML classifier; opt-in feedback persists accepted `processing_time_ms` observations and actual outcomes without changing delivery semantics. No learner is implemented yet.
+- **Phase 2 hook** — `route_message()` in `harbinger_service.cpp` is the single injection point for the planned per-key duration predictor; opt-in feedback persists accepted `processing_time_ms` observations and actual outcomes without changing delivery semantics. Offline learners consume validated temporal exports; no live predictor is connected to the broker yet.
 - **`harbinger_rpc` proto package** — kept distinct from the `harbinger` C++ namespace to avoid symbol collisions.
 
 ---
@@ -66,7 +80,8 @@ Producer::send()
 - [Ingress features and encoding](ml_engine/README.md) — implemented opt-in C++ capture and matching Python representation.
 - [Persistent feedback](docs/feedback.md) — embedded static-mode collection, JSONL storage, retention, loss counters, and durability/shutdown limits.
 - [Synthetic baselines and feedback export](benchmarks/README.md) — seeded open-loop gRPC replay, outcome/fairness accounting, paired uncertainty, and frozen experiment budgets.
-- [ML contract](docs/ml-contract.md), [architecture decision](docs/adr/0001-phase2-ml-contract.md), and [validation plan](docs/phase2-validation.md) — Phase 2 design; feature capture and feedback are implemented, prediction remains planned.
+- [Online predictors](docs/online-predictor.md) — cited literature, eight candidates, delayed validation, readiness/fallback, and the frozen v1 selection budgets (result: no qualifier).
+- [ML contract](docs/ml-contract.md), [architecture decision](docs/adr/0001-phase2-ml-contract.md), and [validation plan](docs/phase2-validation.md) — Phase 2 boundaries; inference transport and activation remain planned.
 
 ---
 
@@ -93,7 +108,7 @@ harbinger/
 │   └── unit/                  # GoogleTest sources; built as harbinger_unit_tests
 │                              # (queue, DLQ, proxy — no gRPC) and
 │                              # harbinger_integration_tests (broker, client over gRPC)
-├── ml_engine/                 # Versioned feature validation/encoding; model/service planned
+├── ml_engine/                 # Features, feedback validation, offline evaluation harness
 ├── benchmarks/                # Opt-in cleanup + synthetic scheduler baselines and dataset export
 └── CMakeLists.txt
 ```
@@ -325,17 +340,18 @@ idempotency and durable storage are not implemented.
 The [Phase 2 tracker](https://github.com/divyanshusingh2903/predictive-multi-level-message-queue/issues/11) sequences implementation from the [ML contract](docs/ml-contract.md). Prediction begins in shadow mode; explicit predictive routing requires the [synthetic validation gate](docs/phase2-validation.md).
 
 - [x] Versioned, bounded ingress features and immutable routing context with C++/Python fixtures
-- [ ] Python ML service with online learning (`river` or scikit-learn incremental estimators)
-- [ ] gRPC/IPC bridge between C++ broker and Python classifier
-- [ ] Predictive routing injected into `route_message()` in `harbinger_service.cpp`
-- [ ] `processing_time_ms` feedback from Ack/Nack fed to classifier
-- [ ] Model drift monitoring and accuracy tracking
+- [ ] In-process C++ per-key duration predictor (decaying histograms, adaptive tier boundaries, bounded key state)
+- [ ] Shadow and predictive routing injected into `route_message()` in `harbinger_service.cpp`
+- [ ] `processing_time_ms` feedback from Ack/Nack updates the per-key statistics
+- [ ] State persistence and drift handling for the predictor
 - [x] Seeded synthetic workloads, real-broker FIFO/static-priority/round-robin baselines, temporal feedback export, and frozen numerical budgets
-- [ ] Predictive comparison and synthetic activation gate before predictive routing is enabled
+- [x] Offline delayed online-predictor comparison, readiness/fallback checks, and versioned model-selection evidence (v1 result: no qualifier)
+- [ ] Pre-registered v2 matrix: oracle, well-configured/misconfigured/stale static priority, rare-long-job and numeric-feature workloads, per-class and slowdown metrics
+- [ ] Synthetic activation gate before predictive routing is enabled
 
 ### Phase 3 — Benchmarking & validation
 - [ ] Expand synthetic workload coverage beyond the Phase 2 activation gate
-- [ ] Real-world dataset replay: Alibaba Microservices Trace (2021/2022), Azure Functions Trace
+- [ ] Real-world data: public traces (e.g. Azure Functions invocation trace, BurstGPT) and self-generated cloud runs with real handlers
 - [ ] Extend FIFO/static-priority/round-robin comparisons to real trace workloads
 - [ ] Comparison against Kafka, RabbitMQ, Pulsar
 
@@ -350,9 +366,9 @@ The [Phase 2 tracker](https://github.com/divyanshusingh2903/predictive-multi-lev
 
 | Metric | Description |
 |---|---|
-| P50 / P95 / P99 latency | End-to-end message processing latency percentiles |
+| Latency percentiles | P50/P95/P99 end-to-end latency overall and per job class, plus mean latency and slowdown (latency / service time) |
 | Throughput (msg/s) | Sustained message processing rate |
-| Prediction accuracy | Classifier accuracy across processing-time buckets (short / medium / long) |
+| Prediction quality | Duration MAE/RMSE, bucket accuracy, severe underestimates, and coverage |
 | Queue starvation rate | Rate at which lower-priority queues are starved |
 
 ---
@@ -361,7 +377,8 @@ The [Phase 2 tracker](https://github.com/divyanshusingh2903/predictive-multi-lev
 
 - **Core:** C++20 — concepts, `std::atomic`, lock-free where possible, header-only libraries preferred
 - **IPC:** gRPC + Protocol Buffers
-- **ML engine:** Python — `river` (online ML) or scikit-learn with `SGDClassifier` / `PassiveAggressiveClassifier`
+- **Predictor:** C++ per-key duration statistics inside the broker (planned)
+- **Offline evaluation:** Python — delayed-feedback replay and metrics; pinned River 0.22.0 candidates and dependency-free baselines (implemented)
 - **Tests:** GoogleTest (fetched via CMake `FetchContent`)
 - **Metrics (planned):** Prometheus / StatsD
 - **Tracing (planned):** Jaeger / Zipkin

@@ -1,0 +1,1092 @@
+{
+  "artifact_version": 1,
+  "collection_config_sha256": "bc525ec6026557384408de8375d6b05431499c79e24a01fb4b7d867069ec85e5",
+  "config_sha256": "ae00ec428c4c2c2fbfc1f6ad4a024b9db848b9b55944811d5dbe40513fa58fb2",
+  "dataset_sha256": "a6ea99d5f7591530532b681c6c319441b7b87f1b74637260dec6213bfde875a4",
+  "initial_source": "/tmp/opencode/issue5-runs-v1",
+  "selected": [
+    {
+      "case": "bimodal-control",
+      "directory": "/tmp/opencode/issue5-runs-v1/bimodal-control-s11-r0-disabled",
+      "repeat": 0,
+      "run": "bimodal-control-s11-r0-disabled",
+      "seed": 11
+    },
+    {
+      "case": "bimodal-control",
+      "directory": "/tmp/opencode/issue5-runs-v1/bimodal-control-s11-r1-disabled",
+      "repeat": 1,
+      "run": "bimodal-control-s11-r1-disabled",
+      "seed": 11
+    },
+    {
+      "case": "bimodal-control",
+      "directory": "/tmp/opencode/issue5-prepared-v1/replacement-bimodal-control-s22-r0-a1/bimodal-control-s22-r0-disabled",
+      "repeat": 0,
+      "run": "bimodal-control-s22-r0-disabled",
+      "seed": 22
+    },
+    {
+      "case": "bimodal-control",
+      "directory": "/tmp/opencode/issue5-runs-v1/bimodal-control-s22-r1-disabled",
+      "repeat": 1,
+      "run": "bimodal-control-s22-r1-disabled",
+      "seed": 22
+    },
+    {
+      "case": "bimodal-control",
+      "directory": "/tmp/opencode/issue5-prepared-v1/replacement-bimodal-control-s33-r0-a1/bimodal-control-s33-r0-disabled",
+      "repeat": 0,
+      "run": "bimodal-control-s33-r0-disabled",
+      "seed": 33
+    },
+    {
+      "case": "bimodal-control",
+      "directory": "/tmp/opencode/issue5-runs-v1/bimodal-control-s33-r1-disabled",
+      "repeat": 1,
+      "run": "bimodal-control-s33-r1-disabled",
+      "seed": 33
+    },
+    {
+      "case": "bimodal-control",
+      "directory": "/tmp/opencode/issue5-runs-v1/bimodal-control-s44-r0-disabled",
+      "repeat": 0,
+      "run": "bimodal-control-s44-r0-disabled",
+      "seed": 44
+    },
+    {
+      "case": "bimodal-control",
+      "directory": "/tmp/opencode/issue5-runs-v1/bimodal-control-s44-r1-disabled",
+      "repeat": 1,
+      "run": "bimodal-control-s44-r1-disabled",
+      "seed": 44
+    },
+    {
+      "case": "bimodal-control",
+      "directory": "/tmp/opencode/issue5-runs-v1/bimodal-control-s55-r0-disabled",
+      "repeat": 0,
+      "run": "bimodal-control-s55-r0-disabled",
+      "seed": 55
+    },
+    {
+      "case": "bimodal-control",
+      "directory": "/tmp/opencode/issue5-runs-v1/bimodal-control-s55-r1-disabled",
+      "repeat": 1,
+      "run": "bimodal-control-s55-r1-disabled",
+      "seed": 55
+    },
+    {
+      "case": "bimodal-informative",
+      "directory": "/tmp/opencode/issue5-prepared-v1/replacement-bimodal-informative-s11-r0-a1/bimodal-informative-s11-r0-disabled",
+      "repeat": 0,
+      "run": "bimodal-informative-s11-r0-disabled",
+      "seed": 11
+    },
+    {
+      "case": "bimodal-informative",
+      "directory": "/tmp/opencode/issue5-runs-v1/bimodal-informative-s11-r1-disabled",
+      "repeat": 1,
+      "run": "bimodal-informative-s11-r1-disabled",
+      "seed": 11
+    },
+    {
+      "case": "bimodal-informative",
+      "directory": "/tmp/opencode/issue5-runs-v1/bimodal-informative-s22-r0-disabled",
+      "repeat": 0,
+      "run": "bimodal-informative-s22-r0-disabled",
+      "seed": 22
+    },
+    {
+      "case": "bimodal-informative",
+      "directory": "/tmp/opencode/issue5-runs-v1/bimodal-informative-s22-r1-disabled",
+      "repeat": 1,
+      "run": "bimodal-informative-s22-r1-disabled",
+      "seed": 22
+    },
+    {
+      "case": "bimodal-informative",
+      "directory": "/tmp/opencode/issue5-prepared-v1/replacement-bimodal-informative-s33-r0-a1/bimodal-informative-s33-r0-disabled",
+      "repeat": 0,
+      "run": "bimodal-informative-s33-r0-disabled",
+      "seed": 33
+    },
+    {
+      "case": "bimodal-informative",
+      "directory": "/tmp/opencode/issue5-runs-v1/bimodal-informative-s33-r1-disabled",
+      "repeat": 1,
+      "run": "bimodal-informative-s33-r1-disabled",
+      "seed": 33
+    },
+    {
+      "case": "bimodal-informative",
+      "directory": "/tmp/opencode/issue5-runs-v1/bimodal-informative-s44-r0-disabled",
+      "repeat": 0,
+      "run": "bimodal-informative-s44-r0-disabled",
+      "seed": 44
+    },
+    {
+      "case": "bimodal-informative",
+      "directory": "/tmp/opencode/issue5-runs-v1/bimodal-informative-s44-r1-disabled",
+      "repeat": 1,
+      "run": "bimodal-informative-s44-r1-disabled",
+      "seed": 44
+    },
+    {
+      "case": "bimodal-informative",
+      "directory": "/tmp/opencode/issue5-runs-v1/bimodal-informative-s55-r0-disabled",
+      "repeat": 0,
+      "run": "bimodal-informative-s55-r0-disabled",
+      "seed": 55
+    },
+    {
+      "case": "bimodal-informative",
+      "directory": "/tmp/opencode/issue5-runs-v1/bimodal-informative-s55-r1-disabled",
+      "repeat": 1,
+      "run": "bimodal-informative-s55-r1-disabled",
+      "seed": 55
+    },
+    {
+      "case": "heavy-control",
+      "directory": "/tmp/opencode/issue5-prepared-v1/replacement-heavy-control-s11-r0-a1/heavy-control-s11-r0-disabled",
+      "repeat": 0,
+      "run": "heavy-control-s11-r0-disabled",
+      "seed": 11
+    },
+    {
+      "case": "heavy-control",
+      "directory": "/tmp/opencode/issue5-runs-v1/heavy-control-s11-r1-disabled",
+      "repeat": 1,
+      "run": "heavy-control-s11-r1-disabled",
+      "seed": 11
+    },
+    {
+      "case": "heavy-control",
+      "directory": "/tmp/opencode/issue5-prepared-v1/replacement-heavy-control-s22-r0-a1/heavy-control-s22-r0-disabled",
+      "repeat": 0,
+      "run": "heavy-control-s22-r0-disabled",
+      "seed": 22
+    },
+    {
+      "case": "heavy-control",
+      "directory": "/tmp/opencode/issue5-runs-v1/heavy-control-s22-r1-disabled",
+      "repeat": 1,
+      "run": "heavy-control-s22-r1-disabled",
+      "seed": 22
+    },
+    {
+      "case": "heavy-control",
+      "directory": "/tmp/opencode/issue5-runs-v1/heavy-control-s33-r0-disabled",
+      "repeat": 0,
+      "run": "heavy-control-s33-r0-disabled",
+      "seed": 33
+    },
+    {
+      "case": "heavy-control",
+      "directory": "/tmp/opencode/issue5-runs-v1/heavy-control-s33-r1-disabled",
+      "repeat": 1,
+      "run": "heavy-control-s33-r1-disabled",
+      "seed": 33
+    },
+    {
+      "case": "heavy-control",
+      "directory": "/tmp/opencode/issue5-runs-v1/heavy-control-s44-r0-disabled",
+      "repeat": 0,
+      "run": "heavy-control-s44-r0-disabled",
+      "seed": 44
+    },
+    {
+      "case": "heavy-control",
+      "directory": "/tmp/opencode/issue5-prepared-v1/replacement-heavy-control-s44-r1-a1/heavy-control-s44-r1-disabled",
+      "repeat": 1,
+      "run": "heavy-control-s44-r1-disabled",
+      "seed": 44
+    },
+    {
+      "case": "heavy-control",
+      "directory": "/tmp/opencode/issue5-prepared-v1/replacement-heavy-control-s55-r0-a1/heavy-control-s55-r0-disabled",
+      "repeat": 0,
+      "run": "heavy-control-s55-r0-disabled",
+      "seed": 55
+    },
+    {
+      "case": "heavy-control",
+      "directory": "/tmp/opencode/issue5-runs-v1/heavy-control-s55-r1-disabled",
+      "repeat": 1,
+      "run": "heavy-control-s55-r1-disabled",
+      "seed": 55
+    },
+    {
+      "case": "heavy-informative",
+      "directory": "/tmp/opencode/issue5-runs-v1/heavy-informative-s11-r0-disabled",
+      "repeat": 0,
+      "run": "heavy-informative-s11-r0-disabled",
+      "seed": 11
+    },
+    {
+      "case": "heavy-informative",
+      "directory": "/tmp/opencode/issue5-runs-v1/heavy-informative-s11-r1-disabled",
+      "repeat": 1,
+      "run": "heavy-informative-s11-r1-disabled",
+      "seed": 11
+    },
+    {
+      "case": "heavy-informative",
+      "directory": "/tmp/opencode/issue5-runs-v1/heavy-informative-s22-r0-disabled",
+      "repeat": 0,
+      "run": "heavy-informative-s22-r0-disabled",
+      "seed": 22
+    },
+    {
+      "case": "heavy-informative",
+      "directory": "/tmp/opencode/issue5-prepared-v1/replacement-heavy-informative-s22-r1-a1/heavy-informative-s22-r1-disabled",
+      "repeat": 1,
+      "run": "heavy-informative-s22-r1-disabled",
+      "seed": 22
+    },
+    {
+      "case": "heavy-informative",
+      "directory": "/tmp/opencode/issue5-prepared-v1/replacement-heavy-informative-s33-r0-a1/heavy-informative-s33-r0-disabled",
+      "repeat": 0,
+      "run": "heavy-informative-s33-r0-disabled",
+      "seed": 33
+    },
+    {
+      "case": "heavy-informative",
+      "directory": "/tmp/opencode/issue5-runs-v1/heavy-informative-s33-r1-disabled",
+      "repeat": 1,
+      "run": "heavy-informative-s33-r1-disabled",
+      "seed": 33
+    },
+    {
+      "case": "heavy-informative",
+      "directory": "/tmp/opencode/issue5-runs-v1/heavy-informative-s44-r0-disabled",
+      "repeat": 0,
+      "run": "heavy-informative-s44-r0-disabled",
+      "seed": 44
+    },
+    {
+      "case": "heavy-informative",
+      "directory": "/tmp/opencode/issue5-runs-v1/heavy-informative-s44-r1-disabled",
+      "repeat": 1,
+      "run": "heavy-informative-s44-r1-disabled",
+      "seed": 44
+    },
+    {
+      "case": "heavy-informative",
+      "directory": "/tmp/opencode/issue5-runs-v1/heavy-informative-s55-r0-disabled",
+      "repeat": 0,
+      "run": "heavy-informative-s55-r0-disabled",
+      "seed": 55
+    },
+    {
+      "case": "heavy-informative",
+      "directory": "/tmp/opencode/issue5-prepared-v1/replacement-heavy-informative-s55-r1-a1/heavy-informative-s55-r1-disabled",
+      "repeat": 1,
+      "run": "heavy-informative-s55-r1-disabled",
+      "seed": 55
+    },
+    {
+      "case": "heavy-shift",
+      "directory": "/tmp/opencode/issue5-runs-v1/heavy-shift-s11-r0-disabled",
+      "repeat": 0,
+      "run": "heavy-shift-s11-r0-disabled",
+      "seed": 11
+    },
+    {
+      "case": "heavy-shift",
+      "directory": "/tmp/opencode/issue5-runs-v1/heavy-shift-s11-r1-disabled",
+      "repeat": 1,
+      "run": "heavy-shift-s11-r1-disabled",
+      "seed": 11
+    },
+    {
+      "case": "heavy-shift",
+      "directory": "/tmp/opencode/issue5-runs-v1/heavy-shift-s22-r0-disabled",
+      "repeat": 0,
+      "run": "heavy-shift-s22-r0-disabled",
+      "seed": 22
+    },
+    {
+      "case": "heavy-shift",
+      "directory": "/tmp/opencode/issue5-runs-v1/heavy-shift-s22-r1-disabled",
+      "repeat": 1,
+      "run": "heavy-shift-s22-r1-disabled",
+      "seed": 22
+    },
+    {
+      "case": "heavy-shift",
+      "directory": "/tmp/opencode/issue5-runs-v1/heavy-shift-s33-r0-disabled",
+      "repeat": 0,
+      "run": "heavy-shift-s33-r0-disabled",
+      "seed": 33
+    },
+    {
+      "case": "heavy-shift",
+      "directory": "/tmp/opencode/issue5-runs-v1/heavy-shift-s33-r1-disabled",
+      "repeat": 1,
+      "run": "heavy-shift-s33-r1-disabled",
+      "seed": 33
+    },
+    {
+      "case": "heavy-shift",
+      "directory": "/tmp/opencode/issue5-prepared-v1/replacement-heavy-shift-s44-r0-a2/heavy-shift-s44-r0-disabled",
+      "repeat": 0,
+      "run": "heavy-shift-s44-r0-disabled",
+      "seed": 44
+    },
+    {
+      "case": "heavy-shift",
+      "directory": "/tmp/opencode/issue5-runs-v1/heavy-shift-s44-r1-disabled",
+      "repeat": 1,
+      "run": "heavy-shift-s44-r1-disabled",
+      "seed": 44
+    },
+    {
+      "case": "heavy-shift",
+      "directory": "/tmp/opencode/issue5-runs-v1/heavy-shift-s55-r0-disabled",
+      "repeat": 0,
+      "run": "heavy-shift-s55-r0-disabled",
+      "seed": 55
+    },
+    {
+      "case": "heavy-shift",
+      "directory": "/tmp/opencode/issue5-prepared-v1/replacement-heavy-shift-s55-r1-a2/heavy-shift-s55-r1-disabled",
+      "repeat": 1,
+      "run": "heavy-shift-s55-r1-disabled",
+      "seed": 55
+    },
+    {
+      "case": "uniform-informative",
+      "directory": "/tmp/opencode/issue5-runs-v1/uniform-informative-s11-r0-disabled",
+      "repeat": 0,
+      "run": "uniform-informative-s11-r0-disabled",
+      "seed": 11
+    },
+    {
+      "case": "uniform-informative",
+      "directory": "/tmp/opencode/issue5-runs-v1/uniform-informative-s11-r1-disabled",
+      "repeat": 1,
+      "run": "uniform-informative-s11-r1-disabled",
+      "seed": 11
+    },
+    {
+      "case": "uniform-informative",
+      "directory": "/tmp/opencode/issue5-runs-v1/uniform-informative-s22-r0-disabled",
+      "repeat": 0,
+      "run": "uniform-informative-s22-r0-disabled",
+      "seed": 22
+    },
+    {
+      "case": "uniform-informative",
+      "directory": "/tmp/opencode/issue5-runs-v1/uniform-informative-s22-r1-disabled",
+      "repeat": 1,
+      "run": "uniform-informative-s22-r1-disabled",
+      "seed": 22
+    },
+    {
+      "case": "uniform-informative",
+      "directory": "/tmp/opencode/issue5-runs-v1/uniform-informative-s33-r0-disabled",
+      "repeat": 0,
+      "run": "uniform-informative-s33-r0-disabled",
+      "seed": 33
+    },
+    {
+      "case": "uniform-informative",
+      "directory": "/tmp/opencode/issue5-runs-v1/uniform-informative-s33-r1-disabled",
+      "repeat": 1,
+      "run": "uniform-informative-s33-r1-disabled",
+      "seed": 33
+    },
+    {
+      "case": "uniform-informative",
+      "directory": "/tmp/opencode/issue5-runs-v1/uniform-informative-s44-r0-disabled",
+      "repeat": 0,
+      "run": "uniform-informative-s44-r0-disabled",
+      "seed": 44
+    },
+    {
+      "case": "uniform-informative",
+      "directory": "/tmp/opencode/issue5-runs-v1/uniform-informative-s44-r1-disabled",
+      "repeat": 1,
+      "run": "uniform-informative-s44-r1-disabled",
+      "seed": 44
+    },
+    {
+      "case": "uniform-informative",
+      "directory": "/tmp/opencode/issue5-runs-v1/uniform-informative-s55-r0-disabled",
+      "repeat": 0,
+      "run": "uniform-informative-s55-r0-disabled",
+      "seed": 55
+    },
+    {
+      "case": "uniform-informative",
+      "directory": "/tmp/opencode/issue5-runs-v1/uniform-informative-s55-r1-disabled",
+      "repeat": 1,
+      "run": "uniform-informative-s55-r1-disabled",
+      "seed": 55
+    }
+  ],
+  "status": "complete",
+  "trials": [
+    {
+      "attempt": 0,
+      "case": "bimodal-control",
+      "directory": "/tmp/opencode/issue5-runs-v1/bimodal-control-s11-r0-disabled",
+      "failures": [],
+      "repeat": 0,
+      "seed": 11
+    },
+    {
+      "attempt": 0,
+      "case": "bimodal-control",
+      "directory": "/tmp/opencode/issue5-runs-v1/bimodal-control-s11-r1-disabled",
+      "failures": [],
+      "repeat": 1,
+      "seed": 11
+    },
+    {
+      "attempt": 0,
+      "case": "bimodal-control",
+      "directory": "/tmp/opencode/issue5-runs-v1/bimodal-control-s22-r0-disabled",
+      "failures": [
+        "not a valid fully drained static trial",
+        "writer/observation/consumer health",
+        "incomplete sealed/synced feedback"
+      ],
+      "repeat": 0,
+      "seed": 22
+    },
+    {
+      "attempt": 1,
+      "case": "bimodal-control",
+      "directory": "/tmp/opencode/issue5-prepared-v1/replacement-bimodal-control-s22-r0-a1/bimodal-control-s22-r0-disabled",
+      "failures": [],
+      "repeat": 0,
+      "seed": 22
+    },
+    {
+      "attempt": 0,
+      "case": "bimodal-control",
+      "directory": "/tmp/opencode/issue5-runs-v1/bimodal-control-s22-r1-disabled",
+      "failures": [],
+      "repeat": 1,
+      "seed": 22
+    },
+    {
+      "attempt": 0,
+      "case": "bimodal-control",
+      "directory": "/tmp/opencode/issue5-runs-v1/bimodal-control-s33-r0-disabled",
+      "failures": [
+        "not a valid fully drained static trial",
+        "writer/observation/consumer health",
+        "incomplete sealed/synced feedback"
+      ],
+      "repeat": 0,
+      "seed": 33
+    },
+    {
+      "attempt": 1,
+      "case": "bimodal-control",
+      "directory": "/tmp/opencode/issue5-prepared-v1/replacement-bimodal-control-s33-r0-a1/bimodal-control-s33-r0-disabled",
+      "failures": [],
+      "repeat": 0,
+      "seed": 33
+    },
+    {
+      "attempt": 0,
+      "case": "bimodal-control",
+      "directory": "/tmp/opencode/issue5-runs-v1/bimodal-control-s33-r1-disabled",
+      "failures": [],
+      "repeat": 1,
+      "seed": 33
+    },
+    {
+      "attempt": 0,
+      "case": "bimodal-control",
+      "directory": "/tmp/opencode/issue5-runs-v1/bimodal-control-s44-r0-disabled",
+      "failures": [],
+      "repeat": 0,
+      "seed": 44
+    },
+    {
+      "attempt": 0,
+      "case": "bimodal-control",
+      "directory": "/tmp/opencode/issue5-runs-v1/bimodal-control-s44-r1-disabled",
+      "failures": [],
+      "repeat": 1,
+      "seed": 44
+    },
+    {
+      "attempt": 0,
+      "case": "bimodal-control",
+      "directory": "/tmp/opencode/issue5-runs-v1/bimodal-control-s55-r0-disabled",
+      "failures": [],
+      "repeat": 0,
+      "seed": 55
+    },
+    {
+      "attempt": 0,
+      "case": "bimodal-control",
+      "directory": "/tmp/opencode/issue5-runs-v1/bimodal-control-s55-r1-disabled",
+      "failures": [],
+      "repeat": 1,
+      "seed": 55
+    },
+    {
+      "attempt": 0,
+      "case": "bimodal-informative",
+      "directory": "/tmp/opencode/issue5-runs-v1/bimodal-informative-s11-r0-disabled",
+      "failures": [
+        "not a valid fully drained static trial",
+        "writer/observation/consumer health",
+        "incomplete sealed/synced feedback"
+      ],
+      "repeat": 0,
+      "seed": 11
+    },
+    {
+      "attempt": 1,
+      "case": "bimodal-informative",
+      "directory": "/tmp/opencode/issue5-prepared-v1/replacement-bimodal-informative-s11-r0-a1/bimodal-informative-s11-r0-disabled",
+      "failures": [],
+      "repeat": 0,
+      "seed": 11
+    },
+    {
+      "attempt": 0,
+      "case": "bimodal-informative",
+      "directory": "/tmp/opencode/issue5-runs-v1/bimodal-informative-s11-r1-disabled",
+      "failures": [],
+      "repeat": 1,
+      "seed": 11
+    },
+    {
+      "attempt": 0,
+      "case": "bimodal-informative",
+      "directory": "/tmp/opencode/issue5-runs-v1/bimodal-informative-s22-r0-disabled",
+      "failures": [],
+      "repeat": 0,
+      "seed": 22
+    },
+    {
+      "attempt": 0,
+      "case": "bimodal-informative",
+      "directory": "/tmp/opencode/issue5-runs-v1/bimodal-informative-s22-r1-disabled",
+      "failures": [],
+      "repeat": 1,
+      "seed": 22
+    },
+    {
+      "attempt": 0,
+      "case": "bimodal-informative",
+      "directory": "/tmp/opencode/issue5-runs-v1/bimodal-informative-s33-r0-disabled",
+      "failures": [
+        "not a valid fully drained static trial",
+        "writer/observation/consumer health",
+        "incomplete sealed/synced feedback"
+      ],
+      "repeat": 0,
+      "seed": 33
+    },
+    {
+      "attempt": 1,
+      "case": "bimodal-informative",
+      "directory": "/tmp/opencode/issue5-prepared-v1/replacement-bimodal-informative-s33-r0-a1/bimodal-informative-s33-r0-disabled",
+      "failures": [],
+      "repeat": 0,
+      "seed": 33
+    },
+    {
+      "attempt": 0,
+      "case": "bimodal-informative",
+      "directory": "/tmp/opencode/issue5-runs-v1/bimodal-informative-s33-r1-disabled",
+      "failures": [],
+      "repeat": 1,
+      "seed": 33
+    },
+    {
+      "attempt": 0,
+      "case": "bimodal-informative",
+      "directory": "/tmp/opencode/issue5-runs-v1/bimodal-informative-s44-r0-disabled",
+      "failures": [],
+      "repeat": 0,
+      "seed": 44
+    },
+    {
+      "attempt": 0,
+      "case": "bimodal-informative",
+      "directory": "/tmp/opencode/issue5-runs-v1/bimodal-informative-s44-r1-disabled",
+      "failures": [],
+      "repeat": 1,
+      "seed": 44
+    },
+    {
+      "attempt": 0,
+      "case": "bimodal-informative",
+      "directory": "/tmp/opencode/issue5-runs-v1/bimodal-informative-s55-r0-disabled",
+      "failures": [],
+      "repeat": 0,
+      "seed": 55
+    },
+    {
+      "attempt": 0,
+      "case": "bimodal-informative",
+      "directory": "/tmp/opencode/issue5-runs-v1/bimodal-informative-s55-r1-disabled",
+      "failures": [],
+      "repeat": 1,
+      "seed": 55
+    },
+    {
+      "attempt": 0,
+      "case": "heavy-control",
+      "directory": "/tmp/opencode/issue5-runs-v1/heavy-control-s11-r0-disabled",
+      "failures": [
+        "not a valid fully drained static trial",
+        "writer/observation/consumer health",
+        "incomplete sealed/synced feedback"
+      ],
+      "repeat": 0,
+      "seed": 11
+    },
+    {
+      "attempt": 1,
+      "case": "heavy-control",
+      "directory": "/tmp/opencode/issue5-prepared-v1/replacement-heavy-control-s11-r0-a1/heavy-control-s11-r0-disabled",
+      "failures": [],
+      "repeat": 0,
+      "seed": 11
+    },
+    {
+      "attempt": 0,
+      "case": "heavy-control",
+      "directory": "/tmp/opencode/issue5-runs-v1/heavy-control-s11-r1-disabled",
+      "failures": [],
+      "repeat": 1,
+      "seed": 11
+    },
+    {
+      "attempt": 0,
+      "case": "heavy-control",
+      "directory": "/tmp/opencode/issue5-runs-v1/heavy-control-s22-r0-disabled",
+      "failures": [
+        "not a valid fully drained static trial",
+        "writer/observation/consumer health",
+        "incomplete sealed/synced feedback"
+      ],
+      "repeat": 0,
+      "seed": 22
+    },
+    {
+      "attempt": 1,
+      "case": "heavy-control",
+      "directory": "/tmp/opencode/issue5-prepared-v1/replacement-heavy-control-s22-r0-a1/heavy-control-s22-r0-disabled",
+      "failures": [],
+      "repeat": 0,
+      "seed": 22
+    },
+    {
+      "attempt": 0,
+      "case": "heavy-control",
+      "directory": "/tmp/opencode/issue5-runs-v1/heavy-control-s22-r1-disabled",
+      "failures": [],
+      "repeat": 1,
+      "seed": 22
+    },
+    {
+      "attempt": 0,
+      "case": "heavy-control",
+      "directory": "/tmp/opencode/issue5-runs-v1/heavy-control-s33-r0-disabled",
+      "failures": [],
+      "repeat": 0,
+      "seed": 33
+    },
+    {
+      "attempt": 0,
+      "case": "heavy-control",
+      "directory": "/tmp/opencode/issue5-runs-v1/heavy-control-s33-r1-disabled",
+      "failures": [],
+      "repeat": 1,
+      "seed": 33
+    },
+    {
+      "attempt": 0,
+      "case": "heavy-control",
+      "directory": "/tmp/opencode/issue5-runs-v1/heavy-control-s44-r0-disabled",
+      "failures": [],
+      "repeat": 0,
+      "seed": 44
+    },
+    {
+      "attempt": 0,
+      "case": "heavy-control",
+      "directory": "/tmp/opencode/issue5-runs-v1/heavy-control-s44-r1-disabled",
+      "failures": [
+        "not a valid fully drained static trial",
+        "writer/observation/consumer health",
+        "incomplete sealed/synced feedback"
+      ],
+      "repeat": 1,
+      "seed": 44
+    },
+    {
+      "attempt": 1,
+      "case": "heavy-control",
+      "directory": "/tmp/opencode/issue5-prepared-v1/replacement-heavy-control-s44-r1-a1/heavy-control-s44-r1-disabled",
+      "failures": [],
+      "repeat": 1,
+      "seed": 44
+    },
+    {
+      "attempt": 0,
+      "case": "heavy-control",
+      "directory": "/tmp/opencode/issue5-runs-v1/heavy-control-s55-r0-disabled",
+      "failures": [
+        "not a valid fully drained static trial",
+        "writer/observation/consumer health",
+        "incomplete sealed/synced feedback"
+      ],
+      "repeat": 0,
+      "seed": 55
+    },
+    {
+      "attempt": 1,
+      "case": "heavy-control",
+      "directory": "/tmp/opencode/issue5-prepared-v1/replacement-heavy-control-s55-r0-a1/heavy-control-s55-r0-disabled",
+      "failures": [],
+      "repeat": 0,
+      "seed": 55
+    },
+    {
+      "attempt": 0,
+      "case": "heavy-control",
+      "directory": "/tmp/opencode/issue5-runs-v1/heavy-control-s55-r1-disabled",
+      "failures": [],
+      "repeat": 1,
+      "seed": 55
+    },
+    {
+      "attempt": 0,
+      "case": "heavy-informative",
+      "directory": "/tmp/opencode/issue5-runs-v1/heavy-informative-s11-r0-disabled",
+      "failures": [],
+      "repeat": 0,
+      "seed": 11
+    },
+    {
+      "attempt": 0,
+      "case": "heavy-informative",
+      "directory": "/tmp/opencode/issue5-runs-v1/heavy-informative-s11-r1-disabled",
+      "failures": [],
+      "repeat": 1,
+      "seed": 11
+    },
+    {
+      "attempt": 0,
+      "case": "heavy-informative",
+      "directory": "/tmp/opencode/issue5-runs-v1/heavy-informative-s22-r0-disabled",
+      "failures": [],
+      "repeat": 0,
+      "seed": 22
+    },
+    {
+      "attempt": 0,
+      "case": "heavy-informative",
+      "directory": "/tmp/opencode/issue5-runs-v1/heavy-informative-s22-r1-disabled",
+      "failures": [
+        "not a valid fully drained static trial",
+        "writer/observation/consumer health",
+        "incomplete sealed/synced feedback"
+      ],
+      "repeat": 1,
+      "seed": 22
+    },
+    {
+      "attempt": 1,
+      "case": "heavy-informative",
+      "directory": "/tmp/opencode/issue5-prepared-v1/replacement-heavy-informative-s22-r1-a1/heavy-informative-s22-r1-disabled",
+      "failures": [],
+      "repeat": 1,
+      "seed": 22
+    },
+    {
+      "attempt": 0,
+      "case": "heavy-informative",
+      "directory": "/tmp/opencode/issue5-runs-v1/heavy-informative-s33-r0-disabled",
+      "failures": [
+        "not a valid fully drained static trial",
+        "writer/observation/consumer health",
+        "incomplete sealed/synced feedback"
+      ],
+      "repeat": 0,
+      "seed": 33
+    },
+    {
+      "attempt": 1,
+      "case": "heavy-informative",
+      "directory": "/tmp/opencode/issue5-prepared-v1/replacement-heavy-informative-s33-r0-a1/heavy-informative-s33-r0-disabled",
+      "failures": [],
+      "repeat": 0,
+      "seed": 33
+    },
+    {
+      "attempt": 0,
+      "case": "heavy-informative",
+      "directory": "/tmp/opencode/issue5-runs-v1/heavy-informative-s33-r1-disabled",
+      "failures": [],
+      "repeat": 1,
+      "seed": 33
+    },
+    {
+      "attempt": 0,
+      "case": "heavy-informative",
+      "directory": "/tmp/opencode/issue5-runs-v1/heavy-informative-s44-r0-disabled",
+      "failures": [],
+      "repeat": 0,
+      "seed": 44
+    },
+    {
+      "attempt": 0,
+      "case": "heavy-informative",
+      "directory": "/tmp/opencode/issue5-runs-v1/heavy-informative-s44-r1-disabled",
+      "failures": [],
+      "repeat": 1,
+      "seed": 44
+    },
+    {
+      "attempt": 0,
+      "case": "heavy-informative",
+      "directory": "/tmp/opencode/issue5-runs-v1/heavy-informative-s55-r0-disabled",
+      "failures": [],
+      "repeat": 0,
+      "seed": 55
+    },
+    {
+      "attempt": 0,
+      "case": "heavy-informative",
+      "directory": "/tmp/opencode/issue5-runs-v1/heavy-informative-s55-r1-disabled",
+      "failures": [
+        "not a valid fully drained static trial",
+        "writer/observation/consumer health",
+        "incomplete sealed/synced feedback"
+      ],
+      "repeat": 1,
+      "seed": 55
+    },
+    {
+      "attempt": 1,
+      "case": "heavy-informative",
+      "directory": "/tmp/opencode/issue5-prepared-v1/replacement-heavy-informative-s55-r1-a1/heavy-informative-s55-r1-disabled",
+      "failures": [],
+      "repeat": 1,
+      "seed": 55
+    },
+    {
+      "attempt": 0,
+      "case": "heavy-shift",
+      "directory": "/tmp/opencode/issue5-runs-v1/heavy-shift-s11-r0-disabled",
+      "failures": [],
+      "repeat": 0,
+      "seed": 11
+    },
+    {
+      "attempt": 0,
+      "case": "heavy-shift",
+      "directory": "/tmp/opencode/issue5-runs-v1/heavy-shift-s11-r1-disabled",
+      "failures": [],
+      "repeat": 1,
+      "seed": 11
+    },
+    {
+      "attempt": 0,
+      "case": "heavy-shift",
+      "directory": "/tmp/opencode/issue5-runs-v1/heavy-shift-s22-r0-disabled",
+      "failures": [],
+      "repeat": 0,
+      "seed": 22
+    },
+    {
+      "attempt": 0,
+      "case": "heavy-shift",
+      "directory": "/tmp/opencode/issue5-runs-v1/heavy-shift-s22-r1-disabled",
+      "failures": [],
+      "repeat": 1,
+      "seed": 22
+    },
+    {
+      "attempt": 0,
+      "case": "heavy-shift",
+      "directory": "/tmp/opencode/issue5-runs-v1/heavy-shift-s33-r0-disabled",
+      "failures": [],
+      "repeat": 0,
+      "seed": 33
+    },
+    {
+      "attempt": 0,
+      "case": "heavy-shift",
+      "directory": "/tmp/opencode/issue5-runs-v1/heavy-shift-s33-r1-disabled",
+      "failures": [],
+      "repeat": 1,
+      "seed": 33
+    },
+    {
+      "attempt": 0,
+      "case": "heavy-shift",
+      "directory": "/tmp/opencode/issue5-runs-v1/heavy-shift-s44-r0-disabled",
+      "failures": [
+        "not a valid fully drained static trial",
+        "writer/observation/consumer health",
+        "incomplete sealed/synced feedback"
+      ],
+      "repeat": 0,
+      "seed": 44
+    },
+    {
+      "attempt": 1,
+      "case": "heavy-shift",
+      "directory": "/tmp/opencode/issue5-prepared-v1/replacement-heavy-shift-s44-r0-a1/heavy-shift-s44-r0-disabled",
+      "failures": [
+        "not a valid fully drained static trial",
+        "writer/observation/consumer health",
+        "incomplete sealed/synced feedback"
+      ],
+      "repeat": 0,
+      "seed": 44
+    },
+    {
+      "attempt": 2,
+      "case": "heavy-shift",
+      "directory": "/tmp/opencode/issue5-prepared-v1/replacement-heavy-shift-s44-r0-a2/heavy-shift-s44-r0-disabled",
+      "failures": [],
+      "repeat": 0,
+      "seed": 44
+    },
+    {
+      "attempt": 0,
+      "case": "heavy-shift",
+      "directory": "/tmp/opencode/issue5-runs-v1/heavy-shift-s44-r1-disabled",
+      "failures": [],
+      "repeat": 1,
+      "seed": 44
+    },
+    {
+      "attempt": 0,
+      "case": "heavy-shift",
+      "directory": "/tmp/opencode/issue5-runs-v1/heavy-shift-s55-r0-disabled",
+      "failures": [],
+      "repeat": 0,
+      "seed": 55
+    },
+    {
+      "attempt": 0,
+      "case": "heavy-shift",
+      "directory": "/tmp/opencode/issue5-runs-v1/heavy-shift-s55-r1-disabled",
+      "failures": [
+        "not a valid fully drained static trial",
+        "writer/observation/consumer health",
+        "incomplete sealed/synced feedback"
+      ],
+      "repeat": 1,
+      "seed": 55
+    },
+    {
+      "attempt": 1,
+      "case": "heavy-shift",
+      "directory": "/tmp/opencode/issue5-prepared-v1/replacement-heavy-shift-s55-r1-a1/heavy-shift-s55-r1-disabled",
+      "failures": [
+        "not a valid fully drained static trial",
+        "writer/observation/consumer health",
+        "incomplete sealed/synced feedback"
+      ],
+      "repeat": 1,
+      "seed": 55
+    },
+    {
+      "attempt": 2,
+      "case": "heavy-shift",
+      "directory": "/tmp/opencode/issue5-prepared-v1/replacement-heavy-shift-s55-r1-a2/heavy-shift-s55-r1-disabled",
+      "failures": [],
+      "repeat": 1,
+      "seed": 55
+    },
+    {
+      "attempt": 0,
+      "case": "uniform-informative",
+      "directory": "/tmp/opencode/issue5-runs-v1/uniform-informative-s11-r0-disabled",
+      "failures": [],
+      "repeat": 0,
+      "seed": 11
+    },
+    {
+      "attempt": 0,
+      "case": "uniform-informative",
+      "directory": "/tmp/opencode/issue5-runs-v1/uniform-informative-s11-r1-disabled",
+      "failures": [],
+      "repeat": 1,
+      "seed": 11
+    },
+    {
+      "attempt": 0,
+      "case": "uniform-informative",
+      "directory": "/tmp/opencode/issue5-runs-v1/uniform-informative-s22-r0-disabled",
+      "failures": [],
+      "repeat": 0,
+      "seed": 22
+    },
+    {
+      "attempt": 0,
+      "case": "uniform-informative",
+      "directory": "/tmp/opencode/issue5-runs-v1/uniform-informative-s22-r1-disabled",
+      "failures": [],
+      "repeat": 1,
+      "seed": 22
+    },
+    {
+      "attempt": 0,
+      "case": "uniform-informative",
+      "directory": "/tmp/opencode/issue5-runs-v1/uniform-informative-s33-r0-disabled",
+      "failures": [],
+      "repeat": 0,
+      "seed": 33
+    },
+    {
+      "attempt": 0,
+      "case": "uniform-informative",
+      "directory": "/tmp/opencode/issue5-runs-v1/uniform-informative-s33-r1-disabled",
+      "failures": [],
+      "repeat": 1,
+      "seed": 33
+    },
+    {
+      "attempt": 0,
+      "case": "uniform-informative",
+      "directory": "/tmp/opencode/issue5-runs-v1/uniform-informative-s44-r0-disabled",
+      "failures": [],
+      "repeat": 0,
+      "seed": 44
+    },
+    {
+      "attempt": 0,
+      "case": "uniform-informative",
+      "directory": "/tmp/opencode/issue5-runs-v1/uniform-informative-s44-r1-disabled",
+      "failures": [],
+      "repeat": 1,
+      "seed": 44
+    },
+    {
+      "attempt": 0,
+      "case": "uniform-informative",
+      "directory": "/tmp/opencode/issue5-runs-v1/uniform-informative-s55-r0-disabled",
+      "failures": [],
+      "repeat": 0,
+      "seed": 55
+    },
+    {
+      "attempt": 0,
+      "case": "uniform-informative",
+      "directory": "/tmp/opencode/issue5-runs-v1/uniform-informative-s55-r1-disabled",
+      "failures": [],
+      "repeat": 1,
+      "seed": 55
+    }
+  ]
+}

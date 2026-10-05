@@ -1,0 +1,74 @@
+{
+  "artifact_version": 1,
+  "cells": [
+    {
+      "case": "bimodal-control",
+      "fully_drained_trials": 10,
+      "median_full_drain_capacity_per_s": 87.97286959241347,
+      "median_p95_terminal_ms": 25.1995035,
+      "median_success_per_s": 24.17914551359159,
+      "policy": "disabled",
+      "telemetry_loss": 3,
+      "trials": 10,
+      "valid_trials": 8
+    },
+    {
+      "case": "bimodal-informative",
+      "fully_drained_trials": 10,
+      "median_full_drain_capacity_per_s": 87.9746103953211,
+      "median_p95_terminal_ms": 24.5919015,
+      "median_success_per_s": 24.17914551359159,
+      "policy": "disabled",
+      "telemetry_loss": 3,
+      "trials": 10,
+      "valid_trials": 8
+    },
+    {
+      "case": "heavy-control",
+      "fully_drained_trials": 10,
+      "median_full_drain_capacity_per_s": 141.0376786603876,
+      "median_p95_terminal_ms": 15.7499145,
+      "median_success_per_s": 26.962424693105255,
+      "policy": "disabled",
+      "telemetry_loss": 4,
+      "trials": 10,
+      "valid_trials": 6
+    },
+    {
+      "case": "heavy-informative",
+      "fully_drained_trials": 10,
+      "median_full_drain_capacity_per_s": 141.0384693839488,
+      "median_p95_terminal_ms": 15.331158,
+      "median_success_per_s": 26.962424693105255,
+      "policy": "disabled",
+      "telemetry_loss": 3,
+      "trials": 10,
+      "valid_trials": 7
+    },
+    {
+      "case": "heavy-shift",
+      "fully_drained_trials": 10,
+      "median_full_drain_capacity_per_s": 141.03720386592883,
+      "median_p95_terminal_ms": 15.815251499999999,
+      "median_success_per_s": 26.962424693105255,
+      "policy": "disabled",
+      "telemetry_loss": 2,
+      "trials": 10,
+      "valid_trials": 8
+    },
+    {
+      "case": "uniform-informative",
+      "fully_drained_trials": 10,
+      "median_full_drain_capacity_per_s": 43.012398364964724,
+      "median_p95_terminal_ms": 19.912852,
+      "median_success_per_s": 18.781393333724736,
+      "policy": "disabled",
+      "telemetry_loss": 0,
+      "trials": 10,
+      "valid_trials": 10
+    }
+  ],
+  "configuration_sha256": "bc525ec6026557384408de8375d6b05431499c79e24a01fb4b7d867069ec85e5",
+  "total_trials": 60,
+  "valid_trials": 47
+}

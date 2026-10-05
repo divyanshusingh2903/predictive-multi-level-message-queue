@@ -1,0 +1,2568 @@
+{
+  "candidates": [
+    {
+      "candidate": "global_mean",
+      "comparisons": [
+        {
+          "baseline": "global_mean",
+          "case": "uniform-informative",
+          "ci95": [
+            0.0,
+            0.0
+          ],
+          "mean_delta": 0.0,
+          "metric": "mae_ms",
+          "paired_seeds": 5,
+          "status": "measured"
+        },
+        {
+          "baseline": "job_mean",
+          "case": "uniform-informative",
+          "ci95": [
+            3.0922186231323847,
+            3.2423482929515486
+          ],
+          "mean_delta": 3.1684866644773018,
+          "metric": "mae_ms",
+          "paired_seeds": 5,
+          "status": "measured"
+        },
+        {
+          "baseline": "global_mean",
+          "case": "uniform-informative",
+          "ci95": [
+            0.0,
+            0.0
+          ],
+          "mean_delta": 0.0,
+          "metric": "severe_underestimate_rate",
+          "paired_seeds": 5,
+          "status": "measured"
+        },
+        {
+          "baseline": "job_mean",
+          "case": "uniform-informative",
+          "ci95": [
+            0.0,
+            0.003
+          ],
+          "mean_delta": 0.0011,
+          "metric": "severe_underestimate_rate",
+          "paired_seeds": 5,
+          "status": "measured"
+        },
+        {
+          "baseline": "global_mean",
+          "case": "bimodal-informative",
+          "ci95": [
+            0.0,
+            0.0
+          ],
+          "mean_delta": 0.0,
+          "metric": "mae_ms",
+          "paired_seeds": 5,
+          "status": "measured"
+        },
+        {
+          "baseline": "job_mean",
+          "case": "bimodal-informative",
+          "ci95": [
+            4.982243731797467,
+            5.12960951917882
+          ],
+          "mean_delta": 5.052085760586252,
+          "metric": "mae_ms",
+          "paired_seeds": 5,
+          "status": "measured"
+        },
+        {
+          "baseline": "global_mean",
+          "case": "bimodal-informative",
+          "ci95": [
+            0.0,
+            0.0
+          ],
+          "mean_delta": 0.0,
+          "metric": "severe_underestimate_rate",
+          "paired_seeds": 5,
+          "status": "measured"
+        },
+        {
+          "baseline": "job_mean",
+          "case": "bimodal-informative",
+          "ci95": [
+            0.1975,
+            0.2099
+          ],
+          "mean_delta": 0.20479999999999998,
+          "metric": "severe_underestimate_rate",
+          "paired_seeds": 5,
+          "status": "measured"
+        },
+        {
+          "baseline": "global_mean",
+          "case": "heavy-informative",
+          "ci95": [
+            0.0,
+            0.0
+          ],
+          "mean_delta": 0.0,
+          "metric": "mae_ms",
+          "paired_seeds": 5,
+          "status": "measured"
+        },
+        {
+          "baseline": "job_mean",
+          "case": "heavy-informative",
+          "ci95": [
+            0.6733270974223693,
+            0.7028788802313422
+          ],
+          "mean_delta": 0.6879738186303944,
+          "metric": "mae_ms",
+          "paired_seeds": 5,
+          "status": "measured"
+        },
+        {
+          "baseline": "global_mean",
+          "case": "heavy-informative",
+          "ci95": [
+            0.0,
+            0.0
+          ],
+          "mean_delta": 0.0,
+          "metric": "severe_underestimate_rate",
+          "paired_seeds": 5,
+          "status": "measured"
+        },
+        {
+          "baseline": "job_mean",
+          "case": "heavy-informative",
+          "ci95": [
+            0.0577,
+            0.073
+          ],
+          "mean_delta": 0.0662,
+          "metric": "severe_underestimate_rate",
+          "paired_seeds": 5,
+          "status": "measured"
+        },
+        {
+          "baseline": "global_mean",
+          "case": "bimodal-control",
+          "ci95": [
+            0.0,
+            0.0
+          ],
+          "mean_delta": 0.0,
+          "metric": "mae_ms",
+          "paired_seeds": 5,
+          "status": "measured"
+        },
+        {
+          "baseline": "job_mean",
+          "case": "bimodal-control",
+          "ci95": [
+            -0.003562741276417647,
+            0.0014909940156073275
+          ],
+          "mean_delta": -0.0013989292565942612,
+          "metric": "mae_ms",
+          "paired_seeds": 5,
+          "status": "measured"
+        },
+        {
+          "baseline": "global_mean",
+          "case": "bimodal-control",
+          "ci95": [
+            0.0,
+            0.0
+          ],
+          "mean_delta": 0.0,
+          "metric": "severe_underestimate_rate",
+          "paired_seeds": 5,
+          "status": "measured"
+        },
+        {
+          "baseline": "job_mean",
+          "case": "bimodal-control",
+          "ci95": [
+            0.0,
+            0.0
+          ],
+          "mean_delta": 0.0,
+          "metric": "severe_underestimate_rate",
+          "paired_seeds": 5,
+          "status": "measured"
+        },
+        {
+          "baseline": "global_mean",
+          "case": "heavy-control",
+          "ci95": [
+            0.0,
+            0.0
+          ],
+          "mean_delta": 0.0,
+          "metric": "mae_ms",
+          "paired_seeds": 5,
+          "status": "measured"
+        },
+        {
+          "baseline": "job_mean",
+          "case": "heavy-control",
+          "ci95": [
+            -0.000349049841070892,
+            0.008694260529978171
+          ],
+          "mean_delta": 0.0032049933459045387,
+          "metric": "mae_ms",
+          "paired_seeds": 5,
+          "status": "measured"
+        },
+        {
+          "baseline": "global_mean",
+          "case": "heavy-control",
+          "ci95": [
+            0.0,
+            0.0
+          ],
+          "mean_delta": 0.0,
+          "metric": "severe_underestimate_rate",
+          "paired_seeds": 5,
+          "status": "measured"
+        },
+        {
+          "baseline": "job_mean",
+          "case": "heavy-control",
+          "ci95": [
+            -0.006100000000000001,
+            0.008299999999999995
+          ],
+          "mean_delta": 0.002599999999999998,
+          "metric": "severe_underestimate_rate",
+          "paired_seeds": 5,
+          "status": "measured"
+        },
+        {
+          "baseline": "global_mean",
+          "case": "heavy-shift",
+          "ci95": [
+            0.0,
+            0.0
+          ],
+          "mean_delta": 0.0,
+          "metric": "mae_ms",
+          "paired_seeds": 5,
+          "status": "measured"
+        },
+        {
+          "baseline": "job_mean",
+          "case": "heavy-shift",
+          "ci95": [
+            -0.07286439016655419,
+            -0.02847658621494915
+          ],
+          "mean_delta": -0.050362972333640954,
+          "metric": "mae_ms",
+          "paired_seeds": 5,
+          "status": "measured"
+        },
+        {
+          "baseline": "global_mean",
+          "case": "heavy-shift",
+          "ci95": [
+            0.0,
+            0.0
+          ],
+          "mean_delta": 0.0,
+          "metric": "severe_underestimate_rate",
+          "paired_seeds": 5,
+          "status": "measured"
+        },
+        {
+          "baseline": "job_mean",
+          "case": "heavy-shift",
+          "ci95": [
+            -0.013700000000000002,
+            0.0010000000000000022
+          ],
+          "mean_delta": -0.0059,
+          "metric": "severe_underestimate_rate",
+          "paired_seeds": 5,
+          "status": "measured"
+        }
+      ],
+      "failures": [
+        "uniform-informative/mae_ms: worse than job_mean",
+        "uniform-informative/severe_underestimate_rate: worse than job_mean",
+        "bimodal-informative/mae_ms: worse than job_mean",
+        "bimodal-informative/severe_underestimate_rate: worse than job_mean",
+        "heavy-informative/mae_ms: worse than job_mean",
+        "heavy-informative/severe_underestimate_rate: worse than job_mean",
+        "heavy-control/mae_ms: worse than job_mean",
+        "heavy-control/severe_underestimate_rate: worse than job_mean"
+      ],
+      "passes": false
+    },
+    {
+      "candidate": "job_mean",
+      "comparisons": [
+        {
+          "baseline": "global_mean",
+          "case": "uniform-informative",
+          "ci95": [
+            -3.2423482929515486,
+            -3.0922186231323847
+          ],
+          "mean_delta": -3.1684866644773018,
+          "metric": "mae_ms",
+          "paired_seeds": 5,
+          "status": "measured"
+        },
+        {
+          "baseline": "job_mean",
+          "case": "uniform-informative",
+          "ci95": [
+            0.0,
+            0.0
+          ],
+          "mean_delta": 0.0,
+          "metric": "mae_ms",
+          "paired_seeds": 5,
+          "status": "measured"
+        },
+        {
+          "baseline": "global_mean",
+          "case": "uniform-informative",
+          "ci95": [
+            -0.003,
+            0.0
+          ],
+          "mean_delta": -0.0011,
+          "metric": "severe_underestimate_rate",
+          "paired_seeds": 5,
+          "status": "measured"
+        },
+        {
+          "baseline": "job_mean",
+          "case": "uniform-informative",
+          "ci95": [
+            0.0,
+            0.0
+          ],
+          "mean_delta": 0.0,
+          "metric": "severe_underestimate_rate",
+          "paired_seeds": 5,
+          "status": "measured"
+        },
+        {
+          "baseline": "global_mean",
+          "case": "bimodal-informative",
+          "ci95": [
+            -5.12960951917882,
+            -4.982243731797467
+          ],
+          "mean_delta": -5.052085760586252,
+          "metric": "mae_ms",
+          "paired_seeds": 5,
+          "status": "measured"
+        },
+        {
+          "baseline": "job_mean",
+          "case": "bimodal-informative",
+          "ci95": [
+            0.0,
+            0.0
+          ],
+          "mean_delta": 0.0,
+          "metric": "mae_ms",
+          "paired_seeds": 5,
+          "status": "measured"
+        },
+        {
+          "baseline": "global_mean",
+          "case": "bimodal-informative",
+          "ci95": [
+            -0.2099,
+            -0.1975
+          ],
+          "mean_delta": -0.20479999999999998,
+          "metric": "severe_underestimate_rate",
+          "paired_seeds": 5,
+          "status": "measured"
+        },
+        {
+          "baseline": "job_mean",
+          "case": "bimodal-informative",
+          "ci95": [
+            0.0,
+            0.0
+          ],
+          "mean_delta": 0.0,
+          "metric": "severe_underestimate_rate",
+          "paired_seeds": 5,
+          "status": "measured"
+        },
+        {
+          "baseline": "global_mean",
+          "case": "heavy-informative",
+          "ci95": [
+            -0.7028788802313422,
+            -0.6733270974223693
+          ],
+          "mean_delta": -0.6879738186303944,
+          "metric": "mae_ms",
+          "paired_seeds": 5,
+          "status": "measured"
+        },
+        {
+          "baseline": "job_mean",
+          "case": "heavy-informative",
+          "ci95": [
+            0.0,
+            0.0
+          ],
+          "mean_delta": 0.0,
+          "metric": "mae_ms",
+          "paired_seeds": 5,
+          "status": "measured"
+        },
+        {
+          "baseline": "global_mean",
+          "case": "heavy-informative",
+          "ci95": [
+            -0.073,
+            -0.0577
+          ],
+          "mean_delta": -0.0662,
+          "metric": "severe_underestimate_rate",
+          "paired_seeds": 5,
+          "status": "measured"
+        },
+        {
+          "baseline": "job_mean",
+          "case": "heavy-informative",
+          "ci95": [
+            0.0,
+            0.0
+          ],
+          "mean_delta": 0.0,
+          "metric": "severe_underestimate_rate",
+          "paired_seeds": 5,
+          "status": "measured"
+        },
+        {
+          "baseline": "global_mean",
+          "case": "bimodal-control",
+          "ci95": [
+            -0.0014909940156073275,
+            0.003562741276417647
+          ],
+          "mean_delta": 0.0013989292565942612,
+          "metric": "mae_ms",
+          "paired_seeds": 5,
+          "status": "measured"
+        },
+        {
+          "baseline": "job_mean",
+          "case": "bimodal-control",
+          "ci95": [
+            0.0,
+            0.0
+          ],
+          "mean_delta": 0.0,
+          "metric": "mae_ms",
+          "paired_seeds": 5,
+          "status": "measured"
+        },
+        {
+          "baseline": "global_mean",
+          "case": "bimodal-control",
+          "ci95": [
+            0.0,
+            0.0
+          ],
+          "mean_delta": 0.0,
+          "metric": "severe_underestimate_rate",
+          "paired_seeds": 5,
+          "status": "measured"
+        },
+        {
+          "baseline": "job_mean",
+          "case": "bimodal-control",
+          "ci95": [
+            0.0,
+            0.0
+          ],
+          "mean_delta": 0.0,
+          "metric": "severe_underestimate_rate",
+          "paired_seeds": 5,
+          "status": "measured"
+        },
+        {
+          "baseline": "global_mean",
+          "case": "heavy-control",
+          "ci95": [
+            -0.008694260529978171,
+            0.000349049841070892
+          ],
+          "mean_delta": -0.0032049933459045387,
+          "metric": "mae_ms",
+          "paired_seeds": 5,
+          "status": "measured"
+        },
+        {
+          "baseline": "job_mean",
+          "case": "heavy-control",
+          "ci95": [
+            0.0,
+            0.0
+          ],
+          "mean_delta": 0.0,
+          "metric": "mae_ms",
+          "paired_seeds": 5,
+          "status": "measured"
+        },
+        {
+          "baseline": "global_mean",
+          "case": "heavy-control",
+          "ci95": [
+            -0.008499999999999997,
+            0.006100000000000001
+          ],
+          "mean_delta": -0.002599999999999998,
+          "metric": "severe_underestimate_rate",
+          "paired_seeds": 5,
+          "status": "measured"
+        },
+        {
+          "baseline": "job_mean",
+          "case": "heavy-control",
+          "ci95": [
+            0.0,
+            0.0
+          ],
+          "mean_delta": 0.0,
+          "metric": "severe_underestimate_rate",
+          "paired_seeds": 5,
+          "status": "measured"
+        },
+        {
+          "baseline": "global_mean",
+          "case": "heavy-shift",
+          "ci95": [
+            0.02829950080111541,
+            0.07286439016655419
+          ],
+          "mean_delta": 0.050362972333640954,
+          "metric": "mae_ms",
+          "paired_seeds": 5,
+          "status": "measured"
+        },
+        {
+          "baseline": "job_mean",
+          "case": "heavy-shift",
+          "ci95": [
+            0.0,
+            0.0
+          ],
+          "mean_delta": 0.0,
+          "metric": "mae_ms",
+          "paired_seeds": 5,
+          "status": "measured"
+        },
+        {
+          "baseline": "global_mean",
+          "case": "heavy-shift",
+          "ci95": [
+            -0.0010000000000000022,
+            0.013700000000000002
+          ],
+          "mean_delta": 0.0059,
+          "metric": "severe_underestimate_rate",
+          "paired_seeds": 5,
+          "status": "measured"
+        },
+        {
+          "baseline": "job_mean",
+          "case": "heavy-shift",
+          "ci95": [
+            0.0,
+            0.0
+          ],
+          "mean_delta": 0.0,
+          "metric": "severe_underestimate_rate",
+          "paired_seeds": 5,
+          "status": "measured"
+        }
+      ],
+      "failures": [
+        "bimodal-control/mae_ms: worse than global_mean",
+        "heavy-shift/mae_ms: worse than global_mean",
+        "heavy-shift/severe_underestimate_rate: worse than global_mean"
+      ],
+      "passes": false
+    },
+    {
+      "candidate": "job_ewma",
+      "comparisons": [
+        {
+          "baseline": "global_mean",
+          "case": "uniform-informative",
+          "ci95": [
+            -3.2194102195759626,
+            -3.0844264218681
+          ],
+          "mean_delta": -3.1527796116376914,
+          "metric": "mae_ms",
+          "paired_seeds": 5,
+          "status": "measured"
+        },
+        {
+          "baseline": "job_mean",
+          "case": "uniform-informative",
+          "ci95": [
+            0.005116112973068865,
+            0.026946462569140815
+          ],
+          "mean_delta": 0.01570705283961049,
+          "metric": "mae_ms",
+          "paired_seeds": 5,
+          "status": "measured"
+        },
+        {
+          "baseline": "global_mean",
+          "case": "uniform-informative",
+          "ci95": [
+            0.0026,
+            0.008199999999999999
+          ],
+          "mean_delta": 0.0052,
+          "metric": "severe_underestimate_rate",
+          "paired_seeds": 5,
+          "status": "measured"
+        },
+        {
+          "baseline": "job_mean",
+          "case": "uniform-informative",
+          "ci95": [
+            0.0044,
+            0.0087
+          ],
+          "mean_delta": 0.0063,
+          "metric": "severe_underestimate_rate",
+          "paired_seeds": 5,
+          "status": "measured"
+        },
+        {
+          "baseline": "global_mean",
+          "case": "bimodal-informative",
+          "ci95": [
+            -5.133743919783481,
+            -4.980150771970756
+          ],
+          "mean_delta": -5.053099533937884,
+          "metric": "mae_ms",
+          "paired_seeds": 5,
+          "status": "measured"
+        },
+        {
+          "baseline": "job_mean",
+          "case": "bimodal-informative",
+          "ci95": [
+            -0.004501145309359439,
+            0.00272559871586332
+          ],
+          "mean_delta": -0.0010137733516318026,
+          "metric": "mae_ms",
+          "paired_seeds": 5,
+          "status": "measured"
+        },
+        {
+          "baseline": "global_mean",
+          "case": "bimodal-informative",
+          "ci95": [
+            -0.2099,
+            -0.1975
+          ],
+          "mean_delta": -0.20479999999999998,
+          "metric": "severe_underestimate_rate",
+          "paired_seeds": 5,
+          "status": "measured"
+        },
+        {
+          "baseline": "job_mean",
+          "case": "bimodal-informative",
+          "ci95": [
+            0.0,
+            0.0
+          ],
+          "mean_delta": 0.0,
+          "metric": "severe_underestimate_rate",
+          "paired_seeds": 5,
+          "status": "measured"
+        },
+        {
+          "baseline": "global_mean",
+          "case": "heavy-informative",
+          "ci95": [
+            -0.6998319796920119,
+            -0.6603540490974303
+          ],
+          "mean_delta": -0.6770582853360568,
+          "metric": "mae_ms",
+          "paired_seeds": 5,
+          "status": "measured"
+        },
+        {
+          "baseline": "job_mean",
+          "case": "heavy-informative",
+          "ci95": [
+            0.0006574404087009266,
+            0.023279470555959535
+          ],
+          "mean_delta": 0.01091553329433761,
+          "metric": "mae_ms",
+          "paired_seeds": 5,
+          "status": "measured"
+        },
+        {
+          "baseline": "global_mean",
+          "case": "heavy-informative",
+          "ci95": [
+            -0.0733,
+            -0.056299999999999996
+          ],
+          "mean_delta": -0.065,
+          "metric": "severe_underestimate_rate",
+          "paired_seeds": 5,
+          "status": "measured"
+        },
+        {
+          "baseline": "job_mean",
+          "case": "heavy-informative",
+          "ci95": [
+            -0.0010000000000000009,
+            0.0032000000000000028
+          ],
+          "mean_delta": 0.0011999999999999997,
+          "metric": "severe_underestimate_rate",
+          "paired_seeds": 5,
+          "status": "measured"
+        },
+        {
+          "baseline": "global_mean",
+          "case": "bimodal-control",
+          "ci95": [
+            -0.076162531505934,
+            0.08867317676617015
+          ],
+          "mean_delta": 0.010572682264982713,
+          "metric": "mae_ms",
+          "paired_seeds": 5,
+          "status": "measured"
+        },
+        {
+          "baseline": "job_mean",
+          "case": "bimodal-control",
+          "ci95": [
+            -0.07927556910993987,
+            0.08676892584547043
+          ],
+          "mean_delta": 0.009173753008388453,
+          "metric": "mae_ms",
+          "paired_seeds": 5,
+          "status": "measured"
+        },
+        {
+          "baseline": "global_mean",
+          "case": "bimodal-control",
+          "ci95": [
+            0.0,
+            0.0
+          ],
+          "mean_delta": 0.0,
+          "metric": "severe_underestimate_rate",
+          "paired_seeds": 5,
+          "status": "measured"
+        },
+        {
+          "baseline": "job_mean",
+          "case": "bimodal-control",
+          "ci95": [
+            0.0,
+            0.0
+          ],
+          "mean_delta": 0.0,
+          "metric": "severe_underestimate_rate",
+          "paired_seeds": 5,
+          "status": "measured"
+        },
+        {
+          "baseline": "global_mean",
+          "case": "heavy-control",
+          "ci95": [
+            -0.0020462234522814924,
+            0.026578833406876345
+          ],
+          "mean_delta": 0.01145074938508952,
+          "metric": "mae_ms",
+          "paired_seeds": 5,
+          "status": "measured"
+        },
+        {
+          "baseline": "job_mean",
+          "case": "heavy-control",
+          "ci95": [
+            -0.0007764541034751549,
+            0.030722315615844487
+          ],
+          "mean_delta": 0.01465574273099406,
+          "metric": "mae_ms",
+          "paired_seeds": 5,
+          "status": "measured"
+        },
+        {
+          "baseline": "global_mean",
+          "case": "heavy-control",
+          "ci95": [
+            -0.003999999999999998,
+            0.012800000000000002
+          ],
+          "mean_delta": 0.003700000000000002,
+          "metric": "severe_underestimate_rate",
+          "paired_seeds": 5,
+          "status": "measured"
+        },
+        {
+          "baseline": "job_mean",
+          "case": "heavy-control",
+          "ci95": [
+            0.0014999999999999985,
+            0.011300000000000001
+          ],
+          "mean_delta": 0.0063,
+          "metric": "severe_underestimate_rate",
+          "paired_seeds": 5,
+          "status": "measured"
+        },
+        {
+          "baseline": "global_mean",
+          "case": "heavy-shift",
+          "ci95": [
+            -0.6325725556705567,
+            -0.5967611125263964
+          ],
+          "mean_delta": -0.6132443571534767,
+          "metric": "mae_ms",
+          "paired_seeds": 5,
+          "status": "measured"
+        },
+        {
+          "baseline": "job_mean",
+          "case": "heavy-shift",
+          "ci95": [
+            -0.6914110571903948,
+            -0.635030221005815
+          ],
+          "mean_delta": -0.6636073294871176,
+          "metric": "mae_ms",
+          "paired_seeds": 5,
+          "status": "measured"
+        },
+        {
+          "baseline": "global_mean",
+          "case": "heavy-shift",
+          "ci95": [
+            -0.0666,
+            -0.052199999999999996
+          ],
+          "mean_delta": -0.0594,
+          "metric": "severe_underestimate_rate",
+          "paired_seeds": 5,
+          "status": "measured"
+        },
+        {
+          "baseline": "job_mean",
+          "case": "heavy-shift",
+          "ci95": [
+            -0.0712,
+            -0.0611
+          ],
+          "mean_delta": -0.0653,
+          "metric": "severe_underestimate_rate",
+          "paired_seeds": 5,
+          "status": "measured"
+        }
+      ],
+      "failures": [
+        "uniform-informative/mae_ms: worse than job_mean",
+        "uniform-informative/severe_underestimate_rate: worse than global_mean",
+        "uniform-informative/severe_underestimate_rate: worse than job_mean",
+        "heavy-informative/mae_ms: worse than job_mean",
+        "heavy-informative/severe_underestimate_rate: worse than job_mean",
+        "bimodal-control/mae_ms: worse than global_mean",
+        "bimodal-control/mae_ms: worse than job_mean",
+        "heavy-control/mae_ms: worse than global_mean",
+        "heavy-control/mae_ms: worse than job_mean",
+        "heavy-control/severe_underestimate_rate: worse than global_mean",
+        "heavy-control/severe_underestimate_rate: worse than job_mean"
+      ],
+      "passes": false
+    },
+    {
+      "candidate": "linear_raw",
+      "comparisons": [
+        {
+          "baseline": "global_mean",
+          "case": "uniform-informative",
+          "ci95": [
+            -3.2250226001041757,
+            -3.087102309131303
+          ],
+          "mean_delta": -3.1575336240899334,
+          "metric": "mae_ms",
+          "paired_seeds": 5,
+          "status": "measured"
+        },
+        {
+          "baseline": "job_mean",
+          "case": "uniform-informative",
+          "ci95": [
+            0.004115093815162618,
+            0.019115824890611654
+          ],
+          "mean_delta": 0.010953040387368263,
+          "metric": "mae_ms",
+          "paired_seeds": 5,
+          "status": "measured"
+        },
+        {
+          "baseline": "global_mean",
+          "case": "uniform-informative",
+          "ci95": [
+            0.0012000000000000001,
+            0.0075
+          ],
+          "mean_delta": 0.0039,
+          "metric": "severe_underestimate_rate",
+          "paired_seeds": 5,
+          "status": "measured"
+        },
+        {
+          "baseline": "job_mean",
+          "case": "uniform-informative",
+          "ci95": [
+            0.0028,
+            0.008199999999999999
+          ],
+          "mean_delta": 0.005,
+          "metric": "severe_underestimate_rate",
+          "paired_seeds": 5,
+          "status": "measured"
+        },
+        {
+          "baseline": "global_mean",
+          "case": "bimodal-informative",
+          "ci95": [
+            -5.112053003356872,
+            -4.96087004613144
+          ],
+          "mean_delta": -5.032639783353172,
+          "metric": "mae_ms",
+          "paired_seeds": 5,
+          "status": "measured"
+        },
+        {
+          "baseline": "job_mean",
+          "case": "bimodal-informative",
+          "ci95": [
+            0.016275856910039615,
+            0.022542702179482826
+          ],
+          "mean_delta": 0.019445977233080274,
+          "metric": "mae_ms",
+          "paired_seeds": 5,
+          "status": "measured"
+        },
+        {
+          "baseline": "global_mean",
+          "case": "bimodal-informative",
+          "ci95": [
+            -0.2098,
+            -0.1973
+          ],
+          "mean_delta": -0.2047,
+          "metric": "severe_underestimate_rate",
+          "paired_seeds": 5,
+          "status": "measured"
+        },
+        {
+          "baseline": "job_mean",
+          "case": "bimodal-informative",
+          "ci95": [
+            0.0,
+            0.00030000000000000003
+          ],
+          "mean_delta": 0.0001,
+          "metric": "severe_underestimate_rate",
+          "paired_seeds": 5,
+          "status": "measured"
+        },
+        {
+          "baseline": "global_mean",
+          "case": "heavy-informative",
+          "ci95": [
+            -0.7806966024850707,
+            -0.7245457820842472
+          ],
+          "mean_delta": -0.7529309373749794,
+          "metric": "mae_ms",
+          "paired_seeds": 5,
+          "status": "measured"
+        },
+        {
+          "baseline": "job_mean",
+          "case": "heavy-informative",
+          "ci95": [
+            -0.08501893083526442,
+            -0.04489530665390569
+          ],
+          "mean_delta": -0.06495711874458505,
+          "metric": "mae_ms",
+          "paired_seeds": 5,
+          "status": "measured"
+        },
+        {
+          "baseline": "global_mean",
+          "case": "heavy-informative",
+          "ci95": [
+            -0.0576,
+            -0.045399999999999996
+          ],
+          "mean_delta": -0.0519,
+          "metric": "severe_underestimate_rate",
+          "paired_seeds": 5,
+          "status": "measured"
+        },
+        {
+          "baseline": "job_mean",
+          "case": "heavy-informative",
+          "ci95": [
+            0.011199999999999996,
+            0.0174
+          ],
+          "mean_delta": 0.014299999999999997,
+          "metric": "severe_underestimate_rate",
+          "paired_seeds": 5,
+          "status": "measured"
+        },
+        {
+          "baseline": "global_mean",
+          "case": "bimodal-control",
+          "ci95": [
+            -1.3143223938753763,
+            -1.142772015030936
+          ],
+          "mean_delta": -1.2231699116232804,
+          "metric": "mae_ms",
+          "paired_seeds": 5,
+          "status": "measured"
+        },
+        {
+          "baseline": "job_mean",
+          "case": "bimodal-control",
+          "ci95": [
+            -1.3156202082801292,
+            -1.1427717564312034
+          ],
+          "mean_delta": -1.2245688408798747,
+          "metric": "mae_ms",
+          "paired_seeds": 5,
+          "status": "measured"
+        },
+        {
+          "baseline": "global_mean",
+          "case": "bimodal-control",
+          "ci95": [
+            0.0,
+            0.00030000000000000024
+          ],
+          "mean_delta": 0.00010000000000000009,
+          "metric": "severe_underestimate_rate",
+          "paired_seeds": 5,
+          "status": "measured"
+        },
+        {
+          "baseline": "job_mean",
+          "case": "bimodal-control",
+          "ci95": [
+            0.0,
+            0.00030000000000000024
+          ],
+          "mean_delta": 0.00010000000000000009,
+          "metric": "severe_underestimate_rate",
+          "paired_seeds": 5,
+          "status": "measured"
+        },
+        {
+          "baseline": "global_mean",
+          "case": "heavy-control",
+          "ci95": [
+            -0.23229305968467154,
+            -0.1829772164926619
+          ],
+          "mean_delta": -0.2076351380886667,
+          "metric": "mae_ms",
+          "paired_seeds": 5,
+          "status": "measured"
+        },
+        {
+          "baseline": "job_mean",
+          "case": "heavy-control",
+          "ci95": [
+            -0.2259462701718708,
+            -0.18291401931365353
+          ],
+          "mean_delta": -0.20443014474276217,
+          "metric": "mae_ms",
+          "paired_seeds": 5,
+          "status": "measured"
+        },
+        {
+          "baseline": "global_mean",
+          "case": "heavy-control",
+          "ci95": [
+            0.017100000000000004,
+            0.03460000000000001
+          ],
+          "mean_delta": 0.025300000000000007,
+          "metric": "severe_underestimate_rate",
+          "paired_seeds": 5,
+          "status": "measured"
+        },
+        {
+          "baseline": "job_mean",
+          "case": "heavy-control",
+          "ci95": [
+            0.022000000000000002,
+            0.032400000000000005
+          ],
+          "mean_delta": 0.027900000000000005,
+          "metric": "severe_underestimate_rate",
+          "paired_seeds": 5,
+          "status": "measured"
+        },
+        {
+          "baseline": "global_mean",
+          "case": "heavy-shift",
+          "ci95": [
+            -0.6364050815093972,
+            -0.5780107205509022
+          ],
+          "mean_delta": -0.603976694552649,
+          "metric": "mae_ms",
+          "paired_seeds": 5,
+          "status": "measured"
+        },
+        {
+          "baseline": "job_mean",
+          "case": "heavy-shift",
+          "ci95": [
+            -0.683908230521339,
+            -0.6290597597354989
+          ],
+          "mean_delta": -0.65433966688629,
+          "metric": "mae_ms",
+          "paired_seeds": 5,
+          "status": "measured"
+        },
+        {
+          "baseline": "global_mean",
+          "case": "heavy-shift",
+          "ci95": [
+            -0.0352,
+            -0.0191
+          ],
+          "mean_delta": -0.0266,
+          "metric": "severe_underestimate_rate",
+          "paired_seeds": 5,
+          "status": "measured"
+        },
+        {
+          "baseline": "job_mean",
+          "case": "heavy-shift",
+          "ci95": [
+            -0.041100000000000005,
+            -0.025299999999999996
+          ],
+          "mean_delta": -0.0325,
+          "metric": "severe_underestimate_rate",
+          "paired_seeds": 5,
+          "status": "measured"
+        }
+      ],
+      "failures": [
+        "uniform-informative/mae_ms: worse than job_mean",
+        "uniform-informative/severe_underestimate_rate: worse than global_mean",
+        "uniform-informative/severe_underestimate_rate: worse than job_mean",
+        "bimodal-informative/mae_ms: worse than job_mean",
+        "bimodal-informative/severe_underestimate_rate: worse than job_mean",
+        "heavy-informative/severe_underestimate_rate: worse than job_mean",
+        "bimodal-control/severe_underestimate_rate: worse than global_mean",
+        "bimodal-control/severe_underestimate_rate: worse than job_mean",
+        "heavy-control/severe_underestimate_rate: worse than global_mean",
+        "heavy-control/severe_underestimate_rate: worse than job_mean"
+      ],
+      "passes": false
+    },
+    {
+      "candidate": "linear_log",
+      "comparisons": [
+        {
+          "baseline": "global_mean",
+          "case": "uniform-informative",
+          "ci95": [
+            -3.201325111314216,
+            -3.0771965339985328
+          ],
+          "mean_delta": -3.140023179556541,
+          "metric": "mae_ms",
+          "paired_seeds": 5,
+          "status": "measured"
+        },
+        {
+          "baseline": "job_mean",
+          "case": "uniform-informative",
+          "ci95": [
+            0.015022089133851968,
+            0.041023181637332894
+          ],
+          "mean_delta": 0.028463484920760652,
+          "metric": "mae_ms",
+          "paired_seeds": 5,
+          "status": "measured"
+        },
+        {
+          "baseline": "global_mean",
+          "case": "uniform-informative",
+          "ci95": [
+            0.0181,
+            0.023799999999999998
+          ],
+          "mean_delta": 0.0212,
+          "metric": "severe_underestimate_rate",
+          "paired_seeds": 5,
+          "status": "measured"
+        },
+        {
+          "baseline": "job_mean",
+          "case": "uniform-informative",
+          "ci95": [
+            0.0184,
+            0.026
+          ],
+          "mean_delta": 0.0223,
+          "metric": "severe_underestimate_rate",
+          "paired_seeds": 5,
+          "status": "measured"
+        },
+        {
+          "baseline": "global_mean",
+          "case": "bimodal-informative",
+          "ci95": [
+            -5.133192411990453,
+            -4.982008718070873
+          ],
+          "mean_delta": -5.05355327033148,
+          "metric": "mae_ms",
+          "paired_seeds": 5,
+          "status": "measured"
+        },
+        {
+          "baseline": "job_mean",
+          "case": "bimodal-informative",
+          "ci95": [
+            -0.0037900215232717417,
+            0.0008550020328156494
+          ],
+          "mean_delta": -0.001467509745228046,
+          "metric": "mae_ms",
+          "paired_seeds": 5,
+          "status": "measured"
+        },
+        {
+          "baseline": "global_mean",
+          "case": "bimodal-informative",
+          "ci95": [
+            -0.2098,
+            -0.1973
+          ],
+          "mean_delta": -0.2047,
+          "metric": "severe_underestimate_rate",
+          "paired_seeds": 5,
+          "status": "measured"
+        },
+        {
+          "baseline": "job_mean",
+          "case": "bimodal-informative",
+          "ci95": [
+            0.0,
+            0.00030000000000000003
+          ],
+          "mean_delta": 0.0001,
+          "metric": "severe_underestimate_rate",
+          "paired_seeds": 5,
+          "status": "measured"
+        },
+        {
+          "baseline": "global_mean",
+          "case": "heavy-informative",
+          "ci95": [
+            -0.8222870946375537,
+            -0.7704670261888494
+          ],
+          "mean_delta": -0.7972699605031119,
+          "metric": "mae_ms",
+          "paired_seeds": 5,
+          "status": "measured"
+        },
+        {
+          "baseline": "job_mean",
+          "case": "heavy-informative",
+          "ci95": [
+            -0.12712223771929507,
+            -0.09147004602614006
+          ],
+          "mean_delta": -0.10929614187271756,
+          "metric": "mae_ms",
+          "paired_seeds": 5,
+          "status": "measured"
+        },
+        {
+          "baseline": "global_mean",
+          "case": "heavy-informative",
+          "ci95": [
+            -0.058,
+            -0.0469
+          ],
+          "mean_delta": -0.052199999999999996,
+          "metric": "severe_underestimate_rate",
+          "paired_seeds": 5,
+          "status": "measured"
+        },
+        {
+          "baseline": "job_mean",
+          "case": "heavy-informative",
+          "ci95": [
+            0.010799999999999999,
+            0.0172
+          ],
+          "mean_delta": 0.014,
+          "metric": "severe_underestimate_rate",
+          "paired_seeds": 5,
+          "status": "measured"
+        },
+        {
+          "baseline": "global_mean",
+          "case": "bimodal-control",
+          "ci95": [
+            -1.3740356312792115,
+            -1.2012149451637866
+          ],
+          "mean_delta": -1.2814933667261126,
+          "metric": "mae_ms",
+          "paired_seeds": 5,
+          "status": "measured"
+        },
+        {
+          "baseline": "job_mean",
+          "case": "bimodal-control",
+          "ci95": [
+            -1.3758795893723452,
+            -1.2019744661459177
+          ],
+          "mean_delta": -1.282892295982707,
+          "metric": "mae_ms",
+          "paired_seeds": 5,
+          "status": "measured"
+        },
+        {
+          "baseline": "global_mean",
+          "case": "bimodal-control",
+          "ci95": [
+            0.0,
+            0.00030000000000000024
+          ],
+          "mean_delta": 0.00010000000000000009,
+          "metric": "severe_underestimate_rate",
+          "paired_seeds": 5,
+          "status": "measured"
+        },
+        {
+          "baseline": "job_mean",
+          "case": "bimodal-control",
+          "ci95": [
+            0.0,
+            0.00030000000000000024
+          ],
+          "mean_delta": 0.00010000000000000009,
+          "metric": "severe_underestimate_rate",
+          "paired_seeds": 5,
+          "status": "measured"
+        },
+        {
+          "baseline": "global_mean",
+          "case": "heavy-control",
+          "ci95": [
+            -0.31341882383188435,
+            -0.265721876293622
+          ],
+          "mean_delta": -0.28957035006275317,
+          "metric": "mae_ms",
+          "paired_seeds": 5,
+          "status": "measured"
+        },
+        {
+          "baseline": "job_mean",
+          "case": "heavy-control",
+          "ci95": [
+            -0.30707203431908364,
+            -0.26565867911461366
+          ],
+          "mean_delta": -0.28636535671684865,
+          "metric": "mae_ms",
+          "paired_seeds": 5,
+          "status": "measured"
+        },
+        {
+          "baseline": "global_mean",
+          "case": "heavy-control",
+          "ci95": [
+            0.0331,
+            0.0484
+          ],
+          "mean_delta": 0.0409,
+          "metric": "severe_underestimate_rate",
+          "paired_seeds": 5,
+          "status": "measured"
+        },
+        {
+          "baseline": "job_mean",
+          "case": "heavy-control",
+          "ci95": [
+            0.036899999999999995,
+            0.04889999999999999
+          ],
+          "mean_delta": 0.0435,
+          "metric": "severe_underestimate_rate",
+          "paired_seeds": 5,
+          "status": "measured"
+        },
+        {
+          "baseline": "global_mean",
+          "case": "heavy-shift",
+          "ci95": [
+            -0.7008648775830792,
+            -0.6455615337972135
+          ],
+          "mean_delta": -0.672130192743237,
+          "metric": "mae_ms",
+          "paired_seeds": 5,
+          "status": "measured"
+        },
+        {
+          "baseline": "job_mean",
+          "case": "heavy-shift",
+          "ci95": [
+            -0.7496954065095378,
+            -0.6959422966840568
+          ],
+          "mean_delta": -0.722493165076878,
+          "metric": "mae_ms",
+          "paired_seeds": 5,
+          "status": "measured"
+        },
+        {
+          "baseline": "global_mean",
+          "case": "heavy-shift",
+          "ci95": [
+            -0.0328,
+            -0.0208
+          ],
+          "mean_delta": -0.026799999999999997,
+          "metric": "severe_underestimate_rate",
+          "paired_seeds": 5,
+          "status": "measured"
+        },
+        {
+          "baseline": "job_mean",
+          "case": "heavy-shift",
+          "ci95": [
+            -0.0393,
+            -0.026099999999999995
+          ],
+          "mean_delta": -0.0327,
+          "metric": "severe_underestimate_rate",
+          "paired_seeds": 5,
+          "status": "measured"
+        }
+      ],
+      "failures": [
+        "uniform-informative/mae_ms: worse than job_mean",
+        "uniform-informative/severe_underestimate_rate: worse than global_mean",
+        "uniform-informative/severe_underestimate_rate: worse than job_mean",
+        "bimodal-informative/severe_underestimate_rate: worse than job_mean",
+        "heavy-informative/severe_underestimate_rate: worse than job_mean",
+        "bimodal-control/severe_underestimate_rate: worse than global_mean",
+        "bimodal-control/severe_underestimate_rate: worse than job_mean",
+        "heavy-control/severe_underestimate_rate: worse than global_mean",
+        "heavy-control/severe_underestimate_rate: worse than job_mean"
+      ],
+      "passes": false
+    },
+    {
+      "candidate": "tree_raw",
+      "comparisons": [
+        {
+          "baseline": "global_mean",
+          "case": "uniform-informative",
+          "ci95": [
+            0.0,
+            0.0
+          ],
+          "mean_delta": 0.0,
+          "metric": "mae_ms",
+          "paired_seeds": 5,
+          "status": "measured"
+        },
+        {
+          "baseline": "job_mean",
+          "case": "uniform-informative",
+          "ci95": [
+            3.0922186231323847,
+            3.2423482929515486
+          ],
+          "mean_delta": 3.1684866644773018,
+          "metric": "mae_ms",
+          "paired_seeds": 5,
+          "status": "measured"
+        },
+        {
+          "baseline": "global_mean",
+          "case": "uniform-informative",
+          "ci95": [
+            0.0,
+            0.0
+          ],
+          "mean_delta": 0.0,
+          "metric": "severe_underestimate_rate",
+          "paired_seeds": 5,
+          "status": "measured"
+        },
+        {
+          "baseline": "job_mean",
+          "case": "uniform-informative",
+          "ci95": [
+            0.0,
+            0.003
+          ],
+          "mean_delta": 0.0011,
+          "metric": "severe_underestimate_rate",
+          "paired_seeds": 5,
+          "status": "measured"
+        },
+        {
+          "baseline": "global_mean",
+          "case": "bimodal-informative",
+          "ci95": [
+            -4.957699393598907,
+            -4.56260942114451
+          ],
+          "mean_delta": -4.751252530063248,
+          "metric": "mae_ms",
+          "paired_seeds": 5,
+          "status": "measured"
+        },
+        {
+          "baseline": "job_mean",
+          "case": "bimodal-informative",
+          "ci95": [
+            0.09149593053343114,
+            0.5101705305125755
+          ],
+          "mean_delta": 0.3008332305230033,
+          "metric": "mae_ms",
+          "paired_seeds": 5,
+          "status": "measured"
+        },
+        {
+          "baseline": "global_mean",
+          "case": "bimodal-informative",
+          "ci95": [
+            -0.2099,
+            -0.1975
+          ],
+          "mean_delta": -0.20479999999999998,
+          "metric": "severe_underestimate_rate",
+          "paired_seeds": 5,
+          "status": "measured"
+        },
+        {
+          "baseline": "job_mean",
+          "case": "bimodal-informative",
+          "ci95": [
+            0.0,
+            0.0
+          ],
+          "mean_delta": 0.0,
+          "metric": "severe_underestimate_rate",
+          "paired_seeds": 5,
+          "status": "measured"
+        },
+        {
+          "baseline": "global_mean",
+          "case": "heavy-informative",
+          "ci95": [
+            -0.6996204287596262,
+            -0.6646849791788265
+          ],
+          "mean_delta": -0.6821527039692263,
+          "metric": "mae_ms",
+          "paired_seeds": 5,
+          "status": "measured"
+        },
+        {
+          "baseline": "job_mean",
+          "case": "heavy-informative",
+          "ci95": [
+            0.0007472358069377849,
+            0.010218756200519662
+          ],
+          "mean_delta": 0.005821114661168058,
+          "metric": "mae_ms",
+          "paired_seeds": 5,
+          "status": "measured"
+        },
+        {
+          "baseline": "global_mean",
+          "case": "heavy-informative",
+          "ci95": [
+            -0.073,
+            -0.0577
+          ],
+          "mean_delta": -0.0662,
+          "metric": "severe_underestimate_rate",
+          "paired_seeds": 5,
+          "status": "measured"
+        },
+        {
+          "baseline": "job_mean",
+          "case": "heavy-informative",
+          "ci95": [
+            0.0,
+            0.0
+          ],
+          "mean_delta": 0.0,
+          "metric": "severe_underestimate_rate",
+          "paired_seeds": 5,
+          "status": "measured"
+        },
+        {
+          "baseline": "global_mean",
+          "case": "bimodal-control",
+          "ci95": [
+            -0.023851427080741238,
+            0.0165323816985695
+          ],
+          "mean_delta": -0.006717883785806844,
+          "metric": "mae_ms",
+          "paired_seeds": 5,
+          "status": "measured"
+        },
+        {
+          "baseline": "job_mean",
+          "case": "bimodal-control",
+          "ci95": [
+            -0.02435669091551329,
+            0.01478486362140492
+          ],
+          "mean_delta": -0.008116813042401106,
+          "metric": "mae_ms",
+          "paired_seeds": 5,
+          "status": "measured"
+        },
+        {
+          "baseline": "global_mean",
+          "case": "bimodal-control",
+          "ci95": [
+            0.0,
+            0.0
+          ],
+          "mean_delta": 0.0,
+          "metric": "severe_underestimate_rate",
+          "paired_seeds": 5,
+          "status": "measured"
+        },
+        {
+          "baseline": "job_mean",
+          "case": "bimodal-control",
+          "ci95": [
+            0.0,
+            0.0
+          ],
+          "mean_delta": 0.0,
+          "metric": "severe_underestimate_rate",
+          "paired_seeds": 5,
+          "status": "measured"
+        },
+        {
+          "baseline": "global_mean",
+          "case": "heavy-control",
+          "ci95": [
+            -0.005136851732351256,
+            0.04110047965431942
+          ],
+          "mean_delta": 0.017981813960984083,
+          "metric": "mae_ms",
+          "paired_seeds": 5,
+          "status": "measured"
+        },
+        {
+          "baseline": "job_mean",
+          "case": "heavy-control",
+          "ci95": [
+            -0.0037614442799186907,
+            0.04911037856901235
+          ],
+          "mean_delta": 0.02118680730688862,
+          "metric": "mae_ms",
+          "paired_seeds": 5,
+          "status": "measured"
+        },
+        {
+          "baseline": "global_mean",
+          "case": "heavy-control",
+          "ci95": [
+            -0.009599999999999996,
+            0.005299999999999999
+          ],
+          "mean_delta": -0.0028999999999999985,
+          "metric": "severe_underestimate_rate",
+          "paired_seeds": 5,
+          "status": "measured"
+        },
+        {
+          "baseline": "job_mean",
+          "case": "heavy-control",
+          "ci95": [
+            -0.0018000000000000017,
+            0.0017000000000000014
+          ],
+          "mean_delta": -0.00030000000000000024,
+          "metric": "severe_underestimate_rate",
+          "paired_seeds": 5,
+          "status": "measured"
+        },
+        {
+          "baseline": "global_mean",
+          "case": "heavy-shift",
+          "ci95": [
+            0.03864339933364471,
+            0.07792057952033402
+          ],
+          "mean_delta": 0.05828198942698937,
+          "metric": "mae_ms",
+          "paired_seeds": 5,
+          "status": "measured"
+        },
+        {
+          "baseline": "job_mean",
+          "case": "heavy-shift",
+          "ci95": [
+            -0.01084480963011314,
+            0.031163760881059523
+          ],
+          "mean_delta": 0.007919017093348413,
+          "metric": "mae_ms",
+          "paired_seeds": 5,
+          "status": "measured"
+        },
+        {
+          "baseline": "global_mean",
+          "case": "heavy-shift",
+          "ci95": [
+            -0.026800000000000004,
+            -0.004499999999999997
+          ],
+          "mean_delta": -0.0165,
+          "metric": "severe_underestimate_rate",
+          "paired_seeds": 5,
+          "status": "measured"
+        },
+        {
+          "baseline": "job_mean",
+          "case": "heavy-shift",
+          "ci95": [
+            -0.0344,
+            -0.008299999999999998
+          ],
+          "mean_delta": -0.0224,
+          "metric": "severe_underestimate_rate",
+          "paired_seeds": 5,
+          "status": "measured"
+        }
+      ],
+      "failures": [
+        "uniform-informative/mae_ms: worse than job_mean",
+        "uniform-informative/severe_underestimate_rate: worse than job_mean",
+        "bimodal-informative/mae_ms: worse than job_mean",
+        "heavy-informative/mae_ms: worse than job_mean",
+        "heavy-control/mae_ms: worse than global_mean",
+        "heavy-control/mae_ms: worse than job_mean",
+        "heavy-shift/mae_ms: worse than global_mean",
+        "heavy-shift/mae_ms: worse than job_mean"
+      ],
+      "passes": false
+    },
+    {
+      "candidate": "tree_log",
+      "comparisons": [
+        {
+          "baseline": "global_mean",
+          "case": "uniform-informative",
+          "ci95": [
+            -2.853905389330638,
+            -2.0224777736760133
+          ],
+          "mean_delta": -2.3972930237492416,
+          "metric": "mae_ms",
+          "paired_seeds": 5,
+          "status": "measured"
+        },
+        {
+          "baseline": "job_mean",
+          "case": "uniform-informative",
+          "ci95": [
+            0.3512718040659073,
+            1.1090149487352203
+          ],
+          "mean_delta": 0.7711936407280602,
+          "metric": "mae_ms",
+          "paired_seeds": 5,
+          "status": "measured"
+        },
+        {
+          "baseline": "global_mean",
+          "case": "uniform-informative",
+          "ci95": [
+            0.008,
+            0.0259
+          ],
+          "mean_delta": 0.0179,
+          "metric": "severe_underestimate_rate",
+          "paired_seeds": 5,
+          "status": "measured"
+        },
+        {
+          "baseline": "job_mean",
+          "case": "uniform-informative",
+          "ci95": [
+            0.0086,
+            0.026600000000000002
+          ],
+          "mean_delta": 0.019,
+          "metric": "severe_underestimate_rate",
+          "paired_seeds": 5,
+          "status": "measured"
+        },
+        {
+          "baseline": "global_mean",
+          "case": "bimodal-informative",
+          "ci95": [
+            -5.032996309196145,
+            -4.228456662983905
+          ],
+          "mean_delta": -4.688399965581394,
+          "metric": "mae_ms",
+          "paired_seeds": 5,
+          "status": "measured"
+        },
+        {
+          "baseline": "job_mean",
+          "case": "bimodal-informative",
+          "ci95": [
+            0.0017889700331171377,
+            0.8260442128780614
+          ],
+          "mean_delta": 0.3636857950048584,
+          "metric": "mae_ms",
+          "paired_seeds": 5,
+          "status": "measured"
+        },
+        {
+          "baseline": "global_mean",
+          "case": "bimodal-informative",
+          "ci95": [
+            -0.2094,
+            -0.1935
+          ],
+          "mean_delta": -0.20299999999999999,
+          "metric": "severe_underestimate_rate",
+          "paired_seeds": 5,
+          "status": "measured"
+        },
+        {
+          "baseline": "job_mean",
+          "case": "bimodal-informative",
+          "ci95": [
+            0.0,
+            0.004
+          ],
+          "mean_delta": 0.0018,
+          "metric": "severe_underestimate_rate",
+          "paired_seeds": 5,
+          "status": "measured"
+        },
+        {
+          "baseline": "global_mean",
+          "case": "heavy-informative",
+          "ci95": [
+            -0.8382875023648723,
+            -0.7844449940928119
+          ],
+          "mean_delta": -0.8118559259747811,
+          "metric": "mae_ms",
+          "paired_seeds": 5,
+          "status": "measured"
+        },
+        {
+          "baseline": "job_mean",
+          "case": "heavy-informative",
+          "ci95": [
+            -0.13838508784369724,
+            -0.10819915246530021
+          ],
+          "mean_delta": -0.12388210734438669,
+          "metric": "mae_ms",
+          "paired_seeds": 5,
+          "status": "measured"
+        },
+        {
+          "baseline": "global_mean",
+          "case": "heavy-informative",
+          "ci95": [
+            -0.060399999999999995,
+            -0.0485
+          ],
+          "mean_delta": -0.0542,
+          "metric": "severe_underestimate_rate",
+          "paired_seeds": 5,
+          "status": "measured"
+        },
+        {
+          "baseline": "job_mean",
+          "case": "heavy-informative",
+          "ci95": [
+            0.008299999999999998,
+            0.015899999999999997
+          ],
+          "mean_delta": 0.011999999999999999,
+          "metric": "severe_underestimate_rate",
+          "paired_seeds": 5,
+          "status": "measured"
+        },
+        {
+          "baseline": "global_mean",
+          "case": "bimodal-control",
+          "ci95": [
+            -1.3373512115928745,
+            -1.2555261762678978
+          ],
+          "mean_delta": -1.29377631373557,
+          "metric": "mae_ms",
+          "paired_seeds": 5,
+          "status": "measured"
+        },
+        {
+          "baseline": "job_mean",
+          "case": "bimodal-control",
+          "ci95": [
+            -1.3389440655549474,
+            -1.2566511526317894
+          ],
+          "mean_delta": -1.2951752429921644,
+          "metric": "mae_ms",
+          "paired_seeds": 5,
+          "status": "measured"
+        },
+        {
+          "baseline": "global_mean",
+          "case": "bimodal-control",
+          "ci95": [
+            0.0,
+            0.0
+          ],
+          "mean_delta": 0.0,
+          "metric": "severe_underestimate_rate",
+          "paired_seeds": 5,
+          "status": "measured"
+        },
+        {
+          "baseline": "job_mean",
+          "case": "bimodal-control",
+          "ci95": [
+            0.0,
+            0.0
+          ],
+          "mean_delta": 0.0,
+          "metric": "severe_underestimate_rate",
+          "paired_seeds": 5,
+          "status": "measured"
+        },
+        {
+          "baseline": "global_mean",
+          "case": "heavy-control",
+          "ci95": [
+            -0.31619885376121665,
+            -0.2676938154534193
+          ],
+          "mean_delta": -0.29194633460731795,
+          "metric": "mae_ms",
+          "paired_seeds": 5,
+          "status": "measured"
+        },
+        {
+          "baseline": "job_mean",
+          "case": "heavy-control",
+          "ci95": [
+            -0.3112433544580138,
+            -0.2676306182744109
+          ],
+          "mean_delta": -0.28874134126141343,
+          "metric": "mae_ms",
+          "paired_seeds": 5,
+          "status": "measured"
+        },
+        {
+          "baseline": "global_mean",
+          "case": "heavy-control",
+          "ci95": [
+            0.034199999999999994,
+            0.04889999999999999
+          ],
+          "mean_delta": 0.0418,
+          "metric": "severe_underestimate_rate",
+          "paired_seeds": 5,
+          "status": "measured"
+        },
+        {
+          "baseline": "job_mean",
+          "case": "heavy-control",
+          "ci95": [
+            0.0373,
+            0.05029999999999999
+          ],
+          "mean_delta": 0.044399999999999995,
+          "metric": "severe_underestimate_rate",
+          "paired_seeds": 5,
+          "status": "measured"
+        },
+        {
+          "baseline": "global_mean",
+          "case": "heavy-shift",
+          "ci95": [
+            -0.29237131544491735,
+            -0.17636099801395638
+          ],
+          "mean_delta": -0.2343661567294369,
+          "metric": "mae_ms",
+          "paired_seeds": 5,
+          "status": "measured"
+        },
+        {
+          "baseline": "job_mean",
+          "case": "heavy-shift",
+          "ci95": [
+            -0.32508295467776593,
+            -0.23994694139942047
+          ],
+          "mean_delta": -0.28472912906307785,
+          "metric": "mae_ms",
+          "paired_seeds": 5,
+          "status": "measured"
+        },
+        {
+          "baseline": "global_mean",
+          "case": "heavy-shift",
+          "ci95": [
+            -0.017899999999999996,
+            0.019099999999999995
+          ],
+          "mean_delta": -0.0016999999999999988,
+          "metric": "severe_underestimate_rate",
+          "paired_seeds": 5,
+          "status": "measured"
+        },
+        {
+          "baseline": "job_mean",
+          "case": "heavy-shift",
+          "ci95": [
+            -0.027299999999999998,
+            0.015999999999999993
+          ],
+          "mean_delta": -0.007599999999999998,
+          "metric": "severe_underestimate_rate",
+          "paired_seeds": 5,
+          "status": "measured"
+        }
+      ],
+      "failures": [
+        "uniform-informative/mae_ms: worse than job_mean",
+        "uniform-informative/severe_underestimate_rate: worse than global_mean",
+        "uniform-informative/severe_underestimate_rate: worse than job_mean",
+        "bimodal-informative/mae_ms: worse than job_mean",
+        "bimodal-informative/severe_underestimate_rate: worse than job_mean",
+        "heavy-informative/severe_underestimate_rate: worse than job_mean",
+        "heavy-control/severe_underestimate_rate: worse than global_mean",
+        "heavy-control/severe_underestimate_rate: worse than job_mean"
+      ],
+      "passes": false
+    },
+    {
+      "candidate": "adaptive_tree_raw",
+      "comparisons": [
+        {
+          "baseline": "global_mean",
+          "case": "uniform-informative",
+          "ci95": [
+            0.0,
+            0.0
+          ],
+          "mean_delta": 0.0,
+          "metric": "mae_ms",
+          "paired_seeds": 5,
+          "status": "measured"
+        },
+        {
+          "baseline": "job_mean",
+          "case": "uniform-informative",
+          "ci95": [
+            3.0922186231323847,
+            3.2423482929515486
+          ],
+          "mean_delta": 3.1684866644773018,
+          "metric": "mae_ms",
+          "paired_seeds": 5,
+          "status": "measured"
+        },
+        {
+          "baseline": "global_mean",
+          "case": "uniform-informative",
+          "ci95": [
+            0.0,
+            0.0
+          ],
+          "mean_delta": 0.0,
+          "metric": "severe_underestimate_rate",
+          "paired_seeds": 5,
+          "status": "measured"
+        },
+        {
+          "baseline": "job_mean",
+          "case": "uniform-informative",
+          "ci95": [
+            0.0,
+            0.003
+          ],
+          "mean_delta": 0.0011,
+          "metric": "severe_underestimate_rate",
+          "paired_seeds": 5,
+          "status": "measured"
+        },
+        {
+          "baseline": "global_mean",
+          "case": "bimodal-informative",
+          "ci95": [
+            -4.968787750681784,
+            -4.605314597247714
+          ],
+          "mean_delta": -4.789867850267419,
+          "metric": "mae_ms",
+          "paired_seeds": 5,
+          "status": "measured"
+        },
+        {
+          "baseline": "job_mean",
+          "case": "bimodal-informative",
+          "ci95": [
+            0.05288061032926065,
+            0.471555210308405
+          ],
+          "mean_delta": 0.26221791031883285,
+          "metric": "mae_ms",
+          "paired_seeds": 5,
+          "status": "measured"
+        },
+        {
+          "baseline": "global_mean",
+          "case": "bimodal-informative",
+          "ci95": [
+            -0.2098,
+            -0.1973
+          ],
+          "mean_delta": -0.2047,
+          "metric": "severe_underestimate_rate",
+          "paired_seeds": 5,
+          "status": "measured"
+        },
+        {
+          "baseline": "job_mean",
+          "case": "bimodal-informative",
+          "ci95": [
+            0.0,
+            0.00030000000000000003
+          ],
+          "mean_delta": 0.0001,
+          "metric": "severe_underestimate_rate",
+          "paired_seeds": 5,
+          "status": "measured"
+        },
+        {
+          "baseline": "global_mean",
+          "case": "heavy-informative",
+          "ci95": [
+            -0.6996204287596262,
+            -0.6646849791788265
+          ],
+          "mean_delta": -0.6821527039692263,
+          "metric": "mae_ms",
+          "paired_seeds": 5,
+          "status": "measured"
+        },
+        {
+          "baseline": "job_mean",
+          "case": "heavy-informative",
+          "ci95": [
+            0.0007472358069377849,
+            0.010218756200519662
+          ],
+          "mean_delta": 0.005821114661168058,
+          "metric": "mae_ms",
+          "paired_seeds": 5,
+          "status": "measured"
+        },
+        {
+          "baseline": "global_mean",
+          "case": "heavy-informative",
+          "ci95": [
+            -0.073,
+            -0.0577
+          ],
+          "mean_delta": -0.0662,
+          "metric": "severe_underestimate_rate",
+          "paired_seeds": 5,
+          "status": "measured"
+        },
+        {
+          "baseline": "job_mean",
+          "case": "heavy-informative",
+          "ci95": [
+            0.0,
+            0.0
+          ],
+          "mean_delta": 0.0,
+          "metric": "severe_underestimate_rate",
+          "paired_seeds": 5,
+          "status": "measured"
+        },
+        {
+          "baseline": "global_mean",
+          "case": "bimodal-control",
+          "ci95": [
+            -0.023851427080741238,
+            0.0165323816985695
+          ],
+          "mean_delta": -0.006717883785806844,
+          "metric": "mae_ms",
+          "paired_seeds": 5,
+          "status": "measured"
+        },
+        {
+          "baseline": "job_mean",
+          "case": "bimodal-control",
+          "ci95": [
+            -0.02435669091551329,
+            0.01478486362140492
+          ],
+          "mean_delta": -0.008116813042401106,
+          "metric": "mae_ms",
+          "paired_seeds": 5,
+          "status": "measured"
+        },
+        {
+          "baseline": "global_mean",
+          "case": "bimodal-control",
+          "ci95": [
+            0.0,
+            0.0
+          ],
+          "mean_delta": 0.0,
+          "metric": "severe_underestimate_rate",
+          "paired_seeds": 5,
+          "status": "measured"
+        },
+        {
+          "baseline": "job_mean",
+          "case": "bimodal-control",
+          "ci95": [
+            0.0,
+            0.0
+          ],
+          "mean_delta": 0.0,
+          "metric": "severe_underestimate_rate",
+          "paired_seeds": 5,
+          "status": "measured"
+        },
+        {
+          "baseline": "global_mean",
+          "case": "heavy-control",
+          "ci95": [
+            -0.005136851732351256,
+            0.04110047965431942
+          ],
+          "mean_delta": 0.017981813960984083,
+          "metric": "mae_ms",
+          "paired_seeds": 5,
+          "status": "measured"
+        },
+        {
+          "baseline": "job_mean",
+          "case": "heavy-control",
+          "ci95": [
+            -0.0037614442799186907,
+            0.04911037856901235
+          ],
+          "mean_delta": 0.02118680730688862,
+          "metric": "mae_ms",
+          "paired_seeds": 5,
+          "status": "measured"
+        },
+        {
+          "baseline": "global_mean",
+          "case": "heavy-control",
+          "ci95": [
+            -0.009599999999999996,
+            0.005299999999999999
+          ],
+          "mean_delta": -0.0028999999999999985,
+          "metric": "severe_underestimate_rate",
+          "paired_seeds": 5,
+          "status": "measured"
+        },
+        {
+          "baseline": "job_mean",
+          "case": "heavy-control",
+          "ci95": [
+            -0.0018000000000000017,
+            0.0017000000000000014
+          ],
+          "mean_delta": -0.00030000000000000024,
+          "metric": "severe_underestimate_rate",
+          "paired_seeds": 5,
+          "status": "measured"
+        },
+        {
+          "baseline": "global_mean",
+          "case": "heavy-shift",
+          "ci95": [
+            -0.4095882027607476,
+            0.015809774384067297
+          ],
+          "mean_delta": -0.19688921418834013,
+          "metric": "mae_ms",
+          "paired_seeds": 5,
+          "status": "measured"
+        },
+        {
+          "baseline": "job_mean",
+          "case": "heavy-shift",
+          "ci95": [
+            -0.4422998419935961,
+            -0.05220453105036604
+          ],
+          "mean_delta": -0.24725218652198108,
+          "metric": "mae_ms",
+          "paired_seeds": 5,
+          "status": "measured"
+        },
+        {
+          "baseline": "global_mean",
+          "case": "heavy-shift",
+          "ci95": [
+            -0.034999999999999996,
+            -0.019399999999999994
+          ],
+          "mean_delta": -0.027899999999999998,
+          "metric": "severe_underestimate_rate",
+          "paired_seeds": 5,
+          "status": "measured"
+        },
+        {
+          "baseline": "job_mean",
+          "case": "heavy-shift",
+          "ci95": [
+            -0.0426,
+            -0.023899999999999998
+          ],
+          "mean_delta": -0.0338,
+          "metric": "severe_underestimate_rate",
+          "paired_seeds": 5,
+          "status": "measured"
+        }
+      ],
+      "failures": [
+        "uniform-informative/mae_ms: worse than job_mean",
+        "uniform-informative/severe_underestimate_rate: worse than job_mean",
+        "bimodal-informative/mae_ms: worse than job_mean",
+        "bimodal-informative/severe_underestimate_rate: worse than job_mean",
+        "heavy-informative/mae_ms: worse than job_mean",
+        "heavy-control/mae_ms: worse than global_mean",
+        "heavy-control/mae_ms: worse than job_mean"
+      ],
+      "passes": false
+    }
+  ],
+  "config_sha256": "ae00ec428c4c2c2fbfc1f6ad4a024b9db848b9b55944811d5dbe40513fa58fb2",
+  "dataset_sha256": "a6ea99d5f7591530532b681c6c319441b7b87f1b74637260dec6213bfde875a4",
+  "model_configuration_version": null,
+  "model_version": null,
+  "parameters": {
+    "adapter_version": "numeric-scale-indicator-zero-v1",
+    "adaptive_tree": {
+      "bootstrap_sampling": false,
+      "drift_window_threshold": 100,
+      "seed": 42,
+      "switch_significance": 0.05
+    },
+    "adwin": {
+      "clock": 32,
+      "delta": 0.002,
+      "grace_period": 10,
+      "max_buckets": 5,
+      "min_window_length": 5
+    },
+    "availability_delay_sensitivity_ms": [
+      10,
+      100
+    ],
+    "bootstrap_samples": 2000,
+    "bootstrap_seed": 42,
+    "budgets": {
+      "model_state_bytes": 33554432,
+      "prediction_p99_ms": 1.0,
+      "warm_prediction_coverage": 1.0
+    },
+    "candidates": [
+      "global_mean",
+      "job_mean",
+      "job_ewma",
+      "linear_raw",
+      "linear_log",
+      "tree_raw",
+      "tree_log",
+      "adaptive_tree_raw"
+    ],
+    "collection_config": "benchmarks/configs/predictor-datasets-v1.json",
+    "dimension_limit": 20000,
+    "ewma_alpha": 0.05,
+    "group_header": "job",
+    "group_min_labels": 20,
+    "lease_ms": 1000,
+    "linear": {
+      "clip_gradient": 10.0,
+      "intercept_lr": 0.01,
+      "l2": 0.0001,
+      "learning_rate": 0.01
+    },
+    "maximum_replacements": 2,
+    "minimum_evaluation_labels": 500,
+    "pending_limit": 4096,
+    "policy": {
+      "boundaries_ms": [
+        3,
+        10
+      ],
+      "default_priority": 1,
+      "num_levels": 3,
+      "ready_labels": 100,
+      "version": "synthetic-duration-3-10-v1"
+    },
+    "profiling": {
+      "memory_every_labels": 100,
+      "repeats": 3
+    },
+    "repeats": 2,
+    "required_cases": [
+      "uniform-informative",
+      "bimodal-informative",
+      "heavy-informative",
+      "bimodal-control",
+      "heavy-control",
+      "heavy-shift"
+    ],
+    "schema": {
+      "headers": [
+        {
+          "encoding": "vocabulary",
+          "name": "job",
+          "type": "categorical",
+          "vocabulary": [
+            "class0",
+            "class1",
+            "class2"
+          ]
+        }
+      ],
+      "version": "synthetic-job-v1"
+    },
+    "seeds": [
+      11,
+      22,
+      33,
+      44,
+      55
+    ],
+    "selection": "first in complexity order passing all required cells; MAE and severe-underestimate point estimates no worse than both arithmetic baselines on identical labels; publish paired intervals",
+    "train_fraction": 0.5,
+    "tree": {
+      "binary_split": true,
+      "delta": 1e-07,
+      "grace_period": 100,
+      "leaf_prediction": "mean",
+      "max_depth": 4,
+      "max_size": 8.0,
+      "memory_estimate_period": 100,
+      "merit_preprune": true,
+      "min_samples_split": 20,
+      "remove_poor_attrs": false,
+      "stop_mem_management": false,
+      "tau": 0.05
+    },
+    "version": "online-comparison-v1",
+    "warmup_label_windows": [
+      0,
+      20,
+      100,
+      500,
+      1000
+    ]
+  },
+  "peak_process_rss_kib": 193296,
+  "policy_version": "synthetic-duration-3-10-v1",
+  "predictive_activation": false,
+  "schema_version": "synthetic-job-v1",
+  "selected_candidate": null,
+  "selection_rule": "first in complexity order passing all required cells; MAE and severe-underestimate point estimates no worse than both arithmetic baselines on identical labels; publish paired intervals",
+  "status": "no_qualifier"
+}
