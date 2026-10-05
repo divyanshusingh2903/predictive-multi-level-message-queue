@@ -1,0 +1,9 @@
+{
+  "version": "baseline-experiment-v1",
+  "seeds": [101, 202],
+  "repeats": 1,
+  "policies": ["disabled"],
+  "telemetry_off_control": false,
+  "broker": {"drain_ms": 1000, "lease_ms": 1000, "ttl_ms": 0},
+  "cases": [{"name": "bimodal-development", "distribution": "bimodal", "count": 200, "warmup": 0, "rate_per_s": 88, "workers": 1}]
+}

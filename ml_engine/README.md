@@ -1,6 +1,6 @@
 # Ingress features and model encoding
 
-Issue #2 implements a bounded C++ feature extractor, immutable broker-only routing context, and matching Python validation/sparse encoding. Issue #3 adds optional [persistent broker feedback](../docs/feedback.md). There is no classifier service or learner yet. Routing remains static.
+Issue #2 implements a bounded C++ feature extractor, immutable broker-only routing context, and matching Python validation/sparse encoding. Issue #3 adds optional [persistent broker feedback](../docs/feedback.md). Issue #5 adds offline online-model comparison and delayed learning from validated exports. Classifier serving remains planned; routing remains static.
 
 ## Enable capture in an embedded broker
 
@@ -99,6 +99,66 @@ joins exact monotonic sidecars to production-static feedback, keeps all attempts
 of each broker-instance/message together, and embargoes labels crossing the
 training cutoff. Evaluation ingress and delayed eligible Ack labels are separate
 ordered streams. Exported model inputs are immutable ingress features only;
-oracle costs, retries, outcomes, and identities are audit metadata. No learner or
-future-label preprocessing is implemented. Legacy feedback-only export provides
+oracle costs, retries, outcomes, and identities are audit metadata. Issue #5's
+learners consume only causally available eligible labels. Legacy feedback-only export provides
 audit views, not an invented precise temporal training split.
+
+## Online model comparison (issue #5)
+
+The [predictor guide](../docs/online-predictor.md) explains the literature,
+algorithms, sparse-indicator adapter, delayed evaluation, and selection limits.
+The comparator implements global/per-job means, per-job EWMA, raw/log scaled
+linear regression, raw/log ordinary Hoeffding trees and a raw adaptive tree.
+Dependencies are isolated from the standard-library feature/feedback tools:
+
+```bash
+python3 -m venv .venv
+.venv/bin/python -m pip install -r ml_engine/requirements-models.txt
+.venv/bin/python -m pip check
+python3 -m unittest discover -s ml_engine/tests -v
+.venv/bin/python -m unittest discover -s ml_engine/model_tests -v
+```
+
+Use fresh output roots. Build the benchmark runner as described in
+[`benchmarks/README.md`](../benchmarks/README.md). First exercise the small
+development matrix (seeds 101/202), which cannot establish model selection:
+
+```bash
+python3 -m benchmarks.evaluate --config benchmarks/configs/predictor-development-v1.json \
+  --runner build-issue5/benchmarks/harbinger_synthetic_benchmark --output /tmp/opencode/issue5-dev-runs
+python3 -m benchmarks.export_feedback --run /tmp/opencode/issue5-dev-runs \
+  --train-fraction 0.5 --output /tmp/opencode/issue5-dev-data
+.venv/bin/python -m ml_engine.compare --dataset /tmp/opencode/issue5-dev-data \
+  --config ml_engine/configs/online-comparison-v1.json --output /tmp/opencode/issue5-dev-report
+```
+
+The frozen full collection takes approximately 80–90 minutes on the recorded
+host, plus replacement/export/comparison time. Preparation audits full coverage,
+preserves invalid trials and admits only coverage-selected replacements:
+
+```bash
+python3 -m benchmarks.evaluate --config benchmarks/configs/predictor-datasets-v1.json \
+  --runner build-issue5/benchmarks/harbinger_synthetic_benchmark --output /tmp/opencode/issue5-runs-v1
+python3 -m ml_engine.prepare --source /tmp/opencode/issue5-runs-v1 \
+  --runner build-issue5/benchmarks/harbinger_synthetic_benchmark \
+  --config ml_engine/configs/online-comparison-v1.json --output /tmp/opencode/issue5-prepared-v1
+.venv/bin/python -m ml_engine.compare --dataset /tmp/opencode/issue5-prepared-v1/dataset \
+  --config ml_engine/configs/online-comparison-v1.json --output /tmp/opencode/issue5-comparison-v1
+python3 -m ml_engine.publish --source /tmp/opencode/issue5-runs-v1 \
+  --prepared /tmp/opencode/issue5-prepared-v1 --comparison /tmp/opencode/issue5-comparison-v1 \
+  --output benchmarks/results/issue5-v1
+```
+
+`manifest.json` records input/config/schema/source fingerprints and dependencies.
+`predictions.jsonl` retains original forecasts and score-before-learn observations;
+`runs.jsonl` has quality/cohort/resource reports; `delay-sensitivity.jsonl` adds
+10/100 ms label-availability delays; `decision.json` records `selected`,
+`no_qualifier`, or `incomplete_evidence`. `--no-profile` is a deterministic smoke
+option and cannot produce a complete resource-qualified selection. Invalid input
+exports fail explicitly; they are not silently filtered into a favorable dataset.
+
+For reproducibility, publication keeps compact reports and a SHA-256 inventory of
+raw collection, temporal export and complete comparison archives (the archives
+themselves are not tracked in git). Replay uses
+publication-time availability, not production ingestion delay. Readiness and
+synthetic bucket boundaries are experimental policy, not new broker defaults.

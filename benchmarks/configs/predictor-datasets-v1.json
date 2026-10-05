@@ -1,0 +1,18 @@
+{
+  "version": "baseline-experiment-v1",
+  "seeds": [11, 22, 33, 44, 55],
+  "repeats": 2,
+  "policies": ["disabled"],
+  "telemetry_off_control": false,
+  "bootstrap_samples": 2000,
+  "bootstrap_seed": 42,
+  "broker": {"drain_ms": 60000, "lease_ms": 1000, "ttl_ms": 0, "aging_threshold_ms": 0, "aging_interval_ms": 0},
+  "cases": [
+    {"name": "uniform-informative", "distribution": "uniform", "count": 2000, "warmup": 0, "rate_per_s": 43, "workers": 1, "starvation_ms": 300, "observation_capacity": 32000},
+    {"name": "bimodal-informative", "distribution": "bimodal", "count": 2000, "warmup": 0, "rate_per_s": 88, "workers": 1, "starvation_ms": 300, "observation_capacity": 32000},
+    {"name": "heavy-informative", "distribution": "heavy_tail", "count": 2000, "warmup": 0, "rate_per_s": 141, "workers": 1, "starvation_ms": 300, "observation_capacity": 32000},
+    {"name": "bimodal-control", "distribution": "bimodal", "count": 2000, "warmup": 0, "rate_per_s": 88, "workers": 1, "informative": false, "starvation_ms": 300, "observation_capacity": 32000},
+    {"name": "heavy-control", "distribution": "heavy_tail", "count": 2000, "warmup": 0, "rate_per_s": 141, "workers": 1, "informative": false, "starvation_ms": 300, "observation_capacity": 32000},
+    {"name": "heavy-shift", "distribution": "heavy_tail", "count": 2000, "warmup": 0, "rate_per_s": 141, "workers": 1, "shift_index": 1400, "starvation_ms": 300, "observation_capacity": 32000}
+  ]
+}

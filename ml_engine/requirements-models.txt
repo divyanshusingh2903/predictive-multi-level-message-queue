@@ -1,0 +1,9 @@
+# River comparison environment; existing feature/feedback tools need none of these.
+river==0.22.0
+numpy==2.2.6
+pandas==2.2.3
+scipy==1.15.3
+python-dateutil==2.9.0.post0
+pytz==2025.2
+tzdata==2025.2
+six==1.17.0

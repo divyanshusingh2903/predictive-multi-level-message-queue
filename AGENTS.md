@@ -54,7 +54,7 @@ Standalone server startup overrides: `--delivery-lease-ms`, `--lease-sweep-inter
 - Bound classifier calls with a short deadline. Any timeout, unavailable classifier, invalid prediction, or priority outside `[0, num_levels)` falls back to `default_priority`.
 - Compare prediction error, P50/P95/P99, throughput, and starvation against FIFO, static-priority, and round-robin workloads before enabling predictive routing.
 
-Design details live in [ADR 0001](docs/adr/0001-phase2-ml-contract.md), the [ML contract](docs/ml-contract.md), and the [validation plan](docs/phase2-validation.md). [Feature capture/encoding](ml_engine/README.md) and [feedback persistence](docs/feedback.md) are implemented; inference and performance validation remain planned.
+Design details live in [ADR 0001](docs/adr/0001-phase2-ml-contract.md), the [ML contract](docs/ml-contract.md), and the [validation plan](docs/phase2-validation.md). [Feature capture/encoding](ml_engine/README.md), [feedback persistence](docs/feedback.md), and [offline predictor comparison](docs/online-predictor.md) are implemented; live inference and predictive scheduling validation remain planned.
 
 - Modes: disabled/static by default, shadow for initial prediction experiments, predictive only by explicit opt-in after the gate. Feedback collection is separately configured so static-mode collection works without Python.
 - Predict successful handler duration, then let C++ map it to fixed versioned boundaries. Current `uint8_t` levels support 1–255; exactly `num_levels - 1` positive increasing boundaries, equality enters the next bucket. One level requires default priority 0 and no boundaries.
@@ -90,7 +90,9 @@ Issue #4 baseline hooks exist only in separately compiled `harbinger_benchmark_s
 
 ## Layout
 
-`proto/harbinger.proto` · `include/{harbinger_service,proxy,queue/{message,multi_level_queue,dead_letter_queue},producer,consumer}.hpp` · `include/ml/` · `include/benchmark/` · `src/` mirrors `include/` · `server/main.cpp` · `demo/main.cpp` · `tests/unit/` · `tests/fixtures/ml/` · `docs/adr/` · `ml_engine/` (features/feedback validation implemented; model/service planned) · `benchmarks/` (synthetic baselines/export implemented; predictive gate and Phase 3 expansion planned)
+Issue #5 uses `ml_engine/{dataset,models,policy,replay,metrics,compare}.py` for strict temporal-export validation and stored-prediction-before-learning replay. River 0.22.0 dependencies are pinned separately in `requirements-models.txt`; core feature/feedback tests stay dependency-free, required estimator tests live in `ml_engine/model_tests/`. Numeric-only scaling preserves unscaled indicator signal; the model adapter completes bounded indicator zeros without changing the sparse ingress encoding/schema. Models reset per independent run; successful eligible Ack labels alone train. `prepare.py` admits coverage-only replacements and `publish.py` archives evidence. `online-comparison-v1` freezes eight candidates, 100-label readiness, `[3,10]` ms synthetic buckets, 1 ms warm P99 and 32 MiB accounted-state budgets; memory is an ownership/serialized-state proxy, not an allocator guarantee. Results live under `benchmarks/results/issue5-v1/`; a no-qualifier result never enables predictive routing.
+
+`proto/harbinger.proto` · `include/{harbinger_service,proxy,queue/{message,multi_level_queue,dead_letter_queue},producer,consumer}.hpp` · `include/ml/` · `include/benchmark/` · `src/` mirrors `include/` · `server/main.cpp` · `demo/main.cpp` · `tests/unit/` · `tests/fixtures/ml/` · `docs/adr/` · `ml_engine/` (features/feedback validation and offline model comparison implemented; live service planned) · `benchmarks/` (synthetic baselines/export implemented; predictive gate and Phase 3 expansion planned)
 
 ## Conventions
 

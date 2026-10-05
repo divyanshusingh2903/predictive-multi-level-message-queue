@@ -62,7 +62,7 @@ The [ML contract](ml-contract.md#feedback-event-format) defines the fields. Ever
 - Accepted Ack-after-TTL records TTL DLQ although Ack returns OK. TTL never increments retries. Lease reclamation uses the same failure budget as Nack unless TTL wins.
 - Selected-message expiry uses `pull_expiry`; both Pull-path bulk cleanup and background sweeps use `ttl_sweep`.
 
-Labels use first-match precedence: missing observation, negative, greater than configured delivery lease, unusable complete features, TTL censorship, Nack failure, then eligible successful Ack. Zero is valid; the current proto scalar treats omitted duration as reported zero. Individual missing/invalid headers remain valid missing-value model inputs. Measurements remain consumer observations rather than trusted timing truth. No learner is implemented; future training should initially use only `eligible` records.
+Labels use first-match precedence: missing observation, negative, greater than configured delivery lease, unusable complete features, TTL censorship, Nack failure, then eligible successful Ack. Zero is valid; the current proto scalar treats omitted duration as reported zero. Individual missing/invalid headers remain valid missing-value model inputs. Measurements remain consumer observations rather than trusted timing truth. The [offline learners](online-predictor.md) train only on `eligible` successful Ack labels from exact-time exports; a live log-consuming learner remains planned.
 
 ## Segment ownership, retention, and restart
 
