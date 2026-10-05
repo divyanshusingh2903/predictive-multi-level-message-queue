@@ -17,6 +17,11 @@ add_executable(harbinger_synthetic_benchmark synthetic_replay.cpp)
 target_link_libraries(harbinger_synthetic_benchmark PRIVATE harbinger_benchmark_server_lib)
 harbinger_target_warnings(harbinger_synthetic_benchmark)
 
+find_package(ZLIB REQUIRED)
+add_executable(harbinger_prodflow prodflow.cpp)
+target_link_libraries(harbinger_prodflow PRIVATE harbinger_benchmark_server_lib harbinger_client_lib ZLIB::ZLIB)
+harbinger_target_warnings(harbinger_prodflow)
+
 add_executable(harbinger_benchmark_tests tests/test_replay.cpp)
 target_link_libraries(harbinger_benchmark_tests PRIVATE harbinger_benchmark_server_lib GTest::gtest_main)
 harbinger_target_warnings(harbinger_benchmark_tests)
