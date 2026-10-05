@@ -101,3 +101,33 @@ criterion is a failure, never a pass. Default routing stays static regardless of
 - Aging is on in every arm, which bounds starvation for all policies.
 - The predictor starts cold in every run; a warm-start arm is not part of this matrix.
 - Synthetic-workload results say nothing about traffic whose cost structure differs from this one.
+
+## Addendum: Azure Functions trace simulation (issue #25)
+
+**Frozen 2026-10-05, before any simulated policy was run.** Configuration:
+[`benchmarks/configs/v2-azure-sim.json`](../benchmarks/configs/v2-azure-sim.json); simulator
+`tools/trace_sim.cpp` (links the broker's `PerKeyPredictor`); analysis `benchmarks/sim_report.py`. Descriptive
+statistics of the trace (duration quantiles, per-key spread; `benchmarks/results/azure2021/predictability.json`)
+were computed before freezing; no scheduling result had been.
+
+- **Data.** Azure Functions invocation trace, two weeks from 2021-01-31 (Zhang et al., SOSP 2021, CC-BY), hashes
+  in the config; the trace is not committed. Key = app + function. Arrival = `end_timestamp − duration`
+  (timestamps were modified by the dataset authors). Durations are wall-clock function executions.
+- **Split.** The first half of invocations by arrival is history; the second half is simulated and is cut into
+  7 equal-count windows ("days") that serve as paired replicates for intervals.
+- **Queue.** 64 non-preemptive workers, 3 levels, default tier 1, aging 5000/500 ms (same as the broker).
+  Arrivals in the evaluation half are time-compressed by a single factor so offered load equals 0.5, 0.8 and 0.95
+  of 64 workers.
+- **Arms.** `fifo`; `static_history` (tier by each key's history median at the history terciles; unseen keys default);
+  `static_random` (each key given a seeded random tier: a configuration unrelated to cost); `predictive_cold`
+  (broker predictor, defaults, starting empty at the evaluation start); `predictive_warm` (same, after observing
+  the history durations); `oracle` (tier from the true duration at the history terciles). The predictor predicts at
+  arrival and learns at completion, on simulation time.
+- **Classes.** short / medium / long by true duration at the history terciles; "long max wait" is the longest
+  queueing delay of a long invocation.
+- **Criteria** (per utilization, paired over the 7 windows, bootstrap 95%): P1 `predictive_warm` mean latency
+  ≤ −15% vs FIFO with the interval below 0; G1 all-invocation P99 ratio upper bound ≤ 1.25; G2 long-class max wait
+  ratio upper bound ≤ 2.0; S1 non-inferior to `static_history` within +10%; S2 better than `static_random`;
+  S3 `predictive_cold` mean ≤ −5% vs FIFO. Gate = P1, G1, G2 at each utilization.
+- **Limitations.** Serverless executions, not message-queue jobs; reconstructed arrivals; a simulation, not the
+  broker; worker count and time compression are modelling choices.
