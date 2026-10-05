@@ -29,7 +29,7 @@ Evidence so far, and the resulting Phase 2 plan:
 
 - **Synthetic evidence only.** The workloads use one 3-value categorical header and a fixed 16-byte payload, so a per-key average is close to the best possible predictor there. These results do not show whether richer features help on real traffic.
 - **Shortest-job-first trade-off.** With a non-preemptive scheduler, prioritizing short jobs lowers median latency (about 40–60% in the bimodal cells) and leaves P95 flat or makes P99 worse when long jobs are a large fraction of messages. Reordering cannot reduce a long job's own service time. Primary metrics are therefore per-class percentiles, slowdown, mean latency, and long-job starvation, with all-message P99 as a guardrail.
-- **Predictor: per-key duration statistics, in C++.** Each message has a *key* (queue/topic name, or an optional producer-supplied `job_type` header). The broker keeps a decaying duration histogram per key plus a global histogram, estimates a message's duration from its key at ingress inside `route_message()`, and maps it to a tier using boundaries derived from global quantiles. Cold or high-variance keys use the middle tier; aging is unchanged. Only successful, non-replayed handler durations are learned. Per-key state is bounded in memory.
+- **Predictor: per-key duration statistics, in C++.** Each message has a *key*: the broker-assigned producer id, optionally joined to a producer-supplied `job_type` header (there is no queue/topic name; the broker is one logical queue). The broker keeps a decaying duration histogram per key plus a global histogram, estimates a message's duration from its key at ingress inside `route_message()`, and maps it to a tier using boundaries derived from global quantiles. Cold or high-variance keys use the middle tier; aging is unchanged. Only successful, non-replayed handler durations are learned. Per-key state is bounded in memory.
 - **Python is the offline evaluation harness**, not a serving component. River models remain optional offline challengers, and richer features are added only if real or numeric-feature workloads show the per-key model losing.
 - **Not yet shown.** No predictive scheduling benefit, real-workload generalization, or activation is claimed. The v1 budgets cannot be met even by an oracle-like static map, so Phase 2 comparisons move to a pre-registered v2 matrix.
 
@@ -340,13 +340,15 @@ idempotency and durable storage are not implemented.
 The [Phase 2 tracker](https://github.com/divyanshusingh2903/predictive-multi-level-message-queue/issues/11) sequences implementation from the [ML contract](docs/ml-contract.md). Prediction begins in shadow mode; explicit predictive routing requires the [synthetic validation gate](docs/phase2-validation.md).
 
 - [x] Versioned, bounded ingress features and immutable routing context with C++/Python fixtures
-- [x] In-process C++ per-key duration predictor (decaying histograms, adaptive tier boundaries, bounded key state); broker wiring is issue #7
-- [ ] Shadow and predictive routing injected into `route_message()` in `harbinger_service.cpp`
-- [ ] `processing_time_ms` feedback from Ack/Nack updates the per-key statistics
-- [ ] State persistence and drift handling for the predictor
+- [x] In-process C++ per-key duration predictor (decaying histograms, adaptive tier boundaries, bounded key state)
+- [x] Shadow and predictive routing injected into `route_message()` in `harbinger_service.cpp`
+- [x] `processing_time_ms` feedback from Ack (and censoring from lease expiry) updates the per-key statistics
+- [x] Predictor snapshots (atomic, versioned, rollback copy), drift counters and a stats line
+- [x] Standalone `--config` file, `--routing-mode` and `--stats-interval-ms` ([configuration](docs/configuration.md))
 - [x] Seeded synthetic workloads, real-broker FIFO/static-priority/round-robin baselines, temporal feedback export, and frozen numerical budgets
 - [x] Offline delayed online-predictor comparison, readiness/fallback checks, and versioned model-selection evidence (v1 result: no qualifier)
-- [ ] Pre-registered v2 matrix: oracle, well-configured/misconfigured/stale static priority, rare-long-job and numeric-feature workloads, per-class and slowdown metrics
+- [x] Pre-registered v2 matrix ([v2 pre-registration](docs/v2-preregistration.md)): production-flow benchmark with oracle, well-configured/misconfigured/stale static priority, per-class and slowdown metrics; Azure Functions trace simulation
+- [x] Per-key predictability on a real trace (Azure Functions 2021)
 - [ ] Synthetic activation gate before predictive routing is enabled
 
 ### Phase 3 — Benchmarking & validation
