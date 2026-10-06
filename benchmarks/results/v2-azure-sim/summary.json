@@ -1,0 +1,182 @@
+{
+ "config": "v2-azure-sim-1",
+ "evaluation": {
+  "0.5": {
+   "criteria": {
+    "P1_mean_latency_vs_fifo": {
+     "kind": "relative_delta",
+     "point": -0.008620491252878096,
+     "ci95": [
+      -0.01751034383366564,
+      -0.0021180348232743237
+     ],
+     "status": "fail"
+    },
+    "G1_all_p99_vs_fifo": {
+     "kind": "ratio",
+     "point": 0.99656434886485,
+     "ci95": [
+      0.9924858484990667,
+      1.0010457763591314
+     ],
+     "status": "pass"
+    },
+    "G2_long_class_max_wait": {
+     "kind": "ratio",
+     "point": 1.0873170198149902,
+     "ci95": [
+      1.0006100963008815,
+      1.2505379122413518
+     ],
+     "status": "pass"
+    },
+    "S1_vs_static_history_noninferior": {
+     "kind": "relative_delta",
+     "point": -0.004464402602849697,
+     "ci95": [
+      -0.014290966342606253,
+      0.006213783512259293
+     ],
+     "status": "pass"
+    },
+    "S2_beats_static_random": {
+     "kind": "relative_delta",
+     "point": 0.0008141631219612519,
+     "ci95": [
+      -0.0025104229623177355,
+      0.003934290013036327
+     ],
+     "status": "fail"
+    },
+    "S3_cold_start_vs_fifo": {
+     "kind": "relative_delta",
+     "point": -0.008621003954749682,
+     "ci95": [
+      -0.01751034383366564,
+      -0.002122212110531657
+     ],
+     "status": "fail"
+    }
+   },
+   "gate_passed": false
+  },
+  "0.8": {
+   "criteria": {
+    "P1_mean_latency_vs_fifo": {
+     "kind": "relative_delta",
+     "point": -0.014354078208886773,
+     "ci95": [
+      -0.025675570367835264,
+      -0.004926328983029496
+     ],
+     "status": "fail"
+    },
+    "G1_all_p99_vs_fifo": {
+     "kind": "ratio",
+     "point": 0.993175057605571,
+     "ci95": [
+      0.9772564477306224,
+      1.0021898801807758
+     ],
+     "status": "pass"
+    },
+    "G2_long_class_max_wait": {
+     "kind": "ratio",
+     "point": 1.1843086543783719,
+     "ci95": [
+      1.0006680322153754,
+      1.5344990476689024
+     ],
+     "status": "pass"
+    },
+    "S1_vs_static_history_noninferior": {
+     "kind": "relative_delta",
+     "point": -0.0019247978689103209,
+     "ci95": [
+      -0.013744017476745848,
+      0.01334322913395976
+     ],
+     "status": "pass"
+    },
+    "S2_beats_static_random": {
+     "kind": "relative_delta",
+     "point": 0.0015662265824926218,
+     "ci95": [
+      -0.0026165348638816123,
+      0.005251410681222229
+     ],
+     "status": "fail"
+    },
+    "S3_cold_start_vs_fifo": {
+     "kind": "relative_delta",
+     "point": -0.014368770690216156,
+     "ci95": [
+      -0.02567679483314188,
+      -0.004942245929665496
+     ],
+     "status": "fail"
+    }
+   },
+   "gate_passed": false
+  },
+  "0.95": {
+   "criteria": {
+    "P1_mean_latency_vs_fifo": {
+     "kind": "relative_delta",
+     "point": -0.027938371020722517,
+     "ci95": [
+      -0.05501305573294894,
+      -0.005779794461560257
+     ],
+     "status": "fail"
+    },
+    "G1_all_p99_vs_fifo": {
+     "kind": "ratio",
+     "point": 0.9881120628291219,
+     "ci95": [
+      0.9646435068793044,
+      1.0005964832278729
+     ],
+     "status": "pass"
+    },
+    "G2_long_class_max_wait": {
+     "kind": "ratio",
+     "point": 1.2046386289500366,
+     "ci95": [
+      0.9995615532967823,
+      1.611806969787668
+     ],
+     "status": "pass"
+    },
+    "S1_vs_static_history_noninferior": {
+     "kind": "relative_delta",
+     "point": -0.011149844534125312,
+     "ci95": [
+      -0.018495530036271524,
+      -0.004477801728118101
+     ],
+     "status": "pass"
+    },
+    "S2_beats_static_random": {
+     "kind": "relative_delta",
+     "point": -0.0032161949034921773,
+     "ci95": [
+      -0.011892071340970029,
+      0.004960164986149161
+     ],
+     "status": "fail"
+    },
+    "S3_cold_start_vs_fifo": {
+     "kind": "relative_delta",
+     "point": -0.02801824276654729,
+     "ci95": [
+      -0.05501440106263777,
+      -0.005926661792898817
+     ],
+     "status": "fail"
+    }
+   },
+   "gate_passed": false
+  }
+ }
+}

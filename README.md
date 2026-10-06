@@ -17,9 +17,15 @@ A research messaging system that learns **per-key processing-time statistics onl
 
 ## Status
 
-**Phase 1 complete; Phase 2 features, feedback, baseline harness, and offline predictor comparison implemented.** The core gRPC broker includes multi-level priority queues, producer/consumer clients, DLQ, aging, retries, and in-flight management. Embedded brokers can opt into [versioned ingress features and immutable routing context](ml_engine/README.md), with matching Python validation/encoding, and [bounded persistent feedback](docs/feedback.md). The [synthetic evaluation harness](benchmarks/README.md) compares real-broker FIFO/static/round-robin baselines and exports leakage-safe feedback datasets. The [online predictor comparison](docs/online-predictor.md) scores stored ingress predictions before learning delayed successful-Ack labels. Production routing remains static; the predictor and predictive activation remain planned.
+**Phase 1 complete; Phase 2 implemented and evaluated.** The core gRPC broker includes multi-level priority queues, producer/consumer clients, DLQ, aging, retries, and in-flight management. Phase 2 adds an in-process [per-key duration predictor](docs/duration-predictor.md) wired into `route_message()` with shadow and opt-in predictive modes, learning from Ack settlement, snapshots, drift counters and a [standalone config file](docs/configuration.md), plus [versioned ingress features](ml_engine/README.md) and [bounded persistent feedback](docs/feedback.md). **Default routing stays static.**
 
-The first offline comparison (issue #5) found **no qualifying model** under its frozen gates, so no model was selected. The baseline data (issue #4) also shows that static priority with ground-truth classes cuts median latency but not P95/P99. See [Design direction](#design-direction) for what changed as a result.
+[Phase 2 results](docs/phase2-report.md), against criteria [frozen before any run](docs/v2-preregistration.md):
+
+- **Production-flow benchmark (gate passed).** On a realistic e-commerce job queue (real CPU work, flash-sale overload, mid-run cost shift; 5 seeds × 7 arms), predictive routing cut mean latency 28% and short-job median latency 88% versus FIFO, beat a hand-tuned static map by 11% and a misconfigured one by 34%, with all-message P99 +4%, no lost work and no throughput change. Without job labels (producer-only keys) it still cut mean latency 15%.
+- **Azure Functions trace simulation (gate not passed).** With the broker's 5 s aging and hours-long backlogs from the trace's bursts, every policy, including the oracle, was within 1–3% of FIFO. Exploratory runs without aging separate the policies; aging under sustained overload is a follow-up.
+- **Real data:** on the same trace a per-key median predicts held-out durations with a median error factor of 1.3, versus 29 for a single global median.
+
+The earlier offline comparison (issue #5) found no qualifying model under its frozen v1 gates; v2 replaced those budgets, as documented in the pre-registration.
 
 ---
 
@@ -335,7 +341,7 @@ idempotency and durable storage are not implemented.
 - [x] Producer and Consumer gRPC clients
 - [x] Unit + integration test suite
 
-### Phase 2 — ML integration (in progress)
+### Phase 2 — ML integration (implemented and evaluated)
 
 The [Phase 2 tracker](https://github.com/divyanshusingh2903/predictive-multi-level-message-queue/issues/11) sequences implementation from the [ML contract](docs/ml-contract.md). Prediction begins in shadow mode; explicit predictive routing requires the [synthetic validation gate](docs/phase2-validation.md).
 
@@ -349,7 +355,7 @@ The [Phase 2 tracker](https://github.com/divyanshusingh2903/predictive-multi-lev
 - [x] Offline delayed online-predictor comparison, readiness/fallback checks, and versioned model-selection evidence (v1 result: no qualifier)
 - [x] Pre-registered v2 matrix ([v2 pre-registration](docs/v2-preregistration.md)): production-flow benchmark with oracle, well-configured/misconfigured/stale static priority, per-class and slowdown metrics; Azure Functions trace simulation
 - [x] Per-key predictability on a real trace (Azure Functions 2021)
-- [ ] Synthetic activation gate before predictive routing is enabled
+- [x] v2 activation gate: passed on the production-flow benchmark; not passed on the Azure trace simulation ([Phase 2 report](docs/phase2-report.md))
 
 ### Phase 3 — Benchmarking & validation
 - [ ] Expand synthetic workload coverage beyond the Phase 2 activation gate

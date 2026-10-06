@@ -1,0 +1,106 @@
+2026-10-05T20:50:02Z seed=11 arm=predictive
+[prodflow] arm=predictive seed=11 messages=34956 completed=34956 dlq=0
+2026-10-05T20:55:04Z seed=11 arm=predictive_producer
+[prodflow] arm=predictive_producer seed=11 messages=34956 completed=34956 dlq=0
+2026-10-05T21:00:05Z seed=11 arm=oracle
+--- relaunched after container restart at 2026-10-05T21:33:12Z ---
+skip /home/user/predictive-multi-level-message-queue/benchmarks/results/v2-prodflow/raw/seed-11/predictive
+skip /home/user/predictive-multi-level-message-queue/benchmarks/results/v2-prodflow/raw/seed-11/predictive_producer
+2026-10-05T21:33:12Z seed=11 arm=oracle
+--- PERTURBATION: nice'd build/test started 2026-10-05T21:36:25Z ---
+--- PERTURBATION: nice'd build/test ended 2026-10-05T21:37:20Z ---
+[prodflow] arm=oracle seed=11 messages=34956 completed=34956 dlq=0
+2026-10-05T21:38:15Z seed=11 arm=fifo
+[prodflow] arm=fifo seed=11 messages=34956 completed=34956 dlq=0
+2026-10-05T21:43:17Z seed=11 arm=static_tuned
+--- relaunched after container restart at 2026-10-05T21:49:37Z (uptime 48.10s, 4 runs done) ---
+skip /home/user/predictive-multi-level-message-queue/benchmarks/results/v2-prodflow/raw/seed-11/predictive
+skip /home/user/predictive-multi-level-message-queue/benchmarks/results/v2-prodflow/raw/seed-11/predictive_producer
+skip /home/user/predictive-multi-level-message-queue/benchmarks/results/v2-prodflow/raw/seed-11/oracle
+skip /home/user/predictive-multi-level-message-queue/benchmarks/results/v2-prodflow/raw/seed-11/fifo
+2026-10-05T21:49:37Z seed=11 arm=static_tuned
+[prodflow] arm=static_tuned seed=11 messages=34956 completed=34956 dlq=0
+2026-10-05T21:54:39Z seed=11 arm=static_misconfigured
+--- relaunched after container restart at 2026-10-05T22:04:10Z (uptime 191.16s, 5 runs done) ---
+skip /home/user/predictive-multi-level-message-queue/benchmarks/results/v2-prodflow/raw/seed-11/predictive
+skip /home/user/predictive-multi-level-message-queue/benchmarks/results/v2-prodflow/raw/seed-11/predictive_producer
+skip /home/user/predictive-multi-level-message-queue/benchmarks/results/v2-prodflow/raw/seed-11/oracle
+skip /home/user/predictive-multi-level-message-queue/benchmarks/results/v2-prodflow/raw/seed-11/fifo
+skip /home/user/predictive-multi-level-message-queue/benchmarks/results/v2-prodflow/raw/seed-11/static_tuned
+2026-10-05T22:04:10Z seed=11 arm=static_misconfigured
+--- session-tracked background run started 2026-10-05T22:04:32Z ---
+skip /home/user/predictive-multi-level-message-queue/benchmarks/results/v2-prodflow/raw/seed-11/predictive
+skip /home/user/predictive-multi-level-message-queue/benchmarks/results/v2-prodflow/raw/seed-11/predictive_producer
+skip /home/user/predictive-multi-level-message-queue/benchmarks/results/v2-prodflow/raw/seed-11/oracle
+skip /home/user/predictive-multi-level-message-queue/benchmarks/results/v2-prodflow/raw/seed-11/fifo
+skip /home/user/predictive-multi-level-message-queue/benchmarks/results/v2-prodflow/raw/seed-11/static_tuned
+2026-10-05T22:04:32Z seed=11 arm=static_misconfigured
+[prodflow] arm=static_misconfigured seed=11 messages=34956 completed=34956 dlq=0
+2026-10-05T22:09:34Z seed=11 arm=shadow
+[prodflow] arm=shadow seed=11 messages=34956 completed=34956 dlq=0
+2026-10-05T22:14:36Z seed=22 arm=static_tuned
+[prodflow] arm=static_tuned seed=22 messages=35056 completed=35056 dlq=0
+2026-10-05T22:19:38Z seed=22 arm=static_misconfigured
+[prodflow] arm=static_misconfigured seed=22 messages=35056 completed=35056 dlq=0
+2026-10-05T22:24:39Z seed=22 arm=shadow
+[prodflow] arm=shadow seed=22 messages=35056 completed=35056 dlq=0
+2026-10-05T22:29:40Z seed=22 arm=predictive
+[prodflow] arm=predictive seed=22 messages=35056 completed=35056 dlq=0
+2026-10-05T22:34:42Z seed=22 arm=predictive_producer
+[prodflow] arm=predictive_producer seed=22 messages=35056 completed=35056 dlq=0
+2026-10-05T22:39:43Z seed=22 arm=oracle
+[prodflow] arm=oracle seed=22 messages=35056 completed=35056 dlq=0
+2026-10-05T22:44:45Z seed=22 arm=fifo
+[prodflow] arm=fifo seed=22 messages=35056 completed=35056 dlq=0
+2026-10-05T22:49:46Z seed=33 arm=predictive_producer
+[prodflow] arm=predictive_producer seed=33 messages=34766 completed=34766 dlq=0
+2026-10-05T22:54:47Z seed=33 arm=oracle
+[prodflow] arm=oracle seed=33 messages=34766 completed=34766 dlq=0
+2026-10-05T22:59:49Z seed=33 arm=fifo
+[prodflow] arm=fifo seed=33 messages=34766 completed=34766 dlq=0
+2026-10-05T23:04:50Z seed=33 arm=static_tuned
+[prodflow] arm=static_tuned seed=33 messages=34766 completed=34766 dlq=0
+2026-10-05T23:09:51Z seed=33 arm=static_misconfigured
+[prodflow] arm=static_misconfigured seed=33 messages=34766 completed=34766 dlq=0
+2026-10-05T23:14:52Z seed=33 arm=shadow
+[prodflow] arm=shadow seed=33 messages=34766 completed=34766 dlq=0
+2026-10-05T23:19:53Z seed=33 arm=predictive
+[prodflow] arm=predictive seed=33 messages=34766 completed=34766 dlq=0
+2026-10-05T23:24:54Z seed=44 arm=static_misconfigured
+[prodflow] arm=static_misconfigured seed=44 messages=35202 completed=35202 dlq=0
+2026-10-05T23:30:05Z seed=44 arm=shadow
+[prodflow] arm=shadow seed=44 messages=35202 completed=35202 dlq=0
+2026-10-05T23:35:17Z seed=44 arm=predictive
+[prodflow] arm=predictive seed=44 messages=35202 completed=35202 dlq=0
+2026-10-05T23:40:29Z seed=44 arm=predictive_producer
+[prodflow] arm=predictive_producer seed=44 messages=35202 completed=35202 dlq=0
+2026-10-05T23:45:41Z seed=44 arm=oracle
+[prodflow] arm=oracle seed=44 messages=35202 completed=35202 dlq=0
+2026-10-05T23:50:54Z seed=44 arm=fifo
+[prodflow] arm=fifo seed=44 messages=35202 completed=35202 dlq=0
+2026-10-05T23:56:06Z seed=44 arm=static_tuned
+[prodflow] arm=static_tuned seed=44 messages=35202 completed=35202 dlq=0
+2026-10-06T00:01:18Z seed=55 arm=oracle
+--- 2026-10-06T04:37:01Z user-approved final run: seed 55 (all arms) and seed-11 oracle re-run (overlapped a build 21:36-21:37) ---
+2026-10-06T04:37:01Z seed=55 arm=oracle
+[prodflow] arm=oracle seed=55 messages=34672 completed=34672 dlq=0
+2026-10-06T04:42:04Z seed=55 arm=fifo
+[prodflow] arm=fifo seed=55 messages=34672 completed=34672 dlq=0
+2026-10-06T04:47:06Z seed=55 arm=static_tuned
+[prodflow] arm=static_tuned seed=55 messages=34672 completed=34672 dlq=0
+2026-10-06T04:52:08Z seed=55 arm=static_misconfigured
+[prodflow] arm=static_misconfigured seed=55 messages=34672 completed=34672 dlq=0
+2026-10-06T04:57:10Z seed=55 arm=shadow
+[prodflow] arm=shadow seed=55 messages=34672 completed=34672 dlq=0
+2026-10-06T05:02:12Z seed=55 arm=predictive
+[prodflow] arm=predictive seed=55 messages=34672 completed=34672 dlq=0
+2026-10-06T05:07:14Z seed=55 arm=predictive_producer
+[prodflow] arm=predictive_producer seed=55 messages=34672 completed=34672 dlq=0
+skip /home/user/predictive-multi-level-message-queue/benchmarks/results/v2-prodflow/raw/seed-11/predictive
+skip /home/user/predictive-multi-level-message-queue/benchmarks/results/v2-prodflow/raw/seed-11/predictive_producer
+2026-10-06T05:12:17Z seed=11 arm=oracle
+[prodflow] arm=oracle seed=11 messages=34956 completed=34956 dlq=0
+skip /home/user/predictive-multi-level-message-queue/benchmarks/results/v2-prodflow/raw/seed-11/fifo
+skip /home/user/predictive-multi-level-message-queue/benchmarks/results/v2-prodflow/raw/seed-11/static_tuned
+skip /home/user/predictive-multi-level-message-queue/benchmarks/results/v2-prodflow/raw/seed-11/static_misconfigured
+skip /home/user/predictive-multi-level-message-queue/benchmarks/results/v2-prodflow/raw/seed-11/shadow
