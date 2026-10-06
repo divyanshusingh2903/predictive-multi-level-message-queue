@@ -1,0 +1,4 @@
+# Optional offline analysis for issue #24 (gradient boosting baseline) and corpus collection.
+numpy==2.1.3
+scikit-learn==1.5.2
+pillow==11.0.0
