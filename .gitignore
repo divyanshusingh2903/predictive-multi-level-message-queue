@@ -71,6 +71,8 @@ benchmarks/results/*
 benchmarks/results/v2-prodflow/raw/
 !benchmarks/results/v2-azure-sim/
 !benchmarks/results/azure2021/
+!benchmarks/results/feature-signal-v1/
+benchmarks/results/feature-signal-v1/raw/
 benchmarks/results/issue5-v1/raw/*.tar.gz
 !benchmarks/results/issue4-v1/raw/*.tar.gz
 benchmarks/output/

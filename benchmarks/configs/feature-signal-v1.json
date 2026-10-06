@@ -1,0 +1,23 @@
+{
+  "version": "feature-signal-v1",
+  "frozen_on": "2026-10-06",
+  "issue": 24,
+  "question": "Do ingress features (payload bytes, image pixels, row counts) predict handler duration better than the job key alone?",
+  "collection": {
+    "runs_minutes": [5, 10, 30],
+    "repeats": 2,
+    "seeds": {"5": [101, 102], "10": [201, 202], "30": [301, 302]},
+    "workers": 3,
+    "mix_shift_at_fraction": 0.5
+  },
+  "split": {"train_fraction": 0.6, "ordering": "time-ordered within each run (no look-ahead)"},
+  "models": ["global_median", "per_key_median", "per_key_size_bin_median", "gradient_boosting"],
+  "size_bins": "floor(log2(primary size feature)), per key; keys without a size feature use per_key_median; bins with fewer than 20 training samples fall back to the key median",
+  "gradient_boosting": {"estimator": "sklearn HistGradientBoostingRegressor", "target": "log1p(duration_ms)", "features": "job key (categorical) + log1p of every numeric ingress feature", "random_state": 0, "max_iter": 300},
+  "metrics": ["median_abs_log2_error", "within_2x", "tier_accuracy (terciles of training durations)", "mean_abs_error_ms"],
+  "decision": {
+    "binned_feature_worthwhile": "per_key_size_bin_median lowers median_abs_log2_error by at least 0.25 versus per_key_median AND raises tier_accuracy by at least 5 percentage points, in at least 5 of the 6 runs",
+    "richer_model_worthwhile": "gradient_boosting lowers median_abs_log2_error by at least a further 0.25 versus per_key_size_bin_median in at least 5 of the 6 runs",
+    "otherwise": "per-key statistics are sufficient for this workload"
+  }
+}

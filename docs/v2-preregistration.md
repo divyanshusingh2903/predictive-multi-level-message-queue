@@ -131,3 +131,27 @@ were computed before freezing; no scheduling result had been.
   S3 `predictive_cold` mean ≤ −5% vs FIFO. Gate = P1, G1, G2 at each utilization.
 - **Limitations.** Serverless executions, not message-queue jobs; reconstructed arrivals; a simulation, not the
   broker; worker count and time compression are modelling choices.
+
+## Addendum: feature signal beyond the key (issue #24, `feature-signal-v1`)
+
+**Frozen 2026-10-06, before any counted collection run** (a one-minute plumbing pilot with an unlisted seed was run
+and is not used). Configuration: [`benchmarks/configs/feature-signal-v1.json`](../benchmarks/configs/feature-signal-v1.json);
+collector `benchmarks/collect/collect_jobs.py`; analysis `ml_engine/feature_signal.py`.
+
+- **Question.** Do ingress features a producer could send (payload bytes, image width/height/pixels, row counts)
+  predict handler duration better than the job key alone?
+- **Data.** Self-generated on this machine with real handlers on real inputs: Pillow resize and JPEG re-encode of
+  OpenCV sample photos (pinned commit) plus Lanczos-upscaled copies at 4–12 MP; zlib compression, SHA-256 and
+  tokenization of Python standard-library sources; JSON parsing and SQLite aggregation of Azure Functions trace
+  slices; and a simulated network call whose latency is independent of its payload (control). Three worker
+  processes, closed loop; at half time the mix shifts to high-resolution uploads and larger stored files.
+- **Runs.** 5, 10 and 30 minutes, two seeds each (6 runs). Each run is split in time order: first 60% train, last
+  40% test.
+- **Models.** Global median; per-key median (the broker's model); per-key × floor(log2(size)) median with a 20-sample
+  minimum per bin; gradient boosting (key + log of every numeric feature, log target).
+- **Decision.** A binned size feature is worthwhile if it lowers the median |log2 error| by at least 0.25 and raises
+  tier accuracy by at least 5 points versus the per-key median in at least 5 of the 6 runs; a richer model is
+  worthwhile if gradient boosting lowers the error by at least a further 0.25 over the binned model in at least 5 of
+  6 runs; otherwise per-key statistics are sufficient.
+- **Limits.** One machine; the job mix and corpus were chosen by us; durations are milliseconds-scale; the result
+  says whether features carry signal for content-dependent jobs like these, not how common such jobs are.
