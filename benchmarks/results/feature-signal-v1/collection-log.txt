@@ -1,0 +1,12 @@
+2026-10-06T05:51:07Z collecting 5 min seed 101
+m5-s101: 32436 jobs -> benchmarks/results/feature-signal-v1/raw/m5-s101.csv
+2026-10-06T05:56:08Z collecting 5 min seed 102
+m5-s102: 32822 jobs -> benchmarks/results/feature-signal-v1/raw/m5-s102.csv
+2026-10-06T06:01:08Z collecting 10 min seed 201
+m10-s201: 63430 jobs -> benchmarks/results/feature-signal-v1/raw/m10-s201.csv
+2026-10-06T06:11:09Z collecting 10 min seed 202
+m10-s202: 61941 jobs -> benchmarks/results/feature-signal-v1/raw/m10-s202.csv
+2026-10-06T06:21:09Z collecting 30 min seed 301
+m30-s301: 189897 jobs -> benchmarks/results/feature-signal-v1/raw/m30-s301.csv
+2026-10-06T06:51:10Z collecting 30 min seed 302
+m30-s302: 188066 jobs -> benchmarks/results/feature-signal-v1/raw/m30-s302.csv

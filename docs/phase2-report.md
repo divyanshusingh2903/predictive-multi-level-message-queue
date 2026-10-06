@@ -98,8 +98,12 @@ On the same trace (first week learn, second week held out), a per-key median pre
 median factor of 1.3 (62% within 2×, 79% correct tier); a global median is off by a median factor of 29 (10% within
 2×, 57% correct tier). 73% of held-out traffic passes the predictor's sample and spread gates; 17% comes from keys
 unseen in the first week. File: [`benchmarks/results/azure2021/predictability.json`](../benchmarks/results/azure2021/predictability.json).
-No public trace with per-job payload features was found, so the question of whether features beyond the key add
-signal remains open (#24, self-generated data with #26).
+No public trace with per-job payload features was found, so features were tested on self-generated data
+(`feature-signal-v1`, pre-registered): real handlers on real inputs, six runs, 568,592 jobs. A per-key median has a
+median error factor of about 1.95 and 68% tier accuracy; adding a log2 size bin per key cuts that to 1.2 and 93%,
+in all six runs; gradient boosting over every feature adds almost nothing more (1.17, 93%). The control key whose cost
+does not depend on its payload gains nothing. Decision: support a binned size feature in the key; a richer model is
+not warranted. Details: [`benchmarks/results/feature-signal-v1/`](../benchmarks/results/feature-signal-v1/README.md).
 
 ## 4. Operating it
 
@@ -125,5 +129,5 @@ signal remains open (#24, self-generated data with #26).
    means something in multi-minute backlogs; evaluate on the Azure trace with a new pre-registration.
 2. Warm start: snapshot restore after long downtime is treated as stale; consider keeping restored keys usable until
    enough new evidence arrives.
-3. Real, self-generated data with payload features (#24, #26).
+3. Size-binned keys: derive an optional log2 size bin from the payload size or an allowlisted size header and append it to the key (#24 decision); a cloud repeat of the collection (#26, `benchmarks/collect/CLOUD.md`).
 4. Per-function worker pools in the trace simulator to model serverless scaling.
