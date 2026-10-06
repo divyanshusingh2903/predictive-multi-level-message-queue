@@ -1,0 +1,51 @@
+{
+ "duration_ms": {
+  "max": 578620.0,
+  "p50": 31.0,
+  "p90": 1620.0,
+  "p99": 72200.0
+ },
+ "held_out": {
+  "global_median": {
+   "mean_abs_error_ms": 4364.209101482519,
+   "median_abs_log2_error": 4.840219555963231,
+   "tier_accuracy": 0.5663842435354315,
+   "within_2x": 0.09614872041321547
+  },
+  "per_key_median_all_keys": {
+   "mean_abs_error_ms": 3708.688093401556,
+   "median_abs_log2_error": 0.38702312310924725,
+   "tier_accuracy": 0.7901453442587201,
+   "within_2x": 0.6211538694526672
+  },
+  "per_key_median_with_gates": {
+   "mean_abs_error_ms": 3744.132878535169,
+   "median_abs_log2_error": 0.4306343543298623,
+   "tier_accuracy": 0.7441563450300663,
+   "within_2x": 0.587937516911061
+  }
+ },
+ "keys_in_train": 279,
+ "keys_routable": 97,
+ "rows": 1980951,
+ "settings": {
+  "levels": 3,
+  "max_spread": 16.0,
+  "min_samples": 20,
+  "split": 0.5
+ },
+ "test_rows": 990476,
+ "test_share_routable": 0.7313271598706077,
+ "test_share_unseen_key": 0.1690116671176283,
+ "tier_boundaries_ms": [
+  1.0,
+  171.0
+ ],
+ "train_rows": 990475,
+ "within_key_spread_p99_over_p50_volume_weighted": {
+  "p25": 4.083333333333333,
+  "p50": 7.0,
+  "p75": 7.5,
+  "p90": 32.4
+ }
+}

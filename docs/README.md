@@ -1,6 +1,6 @@
 # Harbinger documentation
 
-The operational guides below describe the core broker and implemented Phase 2 feature capture, persistent feedback, synthetic baselines and offline predictor comparison. Live inference remains planned. Start with the [project README](../README.md) for build and run instructions.
+The operational guides below describe the core broker and implemented Phase 2 feature capture, persistent feedback, synthetic baselines and offline predictor comparison. The in-process predictor, shadow and predictive routing are implemented; default routing is static. Start with the [project README](../README.md) for build and run instructions.
 
 | Guide | Read this for |
 |---|---|
@@ -19,6 +19,8 @@ The operational guides below describe the core broker and implemented Phase 2 fe
 | [ML contract](ml-contract.md) | Versioned features, prediction/feedback records, proposed limits, and persistence semantics |
 | [Per-key duration predictor](duration-predictor.md) | The in-process C++ predictor, bounds, fallbacks, replay CLI and what is not yet wired into the broker |
 | [Online predictors](online-predictor.md) | Literature, incremental regressors, delayed evaluation, readiness/fallback and selection evidence |
+| [v2 pre-registration](v2-preregistration.md) | Frozen hypotheses, workloads, arms and pass/fail criteria for the production-flow benchmark and the Azure trace simulation |
+| [Phase 2 report](phase2-report.md) | Results, gate verdicts, limitations, operating and rollback guidance |
 | [Validation plan](phase2-validation.md) | Baselines, workloads, metrics, proposed gates, and activation/rollback criteria |
 
 These documents implement the planning deliverables for [issue #1](https://github.com/divyanshusingh2903/predictive-multi-level-message-queue/issues/1); implementation work is tracked under [Phase 2 #11](https://github.com/divyanshusingh2903/predictive-multi-level-message-queue/issues/11).
