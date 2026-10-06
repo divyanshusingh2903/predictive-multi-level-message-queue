@@ -31,6 +31,8 @@ struct Options {
     std::string export_dir;
     std::string output{"-"};
     std::string key_header{"job"};
+    PredictorKeyPolicy::SizeSource size_source{PredictorKeyPolicy::SizeSource::None};
+    std::string size_header;
     PerKeyPredictorConfig predictor;
     std::string policy_version{"per-key-replay-v2"};
 };
@@ -38,12 +40,15 @@ struct Options {
 [[noreturn]] void usage(const char* program, const std::string& error = {}) {
     if (!error.empty()) std::cerr << "error: " << error << "\n";
     std::cerr << "usage: " << program << " --export DIR [--output FILE] [--key-header NAME | --key-header '']\n"
+        "  [--size-source none|payload|header:NAME]\n"
         "  [--levels N] [--default-priority N] [--summary median|p75|mean] [--min-samples N]\n"
         "  [--spread-quantile X] [--max-spread X] [--max-censored X] [--decay X] [--global-decay X]\n"
         "  [--time-half-life-ms N] [--stale-after-ms N] [--idle-eviction-ms N] [--cold-grace-ms N]\n"
         "  [--max-keys N] [--shards N] [--refresh-every N] [--global-min-samples N] [--hysteresis X]\n"
         "  [--min-ms X] [--max-ms X] [--bins N]\n"
-        "Reads DIR/events.jsonl; an empty --key-header uses one constant key. Time-based decay, staleness and\n"
+        "Reads DIR/events.jsonl; an empty --key-header uses one constant key. --size-source appends the\n"
+        "broker's log2 size bin (from features.payload_size_bytes or features.headers[NAME]) with the same cold-bin\n"
+        "parent fallback and learning of both keys. Time-based decay, staleness and\n"
         "eviction run on the export's benchmark_time_ns, not on wall-clock replay time.\n";
     std::exit(error.empty() ? 0 : 2);
 }
@@ -76,6 +81,15 @@ Options parse_options(int argc, char** argv) {
         else if (flag == "--output") o.output = value;
         else if (flag == "--key-header") o.key_header = value;
         else if (flag == "--policy-version") o.policy_version = value;
+        else if (flag == "--size-source") {
+            using Source = PredictorKeyPolicy::SizeSource;
+            if (value == "none") o.size_source = Source::None;
+            else if (value == "payload") o.size_source = Source::Payload;
+            else if (value.starts_with("header:") && value.size() > 7) {
+                o.size_source = Source::Header;
+                o.size_header = value.substr(7);
+            } else usage(argv[0], "size-source must be none, payload or header:NAME");
+        }
         else if (flag == "--levels") p.num_levels = static_cast<uint8_t>(to_count(value, "levels"));
         else if (flag == "--default-priority") p.default_priority = static_cast<uint8_t>(to_count(value, "default-priority"));
         else if (flag == "--summary") {
@@ -111,6 +125,7 @@ Options parse_options(int argc, char** argv) {
 /// Only the fields replay needs, so memory grows with events, not with their JSON trees.
 struct Event {
     std::string run, instance, message, split, id, key, trigger, label_status;
+    std::optional<std::string> parent;
     int64_t time{0};
     bool ingress{false};
     bool delivered_attempt{false};
@@ -201,6 +216,25 @@ int main(int argc, char** argv) try {
             const Json* header = headers ? headers->get(options.key_header) : nullptr;
             if (header && header->string()) e.key = *header->string();
         }
+        if (options.size_source != PredictorKeyPolicy::SizeSource::None && !e.key.empty()) {
+            const Json* routing = row.get("routing");
+            const Json* features = routing ? routing->get("features") : nullptr;
+            std::optional<double> size;
+            if (options.size_source == PredictorKeyPolicy::SizeSource::Payload) {
+                // The broker bins the payload it received, so a missing size here means a malformed export.
+                const Json* bytes = features ? features->get("payload_size_bytes") : nullptr;
+                if (bytes && bytes->string()) size = static_cast<double>(to_count(*bytes->string(), "payload_size_bytes"));
+                else if (bytes && bytes->number() && *bytes->number() >= 0) size = *bytes->number();
+                else throw std::runtime_error("event " + e.id + " has no features.payload_size_bytes");
+            } else {
+                const Json* headers = features ? features->get("headers") : nullptr;
+                const Json* header = headers ? headers->get(options.size_header) : nullptr;
+                if (header && header->string()) size = parse_size_hint(*header->string());
+            }
+            auto keys = bin_predictor_key(std::move(e.key), size);
+            e.key = std::move(keys.key);
+            e.parent = std::move(keys.parent);
+        }
         events.push_back(std::move(e));
     }
     seen.clear();
@@ -224,7 +258,7 @@ int main(int argc, char** argv) try {
 
     std::unique_ptr<PerKeyPredictor> predictor;
     std::string current_run;
-    uint64_t ingress = 0, learned = 0, censored = 0;
+    uint64_t ingress = 0, learned = 0, censored = 0, parent_fallbacks = 0;
     const auto finish_run = [&] {
         if (!predictor) return;
         const auto snapshot = predictor->snapshot();
@@ -233,6 +267,7 @@ int main(int argc, char** argv) try {
              << quote(predictor->model_version()) << ",\"boundaries_ms\":"
              << boundaries_text(snapshot ? snapshot->boundaries_ms : std::vector<double>{})
              << ",\"ingress\":" << ingress << ",\"learned\":" << learned << ",\"censored\":" << censored
+             << ",\"parent_fallbacks\":" << parent_fallbacks
              << ",\"duplicate_events\":" << duplicates << ",\"keys\":" << stats.keys
              << ",\"evictions\":" << stats.evictions << ",\"overflow_observations\":"
              << stats.overflow_observations << ",\"saturated\":" << stats.saturated
@@ -243,13 +278,18 @@ int main(int argc, char** argv) try {
             finish_run();
             current_run = event.run;
             predictor = std::make_unique<PerKeyPredictor>(options.predictor);
-            ingress = learned = censored = 0;
+            ingress = learned = censored = parent_fallbacks = 0;
         }
         replay_now = std::chrono::steady_clock::time_point{} + std::chrono::nanoseconds(event.time);
         if (event.ingress) {
             ++ingress;
             const auto snapshot = predictor->snapshot();  // single-threaded replay: same snapshot predict will use
-            const DurationPrediction p = predictor->predict(event.key);
+            DurationPrediction p = predictor->predict(event.key);
+            if (p.status == PredictionStatus::ColdKey && event.parent) {
+                // Same rule as the broker: a cold size bin uses its parent key only when the parent is predicted.
+                const auto parent = predictor->predict(*event.parent);
+                if (parent.status == PredictionStatus::Predicted) p = parent, ++parent_fallbacks;
+            }
             *out << "{\"kind\":\"prediction\",\"run\":" << quote(current_run)
                  << ",\"broker_instance_id\":" << quote(event.instance)
                  << ",\"message_id\":" << quote(event.message)
@@ -265,10 +305,12 @@ int main(int argc, char** argv) try {
         }
         if (event.split != "train" && event.split != "evaluation") continue;
         if (event.label_status == "eligible" && event.duration_ms) {
-            if (predictor->observe(event.key, *event.duration_ms)) ++learned;
+            if (predictor->observe(event.key, event.parent.value_or(std::string{}), *event.duration_ms)) ++learned;
         } else if (event.trigger == "lease_expiry" && event.delivered_attempt) {
             // A delivered attempt overran its lease: no duration, but the key is not as fast as its successes say.
-            if (predictor->observe_censored(event.key)) ++censored;
+            bool recorded = predictor->observe_censored(event.key);
+            if (event.parent) recorded = predictor->observe_censored(*event.parent) || recorded;
+            if (recorded) ++censored;
         }
     }
     finish_run();

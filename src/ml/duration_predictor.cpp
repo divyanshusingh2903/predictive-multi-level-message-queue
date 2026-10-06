@@ -1,6 +1,7 @@
 #include "ml/duration_predictor.hpp"
 
 #include <algorithm>
+#include <charconv>
 #include <cerrno>
 #include <cmath>
 #include <cstring>
@@ -280,23 +281,34 @@ DurationPrediction PerKeyPredictor::predict(std::string_view key) {
     return evaluate(found->second, *snap);
 }
 
+bool PerKeyPredictor::record_key(std::string_view key, double duration_ms, Clock::time_point at) {
+    auto& shard = shard_for(key);
+    std::lock_guard lock{shard.mutex};
+    Entry* entry = touch_locked(shard, key, at);
+    if (!entry) {
+        overflow_count_.fetch_add(1, std::memory_order_relaxed);
+        return false;
+    }
+    entry->histogram.add(duration_ms);
+    entry->last_update = at;
+    shard.recency.splice(shard.recency.begin(), shard.recency, entry->position);
+    return true;
+}
+
 bool PerKeyPredictor::observe(std::string_view key, double duration_ms) {
-    if (!usable_key(key) || !std::isfinite(duration_ms) || duration_ms < 0.0) {
+    return observe(key, std::string_view{}, duration_ms);
+}
+
+bool PerKeyPredictor::observe(std::string_view key, std::string_view parent, double duration_ms) {
+    if (!usable_key(key) || (!parent.empty() && !usable_key(parent)) || !std::isfinite(duration_ms) ||
+        duration_ms < 0.0) {
         rejected_.fetch_add(1, std::memory_order_relaxed);
         return false;
     }
     const auto at = now();
-    {
-        auto& shard = shard_for(key);
-        std::lock_guard lock{shard.mutex};
-        if (Entry* entry = touch_locked(shard, key, at)) {
-            entry->histogram.add(duration_ms);
-            entry->last_update = at;
-            shard.recency.splice(shard.recency.begin(), shard.recency, entry->position);
-        } else {
-            overflow_count_.fetch_add(1, std::memory_order_relaxed);
-        }
-    }
+    // Shard locks are taken one at a time, never nested.
+    record_key(key, duration_ms, at);
+    if (!parent.empty()) record_key(parent, duration_ms, at);
     observed_.fetch_add(1, std::memory_order_relaxed);
     std::lock_guard lock{global_mutex_};
     if (global_.add(duration_ms)) saturated_.fetch_add(1, std::memory_order_relaxed);
@@ -606,6 +618,52 @@ std::size_t PerKeyPredictor::load(const std::filesystem::path& path, std::string
     }
     if (boundaries || config_.num_levels > 1) snapshot_.store(boundaries);
     return restored;
+}
+
+std::string size_policy_label(const PredictorKeyPolicy& policy) {
+    switch (policy.size_source) {
+        case PredictorKeyPolicy::SizeSource::None: return "";
+        case PredictorKeyPolicy::SizeSource::Payload: return "|size=payload";
+        case PredictorKeyPolicy::SizeSource::Header: return "|size=header:" + policy.size_header;
+    }
+    return "";
+}
+
+std::string size_bin_label(double size) {
+    const double clamped = std::max(size, 1.0);
+    const int bin = std::min(63, static_cast<int>(std::floor(std::log2(clamped))));
+    return "s" + std::to_string(bin);
+}
+
+std::optional<PredictorKeys> derive_predictor_keys(
+    const std::unordered_map<std::string, std::string>& headers, const PredictorKeyPolicy& policy,
+    uint64_t payload_size_bytes) {
+    auto key = derive_predictor_key(headers, policy);
+    if (!key) return std::nullopt;
+    std::optional<double> size;
+    if (policy.size_source == PredictorKeyPolicy::SizeSource::Payload) {
+        size = static_cast<double>(payload_size_bytes);
+    } else if (policy.size_source == PredictorKeyPolicy::SizeSource::Header && !policy.size_header.empty()) {
+        const auto found = headers.find(policy.size_header);
+        if (found != headers.end()) size = parse_size_hint(found->second);
+    }
+    return bin_predictor_key(std::move(*key), size);
+}
+
+std::optional<double> parse_size_hint(std::string_view text) {
+    if (text.empty() || text.size() > 32) return std::nullopt;
+    double value = 0;
+    const auto* end = text.data() + text.size();
+    const auto parsed = std::from_chars(text.data(), end, value);
+    if (parsed.ec != std::errc{} || parsed.ptr != end || !std::isfinite(value) || value < 0) return std::nullopt;
+    return value;
+}
+
+PredictorKeys bin_predictor_key(std::string key, std::optional<double> size) {
+    if (!size) return {std::move(key), std::nullopt};
+    auto binned = key + '\x1f' + size_bin_label(*size);
+    if (binned.size() > kMaxPredictorKeyBytes) return {std::move(key), std::nullopt};
+    return {std::move(binned), std::move(key)};
 }
 
 } // namespace harbinger::ml

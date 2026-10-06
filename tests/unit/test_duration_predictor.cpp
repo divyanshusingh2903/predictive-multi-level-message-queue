@@ -557,6 +557,73 @@ TEST(PredictorKey, UnscopedPolicyUsesLabelThenProducer) {
     EXPECT_FALSE(derive_predictor_key({}, policy));
 }
 
+TEST(PredictorKey, SizeBinsAppendLog2LabelAndKeepTheParent) {
+    using Headers = std::unordered_map<std::string, std::string>;
+    EXPECT_EQ(size_bin_label(0), "s0");
+    EXPECT_EQ(size_bin_label(1), "s0");
+    EXPECT_EQ(size_bin_label(1023), "s9");
+    EXPECT_EQ(size_bin_label(1024), "s10");
+    EXPECT_EQ(size_bin_label(1e300), "s63");
+    const std::string base = std::string("p\x1f") + "resize";
+    PredictorKeyPolicy none;
+    auto keys = derive_predictor_keys({{"__producer_id", "p"}, {"job_type", "resize"}}, none, 5000);
+    ASSERT_TRUE(keys);
+    EXPECT_EQ(keys->key, base);  // default policy: unchanged keys, no parent
+    EXPECT_FALSE(keys->parent);
+
+    PredictorKeyPolicy payload;
+    payload.size_source = PredictorKeyPolicy::SizeSource::Payload;
+    keys = derive_predictor_keys({{"__producer_id", "p"}, {"job_type", "resize"}}, payload, 5000);
+    ASSERT_TRUE(keys);
+    EXPECT_EQ(keys->key, base + "\x1fs12");
+    EXPECT_EQ(keys->parent, base);
+    keys = derive_predictor_keys({{"__producer_id", "p"}, {"job_type", "resize"}}, payload, 0);
+    EXPECT_EQ(keys->key, base + "\x1fs0");
+    EXPECT_FALSE(derive_predictor_keys(Headers{{"job_type", "resize"}}, payload, 10));  // no key, no bin
+
+    PredictorKeyPolicy header;
+    header.size_source = PredictorKeyPolicy::SizeSource::Header;
+    header.size_header = "pixels";
+    const auto with = [&](const std::string& value) {
+        return derive_predictor_keys({{"__producer_id", "p"}, {"job_type", "resize"}, {"pixels", value}}, header, 1);
+    };
+    EXPECT_EQ(with("12000000")->key, base + "\x1fs23");
+    EXPECT_EQ(with("12000000")->parent, base);
+    EXPECT_EQ(with("2.5e3")->key, base + "\x1fs11");
+    // Missing, malformed, negative, non-finite or overlong hints leave the key un-binned instead of rejecting it.
+    const std::vector<std::string> unusable{"", "abc", "12px", "-4", "nan", "inf", " 12", std::string(40, '9')};
+    for (const auto& bad : unusable) {
+        SCOPED_TRACE(bad);
+        const auto k = with(bad);
+        ASSERT_TRUE(k);
+        EXPECT_EQ(k->key, base);
+        EXPECT_FALSE(k->parent);
+    }
+    keys = derive_predictor_keys({{"__producer_id", "p"}, {"job_type", "resize"}}, header, 1);
+    EXPECT_EQ(keys->key, base);
+    // A key too long to carry a bin stays un-binned rather than being truncated into another key.
+    const auto near_limit = bin_predictor_key(std::string(kMaxPredictorKeyBytes - 3, 'x'), 1 << 20);
+    EXPECT_EQ(near_limit.key, std::string(kMaxPredictorKeyBytes - 3, 'x'));
+    EXPECT_FALSE(near_limit.parent);
+}
+
+TEST(DurationPredictor, PairedObserveLearnsBothKeysButCountsTheGlobalOnce) {
+    auto c = base();
+    c.min_samples = 3;
+    c.global_min_samples = 6;
+    PerKeyPredictor paired{c}, single{c};
+    for (int i = 0; i < 6; ++i) {
+        EXPECT_TRUE(paired.observe("k\x1fs3", "k", 10.0 + i));
+        EXPECT_TRUE(single.observe("k", 10.0 + i));
+    }
+    EXPECT_EQ(paired.stats().observations, single.stats().observations);
+    ASSERT_TRUE(paired.snapshot());
+    EXPECT_EQ(paired.snapshot()->boundaries_ms, single.snapshot()->boundaries_ms);
+    EXPECT_EQ(paired.predict("k").estimate_ms, single.predict("k").estimate_ms);
+    EXPECT_EQ(paired.predict("k\x1fs3").estimate_ms, single.predict("k").estimate_ms);
+    EXPECT_FALSE(paired.observe("k", std::string(kMaxPredictorKeyBytes + 1, 'p'), 5.0));
+}
+
 TEST(DurationPredictor, ConcurrentPredictObserveAndRefresh) {
     auto c = base();
     c.boundary_refresh_every = 7;

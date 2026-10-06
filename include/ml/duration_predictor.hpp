@@ -151,6 +151,9 @@ public:
     bool observe(std::string_view key, double duration_ms) override;
     bool observe_censored(std::string_view key) override;
     [[nodiscard]] std::string model_version() const override;
+    /// Learn one duration for a size-binned key and its un-binned parent; the global histogram (and so the tier
+    /// boundaries) counts the duration once. An empty parent is the same as observe(key, duration_ms).
+    bool observe(std::string_view key, std::string_view parent, double duration_ms);
 
     /// Current boundaries; a short internal lock may be taken (std::atomic<shared_ptr> is not lock-free).
     [[nodiscard]] std::shared_ptr<const BoundarySnapshot> snapshot() const;
@@ -193,6 +196,8 @@ private:
     [[nodiscard]] bool stale(const Entry& entry, Clock::time_point at) const;
     /// Find or admit the key and bring its history up to date; returns null when the key cannot be tracked.
     [[nodiscard]] Entry* touch_locked(Shard& shard, std::string_view key, Clock::time_point at);
+    /// Add a duration to one key's histogram; false when the key could not be tracked (counted as overflow).
+    bool record_key(std::string_view key, double duration_ms, Clock::time_point at);
     void refresh_boundaries_locked();
     [[nodiscard]] DurationPrediction fallback(PredictionStatus status, uint64_t seen) const;
     [[nodiscard]] DurationPrediction evaluate(Entry& entry, const BoundarySnapshot& snapshot) const;
@@ -216,11 +221,40 @@ struct PredictorKeyPolicy {
     /// Prefix the key with the broker-assigned producer id so one producer cannot claim another's history.
     bool scope_by_producer{true};
     std::string producer_header{"__producer_id"};
+    /// Optional size bin appended to the key (issue #35): none, the payload size in bytes, or a numeric header.
+    enum class SizeSource { None, Payload, Header };
+    SizeSource size_source{SizeSource::None};
+    /// Header carrying a non-negative size hint (for example pixels or rows) when size_source is Header.
+    std::string size_header{};
 };
+
+/// A message's predictor key and, when a size bin was appended, the un-binned parent key used while the bin is cold.
+struct PredictorKeys {
+    std::string key;
+    std::optional<std::string> parent{};
+};
+
+/// Snapshot-context suffix naming the size source ("" for none) so a snapshot never mixes key schemes.
+[[nodiscard]] std::string size_policy_label(const PredictorKeyPolicy& policy);
+
+/// Bin label for a size: "s" + floor(log2(max(size, 1))), capped at s63.
+[[nodiscard]] std::string size_bin_label(double size);
 
 /// Key for a message, or nullopt when none can be formed (the caller then uses the default tier).
 /// There is no queue-name key: the broker is one logical queue, so the default is the producer id.
 [[nodiscard]] std::optional<std::string> derive_predictor_key(
     const std::unordered_map<std::string, std::string>& headers, const PredictorKeyPolicy& policy);
+
+/// derive_predictor_key plus the policy's size bin. A missing, non-numeric, negative or non-finite size header leaves
+/// the key un-binned (no parent); a binned key always carries its un-binned parent.
+[[nodiscard]] std::optional<PredictorKeys> derive_predictor_keys(
+    const std::unordered_map<std::string, std::string>& headers, const PredictorKeyPolicy& policy,
+    uint64_t payload_size_bytes);
+
+/// A size hint as sent in a header: a plain non-negative finite decimal of at most 32 characters, else nullopt.
+[[nodiscard]] std::optional<double> parse_size_hint(std::string_view text);
+
+/// key with its size bin appended and key as the parent; key alone when there is no size or the result is too long.
+[[nodiscard]] PredictorKeys bin_predictor_key(std::string key, std::optional<double> size);
 
 } // namespace harbinger::ml

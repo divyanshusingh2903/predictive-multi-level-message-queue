@@ -129,5 +129,5 @@ not warranted. Details: [`benchmarks/results/feature-signal-v1/`](../benchmarks/
    means something in multi-minute backlogs; evaluate on the Azure trace with a new pre-registration.
 2. Warm start: snapshot restore after long downtime is treated as stale; consider keeping restored keys usable until
    enough new evidence arrives.
-3. Size-binned keys: derive an optional log2 size bin from the payload size or an allowlisted size header and append it to the key (#24 decision); a cloud repeat of the collection (#26, `benchmarks/collect/CLOUD.md`).
+3. Size-binned keys: implemented as opt-in `routing.key.size_source` (#35, [size bins](duration-predictor.md#size-bins-issue-35)); not yet evaluated end-to-end in the broker. A cloud repeat of the collection remains (#26, `benchmarks/collect/CLOUD.md`).
 4. Per-function worker pools in the trace simulator to model serverless scaling.

@@ -95,6 +95,8 @@ TEST(ConfigFile, RejectsInvalidDocumentsWithoutPartialApplication) {
         R"({"config_version": 1, "routing": {"mode": "shadow", "predictor": {"decay": 2}}})",
         R"({"config_version": 1, "routing": {"mode": "shadow", "predictor": {"summary": "p99"}}})",
         R"({"config_version": 1, "routing": {"mode": "shadow", "key": {"scope_by_producer": "yes"}}})",
+        R"({"config_version": 1, "routing": {"mode": "shadow", "key": {"size_source": "bytes"}}})",
+        R"({"config_version": 1, "routing": {"mode": "shadow", "key": {"size_header": 5}}})",
         R"({"config_version": 1, "features": {"schema_version": "s", "routing_policy_version": "p",
             "headers": [{"name": "__producer_id", "type": "numeric"}]}})",
         R"({"config_version": 1, "features": {"schema_version": "s", "routing_policy_version": "p",
@@ -110,6 +112,24 @@ TEST(ConfigFile, RejectsInvalidDocumentsWithoutPartialApplication) {
         EXPECT_EQ(config.num_levels, 3);  // nothing applied
         EXPECT_FALSE(config.predictive_routing);
     }
+}
+
+TEST(ConfigFile, SizeBinnedKeysAreOptInAndValidatedByTheBroker) {
+    HarbingerConfig config;
+    ServerSettings server;
+    apply(R"({"config_version": 1, "routing": {"mode": "shadow"}})", config);
+    EXPECT_EQ(config.predictive_routing->key.size_source, ml::PredictorKeyPolicy::SizeSource::None);
+    apply(R"({"config_version": 1, "routing": {"mode": "shadow", "key": {"size_source": "payload"}}})", config);
+    EXPECT_EQ(config.predictive_routing->key.size_source, ml::PredictorKeyPolicy::SizeSource::Payload);
+    EXPECT_NE(describe_config(config, server).find("+size(payload)"), std::string::npos);
+    apply(R"({"config_version": 1, "routing": {"mode": "predictive",
+              "key": {"size_source": "header", "size_header": "pixels"}}})", config);
+    EXPECT_EQ(config.predictive_routing->key.size_source, ml::PredictorKeyPolicy::SizeSource::Header);
+    EXPECT_EQ(config.predictive_routing->key.size_header, "pixels");
+    EXPECT_NE(describe_config(config, server).find("+size(pixels)"), std::string::npos);
+    EXPECT_NO_THROW(HarbingerService{config});
+    apply(R"({"config_version": 1, "routing": {"mode": "shadow", "key": {"size_source": "header"}}})", config);
+    EXPECT_THROW(HarbingerService{config}, std::invalid_argument);  // header source without a header name
 }
 
 TEST(ConfigFile, FeedbackWithoutFeaturesIsRejectedByTheBroker) {

@@ -1626,6 +1626,76 @@ TEST(PredictiveRouting, DisabledModeAndBadConfigurationAreRejected) {
     auto snapshot = predictive_config(ml::RoutingMode::Shadow);
     snapshot.predictive_routing->snapshot_path = "";
     EXPECT_THROW(HarbingerService{snapshot}, std::invalid_argument);
+    using SizeSource = ml::PredictorKeyPolicy::SizeSource;
+    const auto sized = [](SizeSource source, std::string header) {
+        auto config = predictive_config(ml::RoutingMode::Shadow);
+        config.predictive_routing->key.size_source = source;
+        config.predictive_routing->key.size_header = std::move(header);
+        return config;
+    };
+    EXPECT_THROW(HarbingerService{sized(SizeSource::Header, "")}, std::invalid_argument);
+    EXPECT_THROW(HarbingerService{sized(SizeSource::None, "pixels")}, std::invalid_argument);
+    EXPECT_THROW(HarbingerService{sized(SizeSource::Payload, "pixels")}, std::invalid_argument);
+    EXPECT_THROW(HarbingerService{sized(SizeSource::Header, "__producer_id")}, std::invalid_argument);
+    EXPECT_THROW(HarbingerService{sized(SizeSource::Header, std::string(100, 'h'))}, std::invalid_argument);
+    EXPECT_NO_THROW(HarbingerService{sized(SizeSource::Header, "pixels")});
+    EXPECT_NO_THROW(HarbingerService{sized(SizeSource::Payload, "")});
+}
+
+TEST(PredictiveRouting, ColdSizeBinUsesItsParentUntilTheBinIsWarm) {
+    auto config = predictive_config(ml::RoutingMode::Predictive);
+    config.predictive_routing->key.size_source = ml::PredictorKeyPolicy::SizeSource::Header;
+    config.predictive_routing->key.size_header = "pixels";
+    LocalBroker b{config};
+    const auto train_sized = [&](const std::string& pixels, int64_t duration, int n) {
+        for (int i = 0; i < n; ++i) {
+            b.submit("x", std::nullopt, {{"job_type", "resize"}, {"pixels", pixels}});
+            const auto delivery = b.pull();
+            ASSERT_FALSE(delivery.timed_out());
+            ASSERT_TRUE(b.ack(delivery.message(), duration).ok());
+        }
+    };
+    train_three(b);  // no size header: un-binned keys, as before
+    train_sized("100", 200, 4);  // learns resize/s6 and resize together
+    const auto stats = b.service.routing_stats();
+    EXPECT_EQ(stats.learned, 16u);  // one label each, although two keys learned it
+    EXPECT_EQ(stats.parent_fallbacks, 0u);
+
+    const std::string parent = b.producer_id + '\x1f' + "resize";
+    b.submit("x", std::nullopt, {{"job_type", "resize"}, {"pixels", "1000000"}});
+    auto context = queued_context(b);
+    ASSERT_TRUE(context);
+    EXPECT_EQ(context->predictor_key, parent + "\x1fs19");
+    EXPECT_EQ(context->predictor_parent_key, parent);
+    EXPECT_EQ(context->predicted_bucket, std::optional<uint8_t>{2});  // the parent's tier, not the default
+    EXPECT_FALSE(context->fallback_reason);
+    EXPECT_EQ(b.service.routing_stats().parent_fallbacks, 1u);
+    ASSERT_TRUE(b.ack(b.pull().message(), 2).ok());
+
+    train_sized("1000000", 2, 3);  // the s19 bin is now warm with its own, much shorter history
+    b.submit("x", std::nullopt, {{"job_type", "resize"}, {"pixels", "1000000"}});
+    context = queued_context(b);
+    EXPECT_EQ(context->predicted_bucket, std::optional<uint8_t>{0});
+    EXPECT_EQ(context->ingress_priority, 0);
+    ASSERT_TRUE(b.ack(b.pull().message(), 2).ok());
+    b.submit("x", std::nullopt, {{"job_type", "resize"}, {"pixels", "100"}});
+    EXPECT_EQ(queued_context(b)->predicted_bucket, std::optional<uint8_t>{2});
+    ASSERT_TRUE(b.ack(b.pull().message(), 200).ok());
+    // The bin borrowed its parent until it had min_samples labels; an unusable hint keeps the plain key, no parent.
+    EXPECT_EQ(b.service.routing_stats().parent_fallbacks, 3u);
+    b.submit("x", std::nullopt, {{"job_type", "resize"}, {"pixels", "-1"}});
+    context = queued_context(b);
+    EXPECT_EQ(context->predictor_key, parent);
+    EXPECT_FALSE(context->predictor_parent_key);
+
+    // A censored attempt marks both keys but counts once.
+    auto delivery = b.pull();
+    ASSERT_TRUE(b.ack(delivery.message(), 20).ok());
+    b.submit("x", std::nullopt, {{"job_type", "resize"}, {"pixels", "100"}});
+    delivery = b.pull();
+    BrokerTestAccess::expire(b.service, delivery.message().message_id());
+    BrokerTestAccess::maintain(b.service);
+    EXPECT_EQ(b.service.routing_stats().censored_observed, 1u);
 }
 
 TEST(PredictiveRouting, ShadowRecordsPredictionButKeepsDefaultPriority) {
@@ -1860,6 +1930,13 @@ TEST(PredictiveRouting, SnapshotRestoresWarmStateAndBadSnapshotStartsCold) {
         EXPECT_FALSE(b.service.routing_stats().snapshot_loaded);
         EXPECT_NE(b.service.routing_stats().snapshot_status.find("rejected"), std::string::npos);
     }
+    {
+        auto binned = config;
+        binned.predictive_routing->key.size_source = ml::PredictorKeyPolicy::SizeSource::Payload;
+        LocalBroker b{binned};
+        EXPECT_FALSE(b.service.routing_stats().snapshot_loaded);
+        EXPECT_NE(b.service.routing_stats().snapshot_status.find("rejected"), std::string::npos);
+    }
     // Corruption: flip a byte; the broker starts cold instead of failing or routing on garbage.
     {
         std::fstream file(path, std::ios::in | std::ios::out | std::ios::binary);
@@ -1877,35 +1954,57 @@ TEST(PredictiveRouting, SnapshotRestoresWarmStateAndBadSnapshotStartsCold) {
     std::filesystem::remove_all(directory);
 }
 
-TEST(PredictiveRouting, InBrokerPredictionsMatchOfflineReplayOfTheSameStream) {
-    // The broker and harbinger_predictor_replay must make identical predictions for the same chronological stream.
+namespace {
+
+/// The broker and harbinger_predictor_replay must make identical predictions for the same chronological stream.
+/// With binned=true keys carry a payload-size bin, exercising the cold-bin parent fallback and paired learning.
+void expect_replay_equivalence(bool binned) {
     auto config = predictive_config(ml::RoutingMode::Shadow);
     config.predictive_routing->key.scope_by_producer = false;
     config.predictive_routing->key.job_header = "job";
+    if (binned) config.predictive_routing->key.size_source = ml::PredictorKeyPolicy::SizeSource::Payload;
     config.ingress_features = capture_features();
     LocalBroker b{config};
-    struct Seen { std::string id, job; std::shared_ptr<const ml::RoutingContext> context; int64_t duration; };
+    struct Seen {
+        std::string id, job; std::size_t bytes; std::shared_ptr<const ml::RoutingContext> context; int64_t duration;
+    };
     std::vector<Seen> stream;
     std::mt19937 rng(7);
     const std::vector<std::pair<std::string, int64_t>> jobs{{"binary", 3}, {"resize", 40}};
+    const std::vector<std::size_t> sizes{1, 100, 5000};
     for (int i = 0; i < 160; ++i) {
         const auto& [job, base] = jobs[rng() % jobs.size()];
-        const int64_t duration = base + static_cast<int64_t>(rng() % 5);
-        const auto id = b.submit("x", std::nullopt, {{"job", job}});
+        const auto bytes = sizes[rng() % sizes.size()];
+        // Cost grows with size for resize only, so bins matter for one key and not the other.
+        const int64_t duration = base * (job == "resize" ? static_cast<int64_t>(1 + bytes / 1000) : 1) +
+            static_cast<int64_t>(rng() % 5);
+        const auto id = b.submit(std::string(bytes, 'x'), std::nullopt, {{"job", job}});
         const auto context = queued_context(b);
         const auto delivery = b.pull();
         ASSERT_EQ(delivery.message().message_id(), id);
         ASSERT_TRUE(b.ack(delivery.message(), duration).ok());
-        stream.push_back({id, job, context, duration});
+        stream.push_back({id, job, bytes, context, duration});
     }
     // 1. A standalone predictor fed the same calls agrees exactly.
     ml::PerKeyPredictor offline{config.predictive_routing->predictor};
+    uint64_t parent_fallbacks = 0;
     for (const auto& seen : stream) {
-        const auto p = offline.predict(seen.job);
+        const auto keys = ml::bin_predictor_key(seen.job, binned ? std::optional<double>(seen.bytes) : std::nullopt);
+        EXPECT_EQ(seen.context->predictor_key, keys.key);
+        EXPECT_EQ(seen.context->predictor_parent_key, keys.parent);
+        auto p = offline.predict(keys.key);
+        if (p.status == ml::PredictionStatus::ColdKey && keys.parent) {
+            const auto parent = offline.predict(*keys.parent);
+            if (parent.status == ml::PredictionStatus::Predicted) p = parent, ++parent_fallbacks;
+        }
         EXPECT_EQ(p.estimate_ms, seen.context->predicted_processing_time_ms) << seen.id;
         EXPECT_EQ(p.status == ml::PredictionStatus::Predicted ? std::optional<uint8_t>{p.bucket} : std::nullopt,
                   seen.context->predicted_bucket) << seen.id;
-        offline.observe(seen.job, static_cast<double>(seen.duration));
+        offline.observe(keys.key, keys.parent.value_or(""), static_cast<double>(seen.duration));
+    }
+    EXPECT_EQ(b.service.routing_stats().parent_fallbacks, parent_fallbacks);
+    if (binned) {
+        EXPECT_GT(parent_fallbacks, 0u);
     }
     // 2. The replay CLI, given the stream in export form, agrees exactly too.
     const auto directory = std::filesystem::temp_directory_path() / ("harbinger-equivalence-" + std::to_string(::getpid()));
@@ -1917,7 +2016,7 @@ TEST(PredictiveRouting, InBrokerPredictionsMatchOfflineReplayOfTheSameStream) {
         for (const auto& seen : stream) {
             const auto common = std::string("\"run\":\"equivalence-s1-r1-disabled\",\"broker_instance_id\":\"i\",") +
                 "\"message_id\":\"" + seen.id + "\",\"split\":\"train\",\"routing\":{\"features\":{\"headers\":{\"job\":\"" +
-                seen.job + "\"}}}";
+                seen.job + "\"},\"payload_size_bytes\":\"" + std::to_string(seen.bytes) + "\"}}";
             events << "{" << common << ",\"event_type\":\"ingress\",\"event_id\":\"i:" << ++sequence
                    << "\",\"benchmark_time_ns\":" << (time += 1000) << ",\"label_status\":null,\"processing_time_ms\":null}\n";
             events << "{" << common << ",\"event_type\":\"outcome\",\"event_id\":\"i:" << ++sequence
@@ -1929,7 +2028,8 @@ TEST(PredictiveRouting, InBrokerPredictionsMatchOfflineReplayOfTheSameStream) {
     const std::string command = std::string(PREDICTOR_REPLAY_EXECUTABLE) + " --export " + directory.string() +
         " --output " + (directory / "out.jsonl").string() + " --key-header job --min-samples " + std::to_string(p.min_samples) +
         " --global-min-samples " + std::to_string(p.global_min_samples) + " --refresh-every " +
-        std::to_string(p.boundary_refresh_every) + " --decay 1 --global-decay 1";
+        std::to_string(p.boundary_refresh_every) + " --decay 1 --global-decay 1" +
+        (binned ? " --size-source payload" : "");
     ASSERT_EQ(std::system(command.c_str()), 0) << command;
     std::ifstream output(directory / "out.jsonl");
     std::string line;
@@ -1951,6 +2051,12 @@ TEST(PredictiveRouting, InBrokerPredictionsMatchOfflineReplayOfTheSameStream) {
     EXPECT_EQ(index, stream.size());
     std::filesystem::remove_all(directory);
 }
+
+} // namespace
+
+TEST(PredictiveRouting, InBrokerPredictionsMatchOfflineReplayOfTheSameStream) { expect_replay_equivalence(false); }
+
+TEST(PredictiveRouting, InBrokerPredictionsMatchOfflineReplayWithSizeBins) { expect_replay_equivalence(true); }
 
 TEST(PredictiveRouting, ConcurrentSubmitSettleAndMaintenanceKeepAccountingWithPredictorOn) {
     auto config = predictive_config(ml::RoutingMode::Predictive);
