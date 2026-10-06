@@ -41,6 +41,8 @@ A section that is **absent** keeps the current value; a section set to **`null`*
 | `routing.routing_policy_version` | string | Default `per-key-v2`. |
 | `routing.key.job_header` | string or null | Header naming the job type (default `job_type`); `null` keys by producer only. |
 | `routing.key.scope_by_producer` | bool | Default `true`; see [the predictor doc](duration-predictor.md#keys). |
+| `routing.key.size_source` | `none`, `payload` or `header` | Default `none`. Appends a log2 size bin to the key; see [size bins](duration-predictor.md#size-bins-issue-35). |
+| `routing.key.size_header` | string | Required with `size_source: header` and rejected otherwise; must not start with `__`. |
 | `routing.predictor.*` | | Every `PerKeyPredictorConfig` field: `summary`, `min_samples`, `spread_quantile`, `max_spread_ratio`, `max_censored_fraction`, `decay`, `global_decay`, `time_half_life_ms`, `stale_after_ms`, `histogram_bins`, `min_ms`, `max_ms`, `max_keys`, `shards`, `idle_eviction_ms`, `cold_eviction_grace_ms`, `boundary_refresh_every`, `global_min_samples`, `hysteresis`. `num_levels`/`default_priority` always come from `broker`. |
 | `routing.snapshot.path`, `interval_ms` | string, integer | Predictor state file, rewritten atomically every interval and at shutdown. |
 
@@ -68,6 +70,6 @@ or one with another histogram layout is rejected at startup and the broker start
 ## Stats line
 
 `--stats-interval-ms N` prints queue/in-flight/DLQ sizes, feedback counters and, with a predictor:
-lookups, routed count, outcome counts per fallback reason, lookup latency, learned/censored labels, rolling tier
+lookups, routed count, parent fallbacks (cold size bins predicted from their un-binned key), outcome counts per fallback reason, lookup latency, learned/censored labels, rolling tier
 agreement and log2 error, drift alerts, key count, overflow, evictions and snapshot saves/failures. It never
 contains message ids, payloads or key values.

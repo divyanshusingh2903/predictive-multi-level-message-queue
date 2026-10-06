@@ -48,6 +48,11 @@ HarbingerConfig validate_config(HarbingerConfig config) {
             throw std::invalid_argument("predictor snapshot needs a path and a positive interval");
         if (routing.key.job_header.starts_with("__"))
             throw std::invalid_argument("predictor job header must not be a reserved __ header");
+        using SizeSource = ml::PredictorKeyPolicy::SizeSource;
+        if ((routing.key.size_source == SizeSource::Header) != !routing.key.size_header.empty())
+            throw std::invalid_argument("predictor size_header is required with, and only with, size_source header");
+        if (routing.key.size_header.starts_with("__") || routing.key.size_header.size() > ml::kMaxKeyBytes)
+            throw std::invalid_argument("predictor size header must be a short, non-reserved header name");
         routing.predictor.num_levels = config.num_levels;
         routing.predictor.default_priority = config.default_priority;
     }
@@ -118,7 +123,7 @@ HarbingerService::HarbingerService(HarbingerConfig config)
         const auto& routing = *config_.predictive_routing;
         predictor_ = std::make_unique<ml::PerKeyPredictor>(routing.predictor);
         snapshot_context_ = routing.routing_policy_version + "|key=" + routing.key.job_header +
-            (routing.key.scope_by_producer ? "|scoped" : "|unscoped");
+            (routing.key.scope_by_producer ? "|scoped" : "|unscoped") + ml::size_policy_label(routing.key);
         if (routing.snapshot_path) {
             std::error_code missing;
             if (!std::filesystem::exists(*routing.snapshot_path, missing)) {
@@ -279,6 +284,7 @@ ml::RoutingStats HarbingerService::routing_stats() const {
     for (std::size_t i = 0; i < out.latency_buckets.size(); ++i)
         out.latency_buckets[i] = routing_.latency[i].load(std::memory_order_relaxed);
     out.routed_by_prediction = routing_.routed.load(std::memory_order_relaxed);
+    out.parent_fallbacks = routing_.parent_fallbacks.load(std::memory_order_relaxed);
     out.latency_ns_total = routing_.latency_total.load(std::memory_order_relaxed);
     out.latency_ns_max = routing_.latency_max.load(std::memory_order_relaxed);
     out.learned = routing_.learned.load(std::memory_order_relaxed);
@@ -316,16 +322,29 @@ uint8_t HarbingerService::predict_route(Message& msg, ml::RoutingContext& contex
     context.mode = routing.mode;
     context.routing_policy_version = routing.routing_policy_version;
     try {
-        context.predictor_key = ml::derive_predictor_key(msg.headers, routing.key);
+        if (auto keys = ml::derive_predictor_keys(msg.headers, routing.key, msg.payload.size())) {
+            context.predictor_key = std::move(keys->key);
+            context.predictor_parent_key = std::move(keys->parent);
+        }
         context.model_version = predictor_->model_version();
     } catch (...) {
         context.predictor_key.reset();
+        context.predictor_parent_key.reset();
     }
     const auto start = Clock::now();
     ml::DurationPrediction prediction{std::nullopt, config_.default_priority, ml::PredictionStatus::InvalidKey, 0};
     if (context.predictor_key) {
-        try { prediction = predictor_->predict(*context.predictor_key); }
-        catch (...) { prediction.status = ml::PredictionStatus::InvalidKey; }
+        try {
+            prediction = predictor_->predict(*context.predictor_key);
+            // A cold size bin borrows its own key's history (never another key's) until the bin is warm.
+            if (prediction.status == ml::PredictionStatus::ColdKey && context.predictor_parent_key) {
+                auto parent = predictor_->predict(*context.predictor_parent_key);
+                if (parent.status == ml::PredictionStatus::Predicted) {
+                    prediction = parent;
+                    routing_.parent_fallbacks.fetch_add(1, std::memory_order_relaxed);
+                }
+            }
+        } catch (...) { prediction.status = ml::PredictionStatus::InvalidKey; }
     }
     const auto elapsed = static_cast<uint64_t>(std::chrono::duration_cast<std::chrono::nanoseconds>(Clock::now() - start).count());
     context.inference_elapsed_ms = static_cast<double>(elapsed) / 1e6;
@@ -366,10 +385,13 @@ uint8_t HarbingerService::predict_route(Message& msg, ml::RoutingContext& contex
 void HarbingerService::learn(const PredictorUpdate& update) noexcept {
     try {
         if (update.censored) {
-            if (predictor_->observe_censored(update.key)) routing_.censored.fetch_add(1, std::memory_order_relaxed);
+            bool recorded = predictor_->observe_censored(update.key);
+            if (update.parent) recorded = predictor_->observe_censored(*update.parent) || recorded;
+            if (recorded) routing_.censored.fetch_add(1, std::memory_order_relaxed);
             return;
         }
-        if (!update.duration_ms || !predictor_->observe(update.key, *update.duration_ms)) {
+        if (!update.duration_ms ||
+            !predictor_->observe(update.key, update.parent.value_or(std::string{}), *update.duration_ms)) {
             routing_.learn_rejected.fetch_add(1, std::memory_order_relaxed);
             return;
         }
@@ -667,10 +689,12 @@ std::optional<ml::FeedbackEvent> HarbingerService::finish_locked(
         const bool features_ok = !feature_extractor_ || context->feature_validity == ml::FeatureValidity::Valid;
         if (kind == Settlement::Ack && !ttl_expired && features_ok && measurement && *measurement >= 0 &&
             *measurement <= config_.delivery_lease.count()) {
-            *update = PredictorUpdate{*context->predictor_key, static_cast<double>(*measurement), false,
+            *update = PredictorUpdate{*context->predictor_key, context->predictor_parent_key,
+                                      static_cast<double>(*measurement), false,
                                       context->predicted_processing_time_ms, context->predicted_bucket};
         } else if (kind == Settlement::Expired) {
-            *update = PredictorUpdate{*context->predictor_key, std::nullopt, true, std::nullopt, std::nullopt};
+            *update = PredictorUpdate{*context->predictor_key, context->predictor_parent_key, std::nullopt, true,
+                                      std::nullopt, std::nullopt};
         }
     }
     auto event = capture_event(msg, kind == Settlement::Expired

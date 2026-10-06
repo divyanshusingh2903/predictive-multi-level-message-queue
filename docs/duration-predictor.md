@@ -24,7 +24,37 @@ The broker is one logical queue and the protocol has no topic or queue name, so 
 - Replay exports carry features, not producer ids, so the CLI takes `--key-header` (default `job`).
 
 Without a `job_type` header nothing distinguishes a producer's job types, so "no configuration" in
-practice means "one key per producer". Finer keys need a header (or, later, richer features, #24).
+practice means "one key per producer". Finer keys need a header or a size bin.
+
+### Size bins (issue #35)
+
+The #24 measurement (`feature-signal-v1`) found that, for jobs whose cost follows their input size, a per-key median
+is off by a median factor of about 1.95 while a per-key, per-log2-size-bin median is off by 1.2 (68% → 93% tier
+accuracy); a gradient-boosted model over every feature added almost nothing more. `PredictorKeyPolicy::size_source`
+therefore adds an optional bin to the key; the default (`None`) changes nothing.
+
+- **`Payload`**: the size is the payload length in bytes. Useful when the payload *is* the input.
+- **`Header`**: the size is a numeric header named by `size_header` (for example `pixels` or `rows`), for jobs whose
+  payload is only a reference to the real input. The value must be a plain non-negative finite decimal of at most
+  32 characters; anything else (missing, `12px`, `-4`, `nan`) leaves the key un-binned rather than rejecting the
+  message. The name must not start with `__`, and when ingress features are on it should be on the allowlist like
+  `job_type`.
+- The bin is `s` + `floor(log2(max(size, 1)))` (`s0`…`s63`), appended as `key\x1fsN`. A key that would exceed
+  `kMaxPredictorKeyBytes` with its bin stays un-binned.
+- **Cold bins borrow their own key, never another's.** A binned key keeps its un-binned *parent*. When the bin is
+  `ColdKey` and the parent is `Predicted`, the parent's estimate and tier are used and `parent_fallbacks` is counted;
+  otherwise the bin's own fallback applies. Every label is learned by both the bin and the parent, so the parent is
+  exactly the un-binned key's history; the global histogram (and so the tier boundaries) counts the label once.
+  Censored attempts mark both keys.
+- A size is a producer-controlled hint like `job_type`, scoped the same way: lying about it moves the message between
+  that producer's own bins only. Bins multiply the number of keys by at most the number of distinct size octaves a
+  key sees, so `max_keys` may need raising.
+- The size policy is part of the snapshot context, so a snapshot taken under another size policy is refused (starts
+  cold) rather than misread.
+
+Size bins help only where cost follows size: the control key in `feature-signal-v1` (a network call whose latency is
+unrelated to its payload) gained nothing, and a binned key needs `min_samples` labels per bin before it stops
+borrowing its parent.
 
 ## Model
 
@@ -146,7 +176,10 @@ repeated event and rejects a conflicting one; it keeps only the fields it needs,
 trees. It does not re-validate the export's chronology or provenance; run the Python dataset
 validation first for evidence-grade replays. It writes one `prediction` line per ingress (the Python
 replay's fields plus `boundaries_ms`, the boundaries in force when it routed) and one `summary` line
-per run. `--help` lists the flags.
+per run. `--help` lists the flags. `--size-source payload|header:NAME` applies the broker's size bins (reading
+`routing.features.payload_size_bytes` or `routing.features.headers[NAME]`), with the same parent fallback and paired
+learning; its summary adds `parent_fallbacks`. The broker test `InBrokerPredictionsMatchOfflineReplayWithSizeBins`
+checks that the broker and the CLI agree exactly on a binned stream.
 
 `ml_engine/cpp_replay.py` runs the binary and scores its predictions with the existing `Quality`
 metrics. Tiers are learned, so each label's actual bucket uses the boundaries in force at that

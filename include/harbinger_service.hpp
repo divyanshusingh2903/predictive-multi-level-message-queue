@@ -161,6 +161,7 @@ private:
     /// Learning work captured under the settlement lock and applied to the predictor after it is released.
     struct PredictorUpdate {
         std::string key;
+        std::optional<std::string> parent;
         std::optional<double> duration_ms;
         bool censored{false};
         std::optional<double> predicted_ms;
@@ -195,7 +196,7 @@ private:
     std::string snapshot_context_;
     /// Lock-free counters behind routing_stats(); the drift window has its own small mutex.
     struct RoutingCounters {
-        std::atomic<uint64_t> lookups{0}, routed{0}, latency_total{0}, latency_max{0};
+        std::atomic<uint64_t> lookups{0}, routed{0}, parent_fallbacks{0}, latency_total{0}, latency_max{0};
         std::array<std::atomic<uint64_t>, ml::kPredictionStatusCount> outcomes{};
         std::array<std::atomic<uint64_t>, ml::kLatencyBuckets> latency{};
         std::atomic<uint64_t> learned{0}, learn_rejected{0}, censored{0};

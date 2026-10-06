@@ -32,6 +32,9 @@ struct RoutingContext {
     std::optional<double> inference_elapsed_ms{};
     /// Broker-internal predictor key used to learn from this message's outcome; never serialized or exported.
     std::optional<std::string> predictor_key{};
+    /// Un-binned key, set only when a size bin was appended to predictor_key; it is learned alongside the bin and
+    /// predicts while the bin is cold.
+    std::optional<std::string> predictor_parent_key{};
 };
 
 } // namespace harbinger::ml

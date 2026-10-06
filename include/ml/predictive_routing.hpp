@@ -38,6 +38,8 @@ struct RoutingStats {
     /// Indexed by PredictionStatus.
     std::array<uint64_t, kPredictionStatusCount> outcomes{};
     uint64_t routed_by_prediction{0};
+    /// Lookups whose size-binned key was cold and whose un-binned parent key supplied the prediction.
+    uint64_t parent_fallbacks{0};
     /// Lookup latency: <1us, <10us, <100us, <1ms, <10ms, >=10ms.
     std::array<uint64_t, kLatencyBuckets> latency_buckets{};
     uint64_t latency_ns_total{0};

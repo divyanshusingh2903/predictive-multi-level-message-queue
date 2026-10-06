@@ -355,6 +355,7 @@ The [Phase 2 tracker](https://github.com/divyanshusingh2903/predictive-multi-lev
 - [x] Offline delayed online-predictor comparison, readiness/fallback checks, and versioned model-selection evidence (v1 result: no qualifier)
 - [x] Pre-registered v2 matrix ([v2 pre-registration](docs/v2-preregistration.md)): production-flow benchmark with oracle, well-configured/misconfigured/stale static priority, per-class and slowdown metrics; Azure Functions trace simulation
 - [x] Per-key predictability on a real trace (Azure Functions 2021)
+- [x] Feature signal on self-generated data (`feature-signal-v1`) and opt-in log2 size-binned keys with cold-bin parent fallback ([size bins](docs/duration-predictor.md#size-bins-issue-35))
 - [x] v2 activation gate: passed on the production-flow benchmark; not passed on the Azure trace simulation ([Phase 2 report](docs/phase2-report.md))
 
 ### Phase 3 — Benchmarking & validation

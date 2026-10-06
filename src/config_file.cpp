@@ -221,6 +221,14 @@ void apply_routing(Section s, HarbingerConfig& c) {
             else r.key.job_header = k.string("job_header", ml::kMaxKeyBytes);
         }
         k.read_bool("scope_by_producer", r.key.scope_by_producer);
+        if (k.has("size_source")) {
+            const auto source = k.string("size_source");
+            if (source == "none") r.key.size_source = ml::PredictorKeyPolicy::SizeSource::None;
+            else if (source == "payload") r.key.size_source = ml::PredictorKeyPolicy::SizeSource::Payload;
+            else if (source == "header") r.key.size_source = ml::PredictorKeyPolicy::SizeSource::Header;
+            else k.fail("size_source must be none, payload or header");
+        }
+        if (k.has("size_header")) r.key.size_header = k.string("size_header", ml::kMaxKeyBytes);
         k.finish();
     }
     if (s.has("predictor")) apply_predictor(s.child("predictor"), r.predictor);
@@ -294,6 +302,8 @@ std::string describe_config(const HarbingerConfig& c, const ServerSettings& serv
         const auto& r = *c.predictive_routing;
         out << (r.mode == ml::RoutingMode::Predictive ? "predictive" : "shadow") << " policy=" << r.routing_policy_version
             << " key=" << (r.key.scope_by_producer ? "producer" : "") << (r.key.job_header.empty() ? "" : "+" + r.key.job_header)
+            << (r.key.size_source == ml::PredictorKeyPolicy::SizeSource::Payload ? "+size(payload)"
+                : r.key.size_source == ml::PredictorKeyPolicy::SizeSource::Header ? "+size(" + r.key.size_header + ")" : "")
             << " snapshot=" << (r.snapshot_path ? r.snapshot_path->string() : "off");
     }
     out << " stats_interval_ms=" << server.stats_interval.count();
@@ -314,7 +324,8 @@ std::string stats_json(const HarbingerService& service) {
     if (r.enabled) {
         static constexpr const char* names[] = {"predicted", "unready", "cold_key", "high_spread", "censored",
                                                 "stale_key", "invalid_key"};
-        out << ",\"lookups\":" << r.lookups << ",\"routed\":" << r.routed_by_prediction << ",\"outcomes\":{";
+        out << ",\"lookups\":" << r.lookups << ",\"routed\":" << r.routed_by_prediction
+            << ",\"parent_fallbacks\":" << r.parent_fallbacks << ",\"outcomes\":{";
         for (std::size_t i = 0; i < r.outcomes.size(); ++i) out << (i ? "," : "") << '"' << names[i] << "\":" << r.outcomes[i];
         const double mean_us = r.lookups ? static_cast<double>(r.latency_ns_total) / static_cast<double>(r.lookups) / 1000.0 : 0.0;
         out << "},\"lookup_mean_us\":" << mean_us << ",\"lookup_max_us\":" << static_cast<double>(r.latency_ns_max) / 1000.0
