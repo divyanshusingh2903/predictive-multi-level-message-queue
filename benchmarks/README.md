@@ -255,3 +255,15 @@ skips reduce scanning work by construction (covered by deterministic visit-count
 tests), but do not guarantee lower latency on every workload. Delivery throughput
 was essentially unchanged; its measured latency improved modestly. Use longer,
 repeated runs on a controlled machine before making capacity claims.
+
+## Production-flow benchmark
+
+`harbinger_prodflow` (`benchmarks/prodflow.cpp`) runs an e-commerce background-job queue: five services as separate
+producers, nine job types doing real CPU work plus simulated network calls, four workers, an embedded broker. Arms:
+`fifo`, `static_tuned`, `static_misconfigured`, `shadow`, `predictive`, `predictive_p75`, `predictive_producer`,
+`predictive_sized` (size-binned keys from the `size_hint` header that `resize_image`, `generate_invoice` and
+`export_report` producers send) and `oracle`. Run a frozen matrix with
+`PRODFLOW_CONFIG=benchmarks/configs/<config>.json benchmarks/run_prodflow.sh build/benchmarks/harbinger_prodflow <raw dir> <seeds>`
+and analyse it with `python -m benchmarks.prodflow_report <config> <raw dir>`. Pre-registrations:
+[v2](../docs/v2-preregistration.md) (`v2-prodflow-1`) and [size bins](../docs/v3-sizebins-preregistration.md)
+(`v3-sizebins-1`).

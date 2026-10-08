@@ -1,9 +1,10 @@
 #!/usr/bin/env bash
 # Run the pre-registered production-flow matrix: every arm for each given seed, arm order rotated per seed so slow
 # machine drift does not always land on the same arm. Usage: run_prodflow.sh BINARY RESULTS_DIR SEED [SEED...]
+# PRODFLOW_CONFIG selects the frozen config (default v2-prodflow.json).
 set -euo pipefail
 binary=$1; results=$2; shift 2
-config=benchmarks/configs/v2-prodflow.json
+config=${PRODFLOW_CONFIG:-benchmarks/configs/v2-prodflow.json}
 read -r -a arms < <(python3 -c "import json;print(' '.join(json.load(open('$config'))['arms']))")
 seconds=$(python3 -c "import json;print(json.load(open('$config'))['seconds'])")
 workers=$(python3 -c "import json;print(json.load(open('$config'))['workers'])")
