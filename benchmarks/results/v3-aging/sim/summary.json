@@ -1,0 +1,634 @@
+{
+ "config": "v3-aging-1",
+ "evaluation": {
+  "0.5": {
+   "criteria": {
+    "P1_mean_latency_vs_fifo": {
+     "kind": "relative_delta",
+     "point": -0.14604419613559538,
+     "ci95": [
+      -0.25507459658473985,
+      -0.05931991853133667
+     ],
+     "status": "fail"
+    },
+    "G1_all_p99_vs_fifo": {
+     "kind": "ratio",
+     "point": 1.0073408688982084,
+     "ci95": [
+      0.9347752540779085,
+      1.0787502604927575
+     ],
+     "status": "pass"
+    },
+    "G2_long_class_max_wait": {
+     "kind": "ratio",
+     "point": 1.2062741210907013,
+     "ci95": [
+      1.0257763294148308,
+      1.5075169175994603
+     ],
+     "status": "pass"
+    },
+    "S1_pausing_vs_plain_aging": {
+     "kind": "relative_delta",
+     "point": -0.06267726137397048,
+     "ci95": [
+      -0.11803322022512011,
+      -0.012085047237977485
+     ],
+     "status": "pass"
+    },
+    "S2_vs_todays_aging": {
+     "kind": "relative_delta",
+     "point": -0.13853681314173824,
+     "ci95": [
+      -0.2489241636228953,
+      -0.05270551850486312
+     ],
+     "status": "pass"
+    },
+    "S3_pausing_cost_vs_no_aging": {
+     "kind": "relative_delta",
+     "point": -0.05466978980928505,
+     "ci95": [
+      -0.12416843348522638,
+      -0.007486258677275624
+     ],
+     "status": "pass"
+    },
+    "S4_no_aging_long_max_wait": {
+     "kind": "ratio",
+     "point": 1.4110037744810056,
+     "ci95": [
+      1.0015535932525632,
+      2.2130953894022634
+     ],
+     "status": "fail"
+    },
+    "S5_plain_aging_mean_vs_fifo": {
+     "kind": "relative_delta",
+     "point": -0.09267765072966215,
+     "ci95": [
+      -0.17934941959727324,
+      -0.03311838747441975
+     ],
+     "status": "fail"
+    },
+    "S6_oracle_mean_vs_fifo": {
+     "kind": "relative_delta",
+     "point": -0.24051338585868734,
+     "ci95": [
+      -0.36254829606367833,
+      -0.13084807141541854
+     ],
+     "status": "pass"
+    },
+    "S7_sensitivity_mean_vs_fifo": {
+     "kind": "relative_delta",
+     "point": -0.12416281569549029,
+     "ci95": [
+      -0.23438962675957428,
+      -0.04905167964802112
+     ],
+     "status": "fail"
+    },
+    "S8_sensitivity_p99_vs_fifo": {
+     "kind": "ratio",
+     "point": 1.0129396101937702,
+     "ci95": [
+      0.9359752590650601,
+      1.092959476469457
+     ],
+     "status": "pass"
+    }
+   },
+   "gate_passed": false
+  },
+  "0.8": {
+   "criteria": {
+    "P1_mean_latency_vs_fifo": {
+     "kind": "relative_delta",
+     "point": -0.23716426098545634,
+     "ci95": [
+      -0.36479843258665634,
+      -0.1167179816150193
+     ],
+     "status": "pass"
+    },
+    "G1_all_p99_vs_fifo": {
+     "kind": "ratio",
+     "point": 1.092459289040643,
+     "ci95": [
+      0.9748815541060407,
+      1.2320323835339468
+     ],
+     "status": "pass"
+    },
+    "G2_long_class_max_wait": {
+     "kind": "ratio",
+     "point": 1.2324914222840386,
+     "ci95": [
+      1.0011983673320506,
+      1.6006050337006303
+     ],
+     "status": "pass"
+    },
+    "S1_pausing_vs_plain_aging": {
+     "kind": "relative_delta",
+     "point": -0.16802709785323242,
+     "ci95": [
+      -0.2814940896788086,
+      -0.05278433624530817
+     ],
+     "status": "pass"
+    },
+    "S2_vs_todays_aging": {
+     "kind": "relative_delta",
+     "point": -0.22567236262990387,
+     "ci95": [
+      -0.3569928325374349,
+      -0.10588335093412647
+     ],
+     "status": "pass"
+    },
+    "S3_pausing_cost_vs_no_aging": {
+     "kind": "relative_delta",
+     "point": -0.02489677552019272,
+     "ci95": [
+      -0.07969918779235964,
+      0.01840282762131711
+     ],
+     "status": "pass"
+    },
+    "S4_no_aging_long_max_wait": {
+     "kind": "ratio",
+     "point": 1.4763327002826911,
+     "ci95": [
+      1.0026081623025969,
+      2.3865270121748994
+     ],
+     "status": "fail"
+    },
+    "S5_plain_aging_mean_vs_fifo": {
+     "kind": "relative_delta",
+     "point": -0.0853434698673355,
+     "ci95": [
+      -0.1615252458740348,
+      -0.027180747027633345
+     ],
+     "status": "fail"
+    },
+    "S6_oracle_mean_vs_fifo": {
+     "kind": "relative_delta",
+     "point": -0.3419089291460988,
+     "ci95": [
+      -0.45197376939738354,
+      -0.22487469334052593
+     ],
+     "status": "pass"
+    },
+    "S7_sensitivity_mean_vs_fifo": {
+     "kind": "relative_delta",
+     "point": -0.2314688744605385,
+     "ci95": [
+      -0.35729126154466556,
+      -0.11315992878312893
+     ],
+     "status": "pass"
+    },
+    "S8_sensitivity_p99_vs_fifo": {
+     "kind": "ratio",
+     "point": 1.0889475036490315,
+     "ci95": [
+      0.9701224478634326,
+      1.22859460680914
+     ],
+     "status": "pass"
+    }
+   },
+   "gate_passed": true
+  },
+  "0.95": {
+   "criteria": {
+    "P1_mean_latency_vs_fifo": {
+     "kind": "relative_delta",
+     "point": -0.2731208764564321,
+     "ci95": [
+      -0.405728181786403,
+      -0.13876907324884233
+     ],
+     "status": "pass"
+    },
+    "G1_all_p99_vs_fifo": {
+     "kind": "ratio",
+     "point": 1.0780608919723407,
+     "ci95": [
+      0.9630327624974606,
+      1.2173235909456537
+     ],
+     "status": "pass"
+    },
+    "G2_long_class_max_wait": {
+     "kind": "ratio",
+     "point": 1.4554753049425624,
+     "ci95": [
+      1.0369085171402852,
+      2.2251096955643783
+     ],
+     "status": "fail"
+    },
+    "S1_pausing_vs_plain_aging": {
+     "kind": "relative_delta",
+     "point": -0.21038001666514394,
+     "ci95": [
+      -0.3607240601180968,
+      -0.05900015427190542
+     ],
+     "status": "pass"
+    },
+    "S2_vs_todays_aging": {
+     "kind": "relative_delta",
+     "point": -0.2503485792033534,
+     "ci95": [
+      -0.39108577382987525,
+      -0.11400771702184555
+     ],
+     "status": "pass"
+    },
+    "S3_pausing_cost_vs_no_aging": {
+     "kind": "relative_delta",
+     "point": -0.030113722338238898,
+     "ci95": [
+      -0.069868121441434,
+      0.005215346179807355
+     ],
+     "status": "pass"
+    },
+    "S4_no_aging_long_max_wait": {
+     "kind": "ratio",
+     "point": 1.4751916252858046,
+     "ci95": [
+      1.0212361077291392,
+      2.3193426447399648
+     ],
+     "status": "fail"
+    },
+    "S5_plain_aging_mean_vs_fifo": {
+     "kind": "relative_delta",
+     "point": -0.07239492911140344,
+     "ci95": [
+      -0.14862389692669212,
+      -0.009163303127364127
+     ],
+     "status": "fail"
+    },
+    "S6_oracle_mean_vs_fifo": {
+     "kind": "relative_delta",
+     "point": -0.38957883518727376,
+     "ci95": [
+      -0.5025698306648096,
+      -0.26557715798359244
+     ],
+     "status": "pass"
+    },
+    "S7_sensitivity_mean_vs_fifo": {
+     "kind": "relative_delta",
+     "point": -0.26460498151924394,
+     "ci95": [
+      -0.3982702897714179,
+      -0.13028149217850937
+     ],
+     "status": "pass"
+    },
+    "S8_sensitivity_p99_vs_fifo": {
+     "kind": "ratio",
+     "point": 1.0824514887905639,
+     "ci95": [
+      0.9748740667883098,
+      1.2194245405410893
+     ],
+     "status": "pass"
+    }
+   },
+   "gate_passed": false
+  }
+ },
+ "without_extreme_window": {
+  "0.5": {
+   "criteria": {
+    "P1_mean_latency_vs_fifo": {
+     "kind": "relative_delta",
+     "point": -0.15439015989050714,
+     "ci95": [
+      -0.2780471017750942,
+      -0.05320638475037618
+     ],
+     "status": "pass"
+    },
+    "G1_all_p99_vs_fifo": {
+     "kind": "ratio",
+     "point": 0.9887727006847704,
+     "ci95": [
+      0.9093915197919955,
+      1.0700258151477575
+     ],
+     "status": "pass"
+    },
+    "G2_long_class_max_wait": {
+     "kind": "ratio",
+     "point": 1.2196641496143823,
+     "ci95": [
+      1.015949137912066,
+      1.5666479642045292
+     ],
+     "status": "pass"
+    },
+    "S1_pausing_vs_plain_aging": {
+     "kind": "relative_delta",
+     "point": -0.07879752164302471,
+     "ci95": [
+      -0.13132521447973303,
+      -0.027523301830380396
+     ],
+     "status": "pass"
+    },
+    "S2_vs_todays_aging": {
+     "kind": "relative_delta",
+     "point": -0.14561369632587334,
+     "ci95": [
+      -0.26896759527432273,
+      -0.045767545464849076
+     ],
+     "status": "pass"
+    },
+    "S3_pausing_cost_vs_no_aging": {
+     "kind": "relative_delta",
+     "point": -0.054545661045970445,
+     "ci95": [
+      -0.13567034199422373,
+      0.0003281851479202064
+     ],
+     "status": "pass"
+    },
+    "S4_no_aging_long_max_wait": {
+     "kind": "ratio",
+     "point": 1.4771083069395952,
+     "ci95": [
+      0.9993379083765359,
+      2.4128818576810627
+     ],
+     "status": "fail"
+    },
+    "S5_plain_aging_mean_vs_fifo": {
+     "kind": "relative_delta",
+     "point": -0.08716855127395194,
+     "ci95": [
+      -0.18706828381620827,
+      -0.025671172444050462
+     ],
+     "status": "fail"
+    },
+    "S6_oracle_mean_vs_fifo": {
+     "kind": "relative_delta",
+     "point": -0.19654687304246798,
+     "ci95": [
+      -0.304981038247144,
+      -0.10905028179199883
+     ],
+     "status": "pass"
+    },
+    "S7_sensitivity_mean_vs_fifo": {
+     "kind": "relative_delta",
+     "point": -0.13289207517690413,
+     "ci95": [
+      -0.2606726882636135,
+      -0.044515287650842617
+     ],
+     "status": "fail"
+    },
+    "S8_sensitivity_p99_vs_fifo": {
+     "kind": "ratio",
+     "point": 0.9953648960106863,
+     "ci95": [
+      0.911356729398578,
+      1.0887214066656543
+     ],
+     "status": "pass"
+    }
+   },
+   "gate_passed": true,
+   "excluded_window": 6
+  },
+  "0.8": {
+   "criteria": {
+    "P1_mean_latency_vs_fifo": {
+     "kind": "relative_delta",
+     "point": -0.26530920808749525,
+     "ci95": [
+      -0.3890457294884231,
+      -0.13187060535578266
+     ],
+     "status": "pass"
+    },
+    "G1_all_p99_vs_fifo": {
+     "kind": "ratio",
+     "point": 1.0969597559168236,
+     "ci95": [
+      0.9602523659124863,
+      1.2525109305939288
+     ],
+     "status": "pass"
+    },
+    "G2_long_class_max_wait": {
+     "kind": "ratio",
+     "point": 1.2596941808645394,
+     "ci95": [
+      0.9881777629665816,
+      1.6883405105137648
+     ],
+     "status": "pass"
+    },
+    "S1_pausing_vs_plain_aging": {
+     "kind": "relative_delta",
+     "point": -0.20633894311338957,
+     "ci95": [
+      -0.31047327107314626,
+      -0.10168189894898931
+     ],
+     "status": "pass"
+    },
+    "S2_vs_todays_aging": {
+     "kind": "relative_delta",
+     "point": -0.25189002634348806,
+     "ci95": [
+      -0.3787851613509687,
+      -0.11879478300957916
+     ],
+     "status": "pass"
+    },
+    "S3_pausing_cost_vs_no_aging": {
+     "kind": "relative_delta",
+     "point": -0.023700098503423275,
+     "ci95": [
+      -0.08742191724499032,
+      0.025902059438541885
+     ],
+     "status": "pass"
+    },
+    "S4_no_aging_long_max_wait": {
+     "kind": "ratio",
+     "point": 1.5520514255236046,
+     "ci95": [
+      0.9999726816561938,
+      2.612881285700536
+     ],
+     "status": "fail"
+    },
+    "S5_plain_aging_mean_vs_fifo": {
+     "kind": "relative_delta",
+     "point": -0.07914087892091279,
+     "ci95": [
+      -0.16721124467547466,
+      -0.013628506159538546
+     ],
+     "status": "fail"
+    },
+    "S6_oracle_mean_vs_fifo": {
+     "kind": "relative_delta",
+     "point": -0.31225198223253947,
+     "ci95": [
+      -0.43218859205403615,
+      -0.19388161636217552
+     ],
+     "status": "pass"
+    },
+    "S7_sensitivity_mean_vs_fifo": {
+     "kind": "relative_delta",
+     "point": -0.2583547006545703,
+     "ci95": [
+      -0.38205657292702977,
+      -0.127975020951825
+     ],
+     "status": "pass"
+    },
+    "S8_sensitivity_p99_vs_fifo": {
+     "kind": "ratio",
+     "point": 1.0929170761568732,
+     "ci95": [
+      0.9559488736428674,
+      1.244092152099666
+     ],
+     "status": "pass"
+    }
+   },
+   "gate_passed": true,
+   "excluded_window": 6
+  },
+  "0.95": {
+   "criteria": {
+    "P1_mean_latency_vs_fifo": {
+     "kind": "relative_delta",
+     "point": -0.30938520087185734,
+     "ci95": [
+      -0.4444111345738647,
+      -0.169131019450736
+     ],
+     "status": "pass"
+    },
+    "G1_all_p99_vs_fifo": {
+     "kind": "ratio",
+     "point": 1.081170964140493,
+     "ci95": [
+      0.9465610415163044,
+      1.2420750757446501
+     ],
+     "status": "pass"
+    },
+    "G2_long_class_max_wait": {
+     "kind": "ratio",
+     "point": 1.5211568300205551,
+     "ci95": [
+      1.034538598028023,
+      2.408693295425739
+     ],
+     "status": "fail"
+    },
+    "S1_pausing_vs_plain_aging": {
+     "kind": "relative_delta",
+     "point": -0.2616372507027876,
+     "ci95": [
+      -0.4002171611945096,
+      -0.12838025374202222
+     ],
+     "status": "pass"
+    },
+    "S2_vs_todays_aging": {
+     "kind": "relative_delta",
+     "point": -0.2828076162050465,
+     "ci95": [
+      -0.43199228540206774,
+      -0.1364264400710573
+     ],
+     "status": "pass"
+    },
+    "S3_pausing_cost_vs_no_aging": {
+     "kind": "relative_delta",
+     "point": -0.031397334914232626,
+     "ci95": [
+      -0.07333925930076332,
+      0.009618308679173062
+     ],
+     "status": "pass"
+    },
+    "S4_no_aging_long_max_wait": {
+     "kind": "ratio",
+     "point": 1.550687534422229,
+     "ci95": [
+      1.0227109916447454,
+      2.531475873030931
+     ],
+     "status": "fail"
+    },
+    "S5_plain_aging_mean_vs_fifo": {
+     "kind": "relative_delta",
+     "point": -0.061264825687547535,
+     "ci95": [
+      -0.14837577474301203,
+      0.0011801057835519014
+     ],
+     "status": "fail"
+    },
+    "S6_oracle_mean_vs_fifo": {
+     "kind": "relative_delta",
+     "point": -0.36724980316057987,
+     "ci95": [
+      -0.49907263121770506,
+      -0.23989776712196637
+     ],
+     "status": "pass"
+    },
+    "S7_sensitivity_mean_vs_fifo": {
+     "kind": "relative_delta",
+     "point": -0.29986110360010243,
+     "ci95": [
+      -0.4376861860538326,
+      -0.16217011222708838
+     ],
+     "status": "pass"
+    },
+    "S8_sensitivity_p99_vs_fifo": {
+     "kind": "ratio",
+     "point": 1.0927043721729979,
+     "ci95": [
+      0.9663188821409874,
+      1.2471135724461921
+     ],
+     "status": "pass"
+    }
+   },
+   "gate_passed": false,
+   "excluded_window": 6
+  }
+ }
+}

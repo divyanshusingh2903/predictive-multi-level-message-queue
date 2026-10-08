@@ -22,7 +22,8 @@ A research messaging system that learns **per-key processing-time statistics onl
 [Phase 2 results](docs/phase2-report.md), against criteria [frozen before any run](docs/v2-preregistration.md):
 
 - **Production-flow benchmark (gate passed).** On a realistic e-commerce job queue (real CPU work, flash-sale overload, mid-run cost shift; 5 seeds × 7 arms), predictive routing cut mean latency 28% and short-job median latency 88% versus FIFO, beat a hand-tuned static map by 11% and a misconfigured one by 34%, with all-message P99 +4%, no lost work and no throughput change. Without job labels (producer-only keys) it still cut mean latency 15%.
-- **Azure Functions trace simulation (gate not passed).** With the broker's 5 s aging and hours-long backlogs from the trace's bursts, every policy, including the oracle, was within 1–3% of FIFO. Exploratory runs without aging separate the policies; aging under sustained overload is a follow-up.
+- **Azure Functions trace simulation (gate not passed).** With the broker's 5 s aging and hours-long backlogs from the trace's bursts, every policy, including the oracle, was within 1–3% of FIFO. Exploratory runs without aging separate the policies.
+- **Aging under sustained overload (#40, opt-in).** Worker-time level weights with pausing aging keep priority meaningful in long backlogs. On the Azure trace they cut mean latency 14.6–27.3% versus FIFO, passing the frozen gate at load 0.8 but not at 0.5 or 0.95. In the production flow they cut mean latency a further 42% versus today's predictive routing, at the cost of all-message P99 +12% (just over its 10% guardrail). They stay off by default ([results](benchmarks/results/v3-aging/README.md)).
 - **Real data:** on the same trace a per-key median predicts held-out durations with a median error factor of 1.3, versus 29 for a single global median.
 
 The earlier offline comparison (issue #5) found no qualifying model under its frozen v1 gates; v2 replaced those budgets, as documented in the pre-registration.
@@ -223,7 +224,8 @@ consumer->stop();
 | Field | Default | Description |
 |---|---|---|
 | `num_levels` | `3` | Number of priority queue levels (0 = highest) |
-| `aging` | `nullopt` (off) | `AgingConfig{threshold 5000 ms, interval 500 ms}` when enabled; `nullopt` = strict-priority with no aging thread (`server/main.cpp` and the demo enable aging explicitly) |
+| `aging` | `nullopt` (off) | `AgingConfig{threshold 5000 ms, interval 500 ms}` when enabled; `nullopt` = strict-priority with no aging thread (`server/main.cpp` and the demo enable aging explicitly). `pause_when_behind` (unset = on with `level_weights`) pauses promotion into a level that is behind ([details](docs/configuration.md#level-weights-and-pausing-aging-issue-40)) |
+| `level_weights` | `nullopt` (strict priority) | Opt-in worker-time share per level, e.g. `{8, 3, 1}`; one weight in [1, 1000] per level. Not combinable with the round-robin benchmark policy |
 | `default_max_retries` | `3` | Nack attempts before the message moves to the DLQ |
 | `default_ttl` | `0` (off) | TTL from arrival; `0` = no expiry |
 | `default_priority` | `1` (medium) | Static priority for Phase 1; ML classifier overrides in Phase 2 |
