@@ -1,14 +1,29 @@
 #include "queue/multi_level_queue.hpp"
+#include <algorithm>
+#include <cmath>
 #include <stdexcept>
 
 namespace harbinger {
 
 MultiLevelQueue::MultiLevelQueue(uint8_t num_levels, std::optional<AgingConfig> aging,
-                               QueueSelection selection)
-    : num_levels_(num_levels), selection_(selection), queues_(num_levels), aging_cfg_(aging), next_aging_(num_levels) {
+                               QueueSelection selection, std::optional<LevelShare> share)
+    : num_levels_(num_levels), selection_(selection), queues_(num_levels), aging_cfg_(aging), next_aging_(num_levels),
+      promoted_in_(num_levels, 0), share_(std::move(share)) {
     if (!num_levels) throw std::invalid_argument("num_levels must be positive");
-    if (selection != QueueSelection::StrictPriority && selection != QueueSelection::RoundRobin)
+    if (selection != QueueSelection::StrictPriority && selection != QueueSelection::RoundRobin &&
+        selection != QueueSelection::WeightedTime)
         throw std::invalid_argument("invalid queue selection");
+    if ((selection == QueueSelection::WeightedTime) != share_.has_value())
+        throw std::invalid_argument("a level share is required with, and only with, weighted selection");
+    if (share_) {
+        if (share_->weights.size() != num_levels || !share_->cost)
+            throw std::invalid_argument("level share needs one weight per level and a cost function");
+        for (const auto w : share_->weights)
+            if (w < 1 || w > 1000) throw std::invalid_argument("level weights must be in [1, 1000]");
+        vclock_.assign(num_levels, 0.0);
+        pulls_.assign(num_levels, 0);
+        charged_.assign(num_levels, 0.0);
+    }
     if (aging_cfg_) {
         if (aging_cfg_->threshold.count() <= 0 || aging_cfg_->interval.count() <= 0)
             throw std::invalid_argument("aging durations must be positive");
@@ -43,6 +58,7 @@ void MultiLevelQueue::place_message(Message msg, bool restore_front) {
     {
         std::lock_guard lock{mutex_};
         auto& level = queues_[msg.priority];
+        const bool was_empty = level.empty();
         auto it = level.emplace(restore_front ? level.begin() : level.end(),
                                 Node{std::move(msg), std::nullopt});
         try {
@@ -53,14 +69,60 @@ void MultiLevelQueue::place_message(Message msg, bool restore_front) {
             throw;
         }
         ++total_size_;
+        if (is_promoted(it->message)) ++promoted_in_[it->message.priority];
         note_aging_deadline(it->message.priority, it->message.enqueue_time);
+        if (share_) {
+            const auto lvl = it->message.priority;
+            if (was_empty) activate_locked(lvl);
+            if (restore_front) {
+                // An uncommitted pull is undone: refund its charge so the level keeps its place.
+                const double cost = charge_locked(it->message);
+                vclock_[lvl] -= cost / share_->weights[lvl];
+                if (pulls_[lvl]) --pulls_[lvl];
+                charged_[lvl] = std::max(0.0, charged_[lvl] - cost);
+            }
+        }
     }
     available_cv_.notify_one();
+}
+
+double MultiLevelQueue::charge_locked(const Message& msg) const {
+    double cost = LevelShare::kMinCostMs;
+    try {
+        cost = share_->cost(msg);
+    } catch (...) {
+        cost = LevelShare::kMinCostMs;
+    }
+    return std::isfinite(cost) ? std::max(cost, LevelShare::kMinCostMs) : LevelShare::kMinCostMs;
+}
+
+void MultiLevelQueue::activate_locked(uint8_t level) {
+    // Like CFS's min_vruntime: a returning level rejoins at the floor of the active clocks, never behind it.
+    vclock_[level] = std::max(vclock_[level], vfloor_);
+}
+
+bool MultiLevelQueue::is_promoted(const Message& msg) noexcept { return msg.priority < msg.original_priority; }
+
+bool MultiLevelQueue::paused_locked(uint8_t level, Clock::time_point now) const {
+    if (!aging_cfg_ || !aging_cfg_->pause_when_behind.value_or(false)) return false;
+    // The level above is behind when it still holds messages promoted into it and its head has been in the broker for
+    // a full threshold. Native waiting alone does not pause: only promotions can pile onto a backlog they caused.
+    if (!promoted_in_[level - 1]) return false;
+    const auto& above = queues_[level - 1];
+    if (above.empty()) return false;
+    return now - above.front().message.arrival_time >=
+           std::chrono::duration_cast<Clock::duration>(aging_cfg_->threshold);
+}
+
+LevelShareStats MultiLevelQueue::share_stats() const {
+    std::lock_guard lock{mutex_};
+    return {pulls_, charged_};
 }
 
 Message MultiLevelQueue::remove_locked(uint8_t level, Level::iterator it) {
     if (it->expiry) expiry_.erase(*it->expiry);
     Message msg = std::move(it->message);
+    if (is_promoted(msg)) --promoted_in_[level];
     queues_[level].erase(it);
     if (queues_[level].empty()) next_aging_[level].reset();
     --total_size_;
@@ -68,6 +130,20 @@ Message MultiLevelQueue::remove_locked(uint8_t level, Level::iterator it) {
 }
 
 std::optional<Message> MultiLevelQueue::dequeue_locked() {
+    if (share_) {
+        std::optional<uint8_t> best;
+        for (uint8_t level = 0; level < num_levels_; ++level)
+            if (!queues_[level].empty() && (!best || vclock_[level] < vclock_[*best])) best = level;
+        if (!best) return std::nullopt;
+        const auto level = *best;
+        vfloor_ = std::max(vfloor_, vclock_[level]);  // the served level holds the smallest active clock
+        const auto it = queues_[level].begin();
+        const double cost = charge_locked(it->message);
+        vclock_[level] += cost / share_->weights[level];
+        ++pulls_[level];
+        charged_[level] += cost;
+        return remove_locked(level, it);
+    }
     for (std::size_t offset = 0; offset < num_levels_; ++offset) {
         const auto level = selection_ == QueueSelection::RoundRobin
             ? (cursor_ + offset) % num_levels_ : offset;
@@ -142,9 +218,14 @@ std::size_t MultiLevelQueue::age_once_locked(Clock::time_point now) {
     if (!aging_cfg_) return 0;
     std::size_t visited = 0;
     bool promoted = false;
+    const bool pausing = aging_cfg_->pause_when_behind.value_or(false);
     for (uint8_t level = num_levels_ - 1; level >= 1; --level) {
         if (!next_aging_[level] || *next_aging_[level] > now) continue;
+        // Pausing aging: the level above is behind (see paused_locked), so promoting into it would only lengthen its backlog.
+        // The cached deadline is kept (it is already due), so the level is checked again next pass without a scan.
+        if (paused_locked(level, now)) continue;
         auto& q = queues_[level];
+        const auto due_before = *next_aging_[level];
         next_aging_[level].reset();
         for (auto it = q.begin(); it != q.end();) {
             auto current = it++;
@@ -153,11 +234,21 @@ std::size_t MultiLevelQueue::age_once_locked(Clock::time_point now) {
             if (msg.is_expired()) continue;
             const auto due = aging_deadline(msg.enqueue_time);
             if (due && *due <= now) {
+                if (is_promoted(msg)) --promoted_in_[level];
                 msg.priority = level - 1;
                 msg.enqueue_time = now;
+                ++promoted_in_[level - 1];
+                const bool destination_was_empty = queues_[level - 1].empty();
                 queues_[level - 1].splice(queues_[level - 1].end(), q, current);
+                if (share_ && destination_was_empty) activate_locked(level - 1);
                 note_aging_deadline(msg.priority, msg.enqueue_time);
                 promoted = true;
+                // With pausing, at most one promotion per level per pass, so a large overdue backlog moves up
+                // gradually. The unvisited rest stays due: keep the old (already due) deadline, look again next pass.
+                if (pausing) {
+                    next_aging_[level] = due_before;
+                    break;
+                }
             } else {
                 note_aging_deadline(level, msg.enqueue_time);
             }

@@ -93,6 +93,20 @@ HarbingerConfig validate_config(HarbingerConfig config) {
     if (config.delivery_lease > max_duration || config.lease_sweep_interval > max_duration ||
         config.completion_retention > max_duration || config.ttl_sweep_interval > max_duration)
         throw std::invalid_argument("maintenance duration too large");
+    if (config.level_weights) {
+        if (config.level_weights->size() != config.num_levels)
+            throw std::invalid_argument("level_weights needs exactly one weight per level");
+        for (const auto weight : *config.level_weights)
+            if (weight < 1 || weight > 1000) throw std::invalid_argument("level weights must be in [1, 1000]");
+#ifdef HARBINGER_BENCHMARK_SUPPORT
+        if (config.benchmark_options && config.benchmark_options->policy == benchmark::Policy::RoundRobin)
+            throw std::invalid_argument("level_weights cannot be combined with the round-robin benchmark policy");
+#endif
+    }
+    // Pausing aging is the default with level weights: plain aging would collapse every level into one FIFO under a
+    // long backlog and make the weights meaningless (#40).
+    if (config.aging && !config.aging->pause_when_behind)
+        config.aging->pause_when_behind = config.level_weights.has_value();
     if (config.aging &&
         (config.aging->threshold <= std::chrono::milliseconds::zero() ||
          config.aging->interval <= std::chrono::milliseconds::zero())) {
@@ -110,12 +124,14 @@ HarbingerService::HarbingerService(HarbingerConfig config)
           ? std::make_optional<ml::FeatureExtractor>(config_.ingress_features->schema) : std::nullopt),
       feedback_writer_(config_.feedback
           ? std::make_unique<ml::FeedbackWriter>(*config_.feedback, config_.delivery_lease.count()) : nullptr),
-      queue_(config_.num_levels, config_.aging
+      queue_(config_.num_levels, config_.aging,
+          config_.level_weights ? QueueSelection::WeightedTime
 #ifdef HARBINGER_BENCHMARK_SUPPORT
-          , config_.benchmark_options && config_.benchmark_options->policy == benchmark::Policy::RoundRobin
-              ? QueueSelection::RoundRobin : QueueSelection::StrictPriority
+          : config_.benchmark_options && config_.benchmark_options->policy == benchmark::Policy::RoundRobin
+              ? QueueSelection::RoundRobin
 #endif
-      ),
+          : QueueSelection::StrictPriority,
+          make_level_share()),
       dlq_(),
       proxy_([this](Message msg) { route_message(std::move(msg)); }),
       instance_token_(std::to_string(std::random_device{}()) + "-" + Proxy::generate_id()) {
@@ -272,6 +288,29 @@ void HarbingerService::publish_event(const std::optional<ml::FeedbackEvent>& eve
         config_.benchmark_options->observations->publish(record);
     }
 #endif
+}
+
+std::optional<LevelShare> HarbingerService::make_level_share() {
+    if (!config_.level_weights) return std::nullopt;
+    LevelShare share;
+    share.weights = *config_.level_weights;
+    // Called under the queue lock: reads only the immutable routing context and atomics.
+    share.cost = [this](const Message& msg) {
+        if (msg.routing_context && msg.routing_context->predicted_processing_time_ms)
+            return *msg.routing_context->predicted_processing_time_ms;
+        const double average = level_cost_ms_[msg.priority].load(std::memory_order_relaxed);
+        return average > 0.0 ? average : LevelShare::kMinCostMs;
+    };
+    return share;
+}
+
+std::optional<HarbingerService::LevelShareReport> HarbingerService::level_share() const {
+    if (!config_.level_weights) return std::nullopt;
+    const auto stats = queue_.share_stats();
+    LevelShareReport out{*config_.level_weights, stats.pulls, stats.charged_ms, {}};
+    for (uint8_t level = 0; level < config_.num_levels; ++level)
+        out.average_cost_ms.push_back(level_cost_ms_[level].load(std::memory_order_relaxed));
+    return out;
 }
 
 ml::RoutingStats HarbingerService::routing_stats() const {
@@ -684,6 +723,15 @@ std::optional<ml::FeedbackEvent> HarbingerService::finish_locked(
     const bool ttl_expired = msg.is_expired();
     // Learning rules: a successful Ack within the lease and TTL is a duration; a delivered attempt that overran its
     // lease is censored; Nack, Ack-after-TTL and anything without a key teach nothing. Applied after unlocking.
+    if (config_.level_weights && kind == Settlement::Ack && !ttl_expired && measurement && *measurement >= 0 &&
+        *measurement <= config_.delivery_lease.count()) {
+        // Per-level cost for messages without a prediction: an EWMA of durations from the level they were pulled from.
+        auto& average = level_cost_ms_[msg.priority];
+        const double sample = static_cast<double>(*measurement);
+        for (double seen = average.load(std::memory_order_relaxed);
+             !average.compare_exchange_weak(seen, seen > 0.0 ? seen + 0.05 * (sample - seen) : sample,
+                                            std::memory_order_relaxed);) {}
+    }
     const auto* context = msg.routing_context.get();
     if (update && predictor_ && context && context->predictor_key) {
         const bool features_ok = !feature_extractor_ || context->feature_validity == ml::FeatureValidity::Valid;

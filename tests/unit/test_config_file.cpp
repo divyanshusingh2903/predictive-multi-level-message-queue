@@ -96,6 +96,11 @@ TEST(ConfigFile, RejectsInvalidDocumentsWithoutPartialApplication) {
         R"({"config_version": 1, "routing": {"mode": "shadow", "predictor": {"summary": "p99"}}})",
         R"({"config_version": 1, "routing": {"mode": "shadow", "key": {"scope_by_producer": "yes"}}})",
         R"({"config_version": 1, "routing": {"mode": "shadow", "key": {"size_source": "bytes"}}})",
+        R"({"config_version": 1, "broker": {"level_weights": [8, 0, 1]}})",
+        R"({"config_version": 1, "broker": {"level_weights": [8, 3.5, 1]}})",
+        R"({"config_version": 1, "broker": {"level_weights": []}})",
+        R"({"config_version": 1, "broker": {"level_weights": "8,3,1"}})",
+        R"({"config_version": 1, "broker": {"aging": {"pause_when_behind": "yes"}}})",
         R"({"config_version": 1, "routing": {"mode": "shadow", "key": {"size_header": 5}}})",
         R"({"config_version": 1, "features": {"schema_version": "s", "routing_policy_version": "p",
             "headers": [{"name": "__producer_id", "type": "numeric"}]}})",
@@ -130,6 +135,28 @@ TEST(ConfigFile, SizeBinnedKeysAreOptInAndValidatedByTheBroker) {
     EXPECT_NO_THROW(HarbingerService{config});
     apply(R"({"config_version": 1, "routing": {"mode": "shadow", "key": {"size_source": "header"}}})", config);
     EXPECT_THROW(HarbingerService{config}, std::invalid_argument);  // header source without a header name
+}
+
+TEST(ConfigFile, LevelWeightsAndPausingAging) {
+    HarbingerConfig config;
+    ServerSettings server;
+    config.aging = AgingConfig{};
+    apply(R"({"config_version": 1, "broker": {"level_weights": [8, 3, 1]}})", config);
+    ASSERT_TRUE(config.level_weights);
+    EXPECT_EQ(*config.level_weights, (std::vector<uint32_t>{8, 3, 1}));
+    EXPECT_FALSE(config.aging->pause_when_behind);  // unset: the broker resolves it (on with weights)
+    auto description = describe_config(config, server);
+    EXPECT_NE(description.find("level_weights=8/3/1"), std::string::npos) << description;
+    EXPECT_NE(description.find("(pausing)"), std::string::npos) << description;
+    apply(R"({"config_version": 1, "broker": {"aging": {"pause_when_behind": false}}})", config);
+    EXPECT_EQ(config.aging->pause_when_behind, std::optional<bool>{false});
+    EXPECT_EQ(describe_config(config, server).find("(pausing)"), std::string::npos);
+    EXPECT_NO_THROW(HarbingerService{config});
+    apply(R"({"config_version": 1, "broker": {"level_weights": null}})", config);
+    EXPECT_FALSE(config.level_weights);
+    EXPECT_NE(describe_config(config, server).find("level_weights=off"), std::string::npos);
+    apply(R"({"config_version": 1, "broker": {"level_weights": [8, 3]}})", config);
+    EXPECT_THROW(HarbingerService{config}, std::invalid_argument);  // two weights for three levels
 }
 
 TEST(ConfigFile, FeedbackWithoutFeaturesIsRejectedByTheBroker) {

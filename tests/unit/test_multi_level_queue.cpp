@@ -27,6 +27,11 @@ struct QueueTestAccess {
     }
     static void check_cache(MultiLevelQueue& q) {
         std::lock_guard lock{q.mutex_};
+        for (uint8_t level = 0; level < q.num_levels_; ++level) {
+            std::size_t promoted = 0;
+            for (const auto& node : q.queues_[level]) promoted += node.message.priority < node.message.original_priority;
+            EXPECT_EQ(q.promoted_in_[level], promoted) << "level " << level;
+        }
         for (uint8_t level = 1; level < q.num_levels_; ++level) {
             for (const auto& node : q.queues_[level]) {
                 if (node.message.is_expired()) continue;
@@ -704,4 +709,241 @@ TEST(MultiLevelQueue, CachedAgingMatchesFullScanAfterMixedOperations) {
         }
         QueueTestAccess::check_cache(q);
     }
+}
+
+// ── Worker-time level share and pausing aging (#40) ─────────────────────────────
+
+namespace {
+
+/// Cost read from the "cost" header so tests control each message's expected duration.
+LevelShare header_cost_share(std::vector<uint32_t> weights) {
+    return {std::move(weights), [](const Message& m) {
+        const auto found = m.headers.find("cost");
+        return found == m.headers.end() ? 1.0 : std::stod(found->second);
+    }};
+}
+
+Message costed(uint8_t priority, double cost, std::string id = {}) {
+    Message m = make_msg(priority, std::move(id));
+    m.headers["cost"] = std::to_string(cost);
+    return m;
+}
+
+} // namespace
+
+TEST(MultiLevelQueue, WeightedShareSplitsWorkerTimeNotPulls) {
+    MultiLevelQueue q{3, std::nullopt, QueueSelection::WeightedTime, header_cost_share({8, 3, 1})};
+    const double costs[] = {2.0, 30.0, 600.0};
+    for (int i = 0; i < 10; ++i)
+        for (uint8_t level = 0; level < 3; ++level) q.enqueue(costed(level, costs[level]));
+    // Keep every level backlogged: each pulled message is replaced by another of the same level.
+    for (int i = 0; i < 200000; ++i) {
+        const auto m = q.try_dequeue();
+        ASSERT_TRUE(m);
+        q.enqueue(costed(m->priority, costs[m->priority]));
+    }
+    const auto stats = q.share_stats();
+    const double total = stats.charged_ms[0] + stats.charged_ms[1] + stats.charged_ms[2];
+    // Worker time splits 8:3:1; the error is bounded by one job's cost per level, tiny against this total.
+    const double slack = 2 * costs[2] / total;
+    EXPECT_NEAR(stats.charged_ms[0] / total, 8.0 / 12, slack);
+    EXPECT_NEAR(stats.charged_ms[1] / total, 3.0 / 12, slack);
+    EXPECT_NEAR(stats.charged_ms[2] / total, 1.0 / 12, slack);
+    EXPECT_LT(slack, 0.005);
+    // Pulls are nowhere near 8:3:1: short jobs are pulled far more often for the same share of time.
+    EXPECT_GT(stats.pulls[0], 50 * stats.pulls[2]);
+}
+
+TEST(MultiLevelQueue, WeightedShareIsWorkConserving) {
+    MultiLevelQueue q{3, std::nullopt, QueueSelection::WeightedTime, header_cost_share({8, 3, 1})};
+    for (int i = 0; i < 5; ++i) q.enqueue(costed(2, 100.0, "long-" + std::to_string(i)));
+    for (int i = 0; i < 5; ++i) {
+        auto m = q.try_dequeue();
+        ASSERT_TRUE(m);
+        EXPECT_EQ(m->priority, 2);  // only the bottom level has work, so it gets every pull
+    }
+    EXPECT_FALSE(q.try_dequeue());
+}
+
+TEST(MultiLevelQueue, EmptyLevelDoesNotSaveUpCredit) {
+    MultiLevelQueue q{2, std::nullopt, QueueSelection::WeightedTime, header_cost_share({1, 1})};
+    for (int i = 0; i < 100; ++i) q.enqueue(costed(1, 1.0));
+    for (int i = 0; i < 90; ++i) ASSERT_EQ(q.try_dequeue()->priority, 1);  // level 0 idle the whole time
+    for (int i = 0; i < 10; ++i) q.enqueue(costed(0, 1.0));
+    int top = 0;
+    for (int i = 0; i < 10; ++i) top += q.try_dequeue()->priority == 0;
+    EXPECT_GE(top, 4);  // equal weights: the returning level gets about half,
+    EXPECT_LE(top, 6);  // not a burst of all ten for the time it sat empty
+}
+
+TEST(MultiLevelQueue, RequeueFrontRefundsTheCharge) {
+    const auto run = [](bool with_requeue) {
+        MultiLevelQueue q{2, std::nullopt, QueueSelection::WeightedTime, header_cost_share({1, 1})};
+        for (int i = 0; i < 6; ++i) {
+            q.enqueue(costed(0, 10.0, "a" + std::to_string(i)));
+            q.enqueue(costed(1, 10.0, "b" + std::to_string(i)));
+        }
+        if (with_requeue) q.requeue_front(*q.try_dequeue());  // an uncommitted pull is undone
+        std::vector<std::string> order;
+        while (auto m = q.try_dequeue()) order.push_back(m->id);
+        return std::make_pair(order, q.share_stats());
+    };
+    const auto [plain, plain_stats] = run(false);
+    const auto [undone, undone_stats] = run(true);
+    EXPECT_EQ(plain, undone);
+    EXPECT_EQ(plain_stats.pulls, undone_stats.pulls);
+    EXPECT_EQ(plain_stats.charged_ms, undone_stats.charged_ms);
+}
+
+TEST(MultiLevelQueue, WeightedShareRejectsBadConfigurationAndBadCosts) {
+    EXPECT_THROW((MultiLevelQueue{3, std::nullopt, QueueSelection::WeightedTime, header_cost_share({8, 3})}), std::invalid_argument);
+    EXPECT_THROW((MultiLevelQueue{2, std::nullopt, QueueSelection::WeightedTime, header_cost_share({0, 1})}), std::invalid_argument);
+    EXPECT_THROW((MultiLevelQueue{2, std::nullopt, QueueSelection::WeightedTime, header_cost_share({1, 1001})}), std::invalid_argument);
+    EXPECT_THROW((MultiLevelQueue{2, std::nullopt, QueueSelection::WeightedTime, LevelShare{{1, 1}, {}}}), std::invalid_argument);
+    EXPECT_THROW((MultiLevelQueue{2, std::nullopt, QueueSelection::WeightedTime}), std::invalid_argument);
+    EXPECT_THROW((MultiLevelQueue{2, std::nullopt, QueueSelection::StrictPriority, header_cost_share({1, 1})}), std::invalid_argument);
+    // A cost that is negative, not finite, below the floor or throws is charged the minimum, never corrupting clocks.
+    MultiLevelQueue q{2, std::nullopt, QueueSelection::WeightedTime, LevelShare{{1, 1}, [](const Message& m) -> double {
+        if (m.id == "throws") throw std::runtime_error("cost");
+        if (m.id == "nan") return std::numeric_limits<double>::quiet_NaN();
+        return m.id == "negative" ? -5.0 : 0.25;
+    }}};
+    for (const char* id : {"throws", "nan", "negative", "tiny"}) q.enqueue(make_msg(0, id));
+    while (q.try_dequeue()) {}
+    EXPECT_DOUBLE_EQ(q.share_stats().charged_ms[0], 4 * LevelShare::kMinCostMs);
+}
+
+namespace {
+
+/// A message that entered the broker at `arrival`, as the proxy would stamp it.
+Message arrived(uint8_t priority, std::string id, std::chrono::steady_clock::time_point arrival) {
+    Message m = make_msg(priority, std::move(id));
+    m.arrival_time = arrival;
+    return m;
+}
+
+AgingConfig pausing_aging() { return {std::chrono::milliseconds{1000}, std::chrono::hours{1}, true}; }
+
+} // namespace
+
+TEST(MultiLevelQueue, PausingAgingPromotesIntoALevelThatOnlyWaitsNatively) {
+    // Level 0 holds an old message of its own, nothing promoted: promotion is not piling onto a backlog it made.
+    const auto start = std::chrono::steady_clock::now();
+    MultiLevelQueue q{2, pausing_aging()};
+    q.enqueue(arrived(0, "old-top", start));
+    q.enqueue(arrived(1, "waiting", start));
+    QueueTestAccess::age(q, start + 2s);
+    EXPECT_EQ(QueueTestAccess::contents(q)[0].size(), 2u);
+    QueueTestAccess::check_cache(q);
+}
+
+TEST(MultiLevelQueue, PausingAgingStopsTheFloodAfterAPromotion) {
+    const auto start = std::chrono::steady_clock::now();
+    MultiLevelQueue q{2, pausing_aging()};
+    q.enqueue(arrived(0, "native", start));
+    q.enqueue(arrived(1, "a", start));
+    q.enqueue(arrived(1, "b", start));
+    q.enqueue(arrived(1, "c", start));
+    // Pass 1 promotes one message (and only one), pass 2 finds level 0 holding a promoted message with an old head.
+    EXPECT_GT(QueueTestAccess::age(q, start + 2s), 0u);
+    EXPECT_EQ(QueueTestAccess::contents(q)[0].size(), 2u);
+    QueueTestAccess::age(q, start + 2s + 600ms);
+    EXPECT_EQ(QueueTestAccess::contents(q)[0].size(), 2u);
+    EXPECT_EQ(QueueTestAccess::contents(q)[1].size(), 2u);
+    QueueTestAccess::check_cache(q);
+    // Resumes once the promoted message is served and the level above is clear.
+    ASSERT_EQ(q.try_dequeue()->id, "native");
+    ASSERT_EQ(q.try_dequeue()->id, "a");
+    QueueTestAccess::age(q, start + 3s);
+    EXPECT_EQ(QueueTestAccess::contents(q)[0].size(), 1u);
+    QueueTestAccess::check_cache(q);
+}
+
+TEST(MultiLevelQueue, PausingAgingMovesAnOverdueBacklogOneMessagePerPass) {
+    const auto start = std::chrono::steady_clock::now();
+    MultiLevelQueue q{3, pausing_aging()};
+    for (int i = 0; i < 50; ++i) q.enqueue(arrived(2, "bulk-" + std::to_string(i), start));
+    QueueTestAccess::age(q, start + 2s);
+    EXPECT_EQ(QueueTestAccess::contents(q)[1].size(), 1u);
+    EXPECT_EQ(QueueTestAccess::contents(q)[2].size(), 49u);
+    QueueTestAccess::check_cache(q);
+    // The rest stays due: once the promoted message is served, the next pass moves exactly one more.
+    ASSERT_EQ(q.try_dequeue()->id, "bulk-0");
+    QueueTestAccess::age(q, start + 2s + 100ms);
+    const auto levels = QueueTestAccess::contents(q);
+    ASSERT_EQ(levels[1].size(), 1u);
+    EXPECT_EQ(levels[1][0].id, "bulk-1");
+    EXPECT_EQ(levels[2].size(), 48u);
+    QueueTestAccess::check_cache(q);
+}
+
+TEST(MultiLevelQueue, PausingAgingCountsWaitFromArrivalNotFromPromotion) {
+    const auto start = std::chrono::steady_clock::now();
+    MultiLevelQueue q{3, pausing_aging()};
+    q.enqueue(arrived(2, "old", start));
+    q.enqueue(arrived(2, "next", start));
+    QueueTestAccess::age(q, start + 2s);  // "old" enters level 1 with a fresh enqueue_time but its original arrival
+    // Level 1 now holds a promoted message that has been in the broker 2 s > threshold: it is behind, so level 2 waits.
+    QueueTestAccess::age(q, start + 2s + 100ms);
+    EXPECT_EQ(QueueTestAccess::contents(q)[1].size(), 1u);
+    EXPECT_EQ(QueueTestAccess::contents(q)[2].size(), 1u);
+    QueueTestAccess::check_cache(q);
+}
+
+TEST(MultiLevelQueue, PausingAgingIgnoresRetriedMessagesAtTheirOriginalLevel) {
+    const auto start = std::chrono::steady_clock::now();
+    MultiLevelQueue q{2, pausing_aging()};
+    Message retried = arrived(0, "retried", start);  // a retry resets priority to original, so it is not "promoted"
+    retried.retry_count = 1;
+    q.enqueue(std::move(retried));
+    q.enqueue(arrived(1, "waiting", start));
+    QueueTestAccess::age(q, start + 2s);
+    EXPECT_EQ(QueueTestAccess::contents(q)[0].size(), 2u);
+}
+
+TEST(MultiLevelQueue, PlainAgingStillPromotesIntoABacklog) {
+    AgingConfig aging{std::chrono::milliseconds{1000}, std::chrono::hours{1}, false};
+    MultiLevelQueue q{2, aging};
+    q.enqueue(make_msg(0, "old-top"));
+    q.enqueue(make_msg(1, "waiting"));
+    QueueTestAccess::age(q, std::chrono::steady_clock::now() + 2s);
+    EXPECT_EQ(QueueTestAccess::contents(q)[0].size(), 2u);  // today's behaviour, unchanged
+}
+
+TEST(MultiLevelQueue, PausingAgingPromotesWhenTheLevelAboveIsYoung) {
+    AgingConfig aging{std::chrono::milliseconds{1000}, std::chrono::hours{1}, true};
+    MultiLevelQueue q{3, aging, QueueSelection::WeightedTime, header_cost_share({8, 3, 1})};
+    q.enqueue(make_msg(2, "starved"));
+    // Nothing above it, so it climbs one level per due pass like plain aging.
+    QueueTestAccess::age(q, std::chrono::steady_clock::now() + 2s);
+    EXPECT_EQ(QueueTestAccess::contents(q)[1].size(), 1u);
+    QueueTestAccess::age(q, std::chrono::steady_clock::now() + 4s);
+    EXPECT_EQ(QueueTestAccess::contents(q)[0].size(), 1u);
+    QueueTestAccess::check_cache(q);
+}
+
+TEST(MultiLevelQueue, ConcurrentWeightedShareWithPausingAging) {
+    AgingConfig aging{std::chrono::milliseconds{2}, std::chrono::milliseconds{1}, true};
+    MultiLevelQueue q{3, aging, QueueSelection::WeightedTime, header_cost_share({8, 3, 1})};
+    constexpr int kPerProducer = 3000;
+    std::atomic<int> received{0};
+    std::vector<std::thread> threads;
+    for (int p = 0; p < 3; ++p)
+        threads.emplace_back([&, p] {
+            for (int i = 0; i < kPerProducer; ++i) q.enqueue(costed(static_cast<uint8_t>(i % 3), 1.0 + (i % 7) * p));
+        });
+    for (int c = 0; c < 3; ++c)
+        threads.emplace_back([&, c] {
+            while (received.load() < 3 * kPerProducer) {
+                auto m = q.dequeue(1ms);
+                if (!m) continue;
+                if ((received.load() + c) % 11 == 0) { q.requeue_front(std::move(*m)); continue; }
+                received.fetch_add(1);
+            }
+        });
+    for (auto& t : threads) t.join();
+    EXPECT_EQ(received.load(), 3 * kPerProducer);
+    EXPECT_TRUE(q.empty());
+    const auto stats = q.share_stats();
+    EXPECT_EQ(stats.pulls[0] + stats.pulls[1] + stats.pulls[2], static_cast<uint64_t>(3 * kPerProducer));
 }

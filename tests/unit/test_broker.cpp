@@ -2130,3 +2130,53 @@ TEST(PredictiveRouting, FeedbackDiskFailureDoesNotAffectSettlementOrLearning) {
     storage->release();
     BrokerTestAccess::close_feedback(b.service);
 }
+
+// ── Worker-time level share (#40) ───────────────────────────────────────────────
+
+TEST(LevelShare, BrokerValidatesWeights) {
+    for (const auto& weights : std::vector<std::vector<uint32_t>>{{8, 3}, {8, 3, 0}, {8, 3, 1001}, {8, 3, 1, 1}}) {
+        HarbingerConfig config;
+        config.level_weights = weights;
+        EXPECT_THROW(HarbingerService{config}, std::invalid_argument);
+    }
+    HarbingerConfig config;
+    EXPECT_FALSE(HarbingerService{config}.level_share());  // strict priority by default
+    config.level_weights = std::vector<uint32_t>{8, 3, 1};
+    EXPECT_TRUE(HarbingerService{config}.level_share());
+}
+
+TEST(LevelShare, UnpredictedMessagesAreChargedTheirLevelsLearnedAverage) {
+    HarbingerConfig config;
+    config.level_weights = std::vector<uint32_t>{8, 3, 1};
+    LocalBroker b{config};
+    const auto charged = [&] { return b.service.level_share()->charged_ms[1]; };
+    b.submit("x");
+    auto delivery = b.pull();
+    EXPECT_DOUBLE_EQ(charged(), LevelShare::kMinCostMs);  // nothing learned yet
+    ASSERT_TRUE(b.ack(delivery.message(), 40).ok());
+    EXPECT_DOUBLE_EQ(b.service.level_share()->average_cost_ms[1], 40.0);
+    b.submit("x");
+    delivery = b.pull();
+    EXPECT_DOUBLE_EQ(charged(), LevelShare::kMinCostMs + 40.0);
+    // A Nack teaches nothing; an Ack averages in (EWMA, alpha 0.05).
+    ASSERT_TRUE(b.nack(delivery.message(), "fail", 5000).ok());
+    EXPECT_DOUBLE_EQ(b.service.level_share()->average_cost_ms[1], 40.0);
+    delivery = b.pull();
+    ASSERT_TRUE(b.ack(delivery.message(), 140).ok());
+    EXPECT_DOUBLE_EQ(b.service.level_share()->average_cost_ms[1], 45.0);
+    EXPECT_EQ(b.service.level_share()->pulls[1], 3u);
+}
+
+TEST(LevelShare, PredictedMessagesAreChargedTheirPrediction) {
+    auto config = predictive_config(ml::RoutingMode::Predictive);
+    config.level_weights = std::vector<uint32_t>{8, 3, 1};
+    LocalBroker b{config};
+    train_three(b);
+    b.submit("x", std::nullopt, {{"job_type", "slow"}});
+    const auto context = queued_context(b);
+    ASSERT_TRUE(context && context->predicted_processing_time_ms);
+    const auto before = b.service.level_share()->charged_ms[2];
+    const auto delivery = b.pull();
+    EXPECT_DOUBLE_EQ(b.service.level_share()->charged_ms[2] - before, *context->predicted_processing_time_ms);
+    ASSERT_TRUE(b.ack(delivery.message(), 200).ok());
+}

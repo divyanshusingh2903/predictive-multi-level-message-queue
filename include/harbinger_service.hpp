@@ -65,6 +65,11 @@ struct HarbingerConfig {
     std::optional<ml::FeedbackConfig> feedback{};
     /// Opt-in in-process per-key prediction (shadow or predictive); absent keeps static routing with no predictor.
     std::optional<ml::PredictiveRoutingConfig> predictive_routing{};
+    /// Opt-in worker-time share across levels (#40), one weight per level in [1, 1000]; absent keeps strict priority.
+    /// A pull charges its level the message's expected cost: the predicted duration when routing attached one, else
+    /// the level's running average of Ack'd durations. With weights set, aging pauses by default
+    /// (AgingConfig::pause_when_behind).
+    std::optional<std::vector<uint32_t>> level_weights{};
 #ifdef HARBINGER_BENCHMARK_SUPPORT
     /// Evaluation-only options, absent from the ordinary broker build.
     std::optional<benchmark::Options> benchmark_options{};
@@ -135,6 +140,14 @@ public:
     [[nodiscard]] ml::FeedbackStats feedback_stats() const noexcept;
     /// Bounded routing, learning, drift and snapshot counters; disabled prediction returns enabled=false.
     [[nodiscard]] ml::RoutingStats routing_stats() const;
+    /// Level weights, pulls, charged expected cost and learned per-level average cost; nullopt without weights.
+    struct LevelShareReport {
+        std::vector<uint32_t> weights;
+        std::vector<uint64_t> pulls;
+        std::vector<double> charged_ms;
+        std::vector<double> average_cost_ms;
+    };
+    [[nodiscard]] std::optional<LevelShareReport> level_share() const;
     /// Write the predictor snapshot now if one is configured; returns false (and counts a failure) on error.
     bool save_predictor_snapshot() noexcept;
 #ifdef HARBINGER_BENCHMARK_SUPPORT
@@ -211,6 +224,10 @@ private:
         std::string snapshot_status{"none"};
     };
     mutable RoutingCounters routing_;
+    /// Running average of Ack'd durations per level pulled from (weighted mode); written on settlement, read by the
+    /// queue's cost function under the queue lock. Atomics, so no lock order is introduced.
+    std::array<std::atomic<double>, 256> level_cost_ms_{};
+    [[nodiscard]] std::optional<LevelShare> make_level_share();
     std::unique_ptr<ml::FeedbackWriter> feedback_writer_;
     MultiLevelQueue queue_;
     DeadLetterQueue dlq_;

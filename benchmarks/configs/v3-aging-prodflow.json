@@ -1,0 +1,86 @@
+{
+  "version": "v3-aging-prodflow-1",
+  "frozen_on": "2026-10-08",
+  "issue": 40,
+  "benchmark": "harbinger_prodflow",
+  "seconds": 300,
+  "workers": 4,
+  "rate_scale": 1.8,
+  "drain_s": 180,
+  "seeds": [
+    11,
+    22,
+    33,
+    44,
+    55
+  ],
+  "arms": [
+    "fifo",
+    "predictive",
+    "predictive_weighted"
+  ],
+  "primary_arm": "predictive_weighted",
+  "level_weights": [
+    8,
+    3,
+    1
+  ],
+  "short_classes": [
+    "reserve_inventory",
+    "push_notification",
+    "reindex_product",
+    "generate_invoice"
+  ],
+  "long_class": "export_report",
+  "bootstrap": {
+    "samples": 10000,
+    "seed": 2026,
+    "confidence": 0.95
+  },
+  "criteria": {
+    "G1_long_class_max_wait_vs_fifo": {
+      "metric": "long_max_wait_ms",
+      "baseline": "fifo",
+      "max_ratio": 2.0,
+      "absolute_max_ms": 60000
+    },
+    "G2_all_p99_vs_predictive": {
+      "metric": "p99_latency_ms",
+      "baseline": "predictive",
+      "max_ratio": 1.1
+    },
+    "G3_no_lost_work": {
+      "completed_equals_submitted": true,
+      "max_dlq": 0,
+      "max_submit_errors": 0
+    },
+    "G4_v2_gain_kept_vs_fifo": {
+      "metric": "mean_latency_ms",
+      "baseline": "fifo",
+      "max_relative_delta": -0.15
+    },
+    "G5_throughput_vs_fifo": {
+      "metric": "throughput_per_s",
+      "baseline": "fifo",
+      "min_ratio": 0.98
+    },
+    "S1_mean_vs_predictive": {
+      "metric": "mean_latency_ms",
+      "baseline": "predictive",
+      "max_relative_delta": 0.05
+    },
+    "S2_predictive_replicates_v2": {
+      "metric": "mean_latency_ms",
+      "baseline": "fifo",
+      "arm": "predictive",
+      "max_relative_delta": -0.15
+    }
+  },
+  "gate": [
+    "G1_long_class_max_wait_vs_fifo",
+    "G2_all_p99_vs_predictive",
+    "G3_no_lost_work",
+    "G4_v2_gain_kept_vs_fifo",
+    "G5_throughput_vs_fifo"
+  ]
+}

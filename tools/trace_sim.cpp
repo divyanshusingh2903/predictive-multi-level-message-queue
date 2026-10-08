@@ -57,13 +57,37 @@ double quantile(std::vector<double> v, double q) {
 
 struct Result { std::vector<double> latency, wait, slowdown; std::vector<int> cls; };
 
-/// Non-preemptive multi-level queue with FIFO levels, strict priority and aging (levels >= 1 promote one step
-/// after waiting `threshold` since their last placement, checked every `interval`, as in the broker).
+/// Scheduling policy of one arm, as in the broker (#40).
+struct Policy {
+    /// Empty: strict priority. Otherwise worker-time share: each level has a virtual clock, a dispatch serves the
+    /// non-empty level with the smallest clock and charges it expected cost / weight; a level that becomes non-empty
+    /// starts no earlier than the floor of the active clocks.
+    std::vector<double> weights;
+    bool aging{true};
+    /// Pausing aging: promote from L to L-1 unless L-1 is behind, i.e. still holds promoted messages and its head has
+    /// been in the system (since arrival) for at least the threshold; at most one promotion per level per pass.
+    bool pausing{false};
+};
+
+/// Non-preemptive multi-level queue with FIFO levels, strict priority or worker-time share, and aging (levels >= 1
+/// promote one step after waiting `threshold` since their last placement, checked every `interval`, as in the broker).
+/// `route` returns the tier and the predicted duration (0 = none); unpredicted work is charged its level's running
+/// average of completed durations (EWMA 0.05), or 1 ms before any completion, as in the broker.
 template <class Route, class Learn>
 Result simulate(const std::vector<Invocation>& rows, double compress, int workers, int levels,
-                double threshold, double interval, Route route, Learn learn) {
-    struct Waiting { std::size_t index; double placed; };
+                double threshold, double interval, const Policy& policy, Route route, Learn learn) {
+    struct Waiting { std::size_t index; double placed; bool promoted{false}; };
     std::vector<std::deque<Waiting>> queues(levels);
+    std::vector<std::size_t> promoted_in(levels, 0);
+    std::vector<double> predicted(rows.size(), 0.0), vclock(levels, 0.0), level_cost(levels, 0.0);
+    std::vector<int> pulled_from(rows.size(), 0);
+    double vfloor = 0.0;
+    const bool weighted = !policy.weights.empty();
+    auto place = [&](int level, Waiting w) {
+        if (weighted && queues[level].empty()) vclock[level] = std::max(vclock[level], vfloor);
+        promoted_in[level] += w.promoted;
+        queues[level].push_back(w);
+    };
     using Completion = std::pair<double, std::size_t>;
     std::priority_queue<Completion, std::vector<Completion>, std::greater<>> running;
     Result r;
@@ -73,23 +97,37 @@ Result simulate(const std::vector<Invocation>& rows, double compress, int worker
     std::size_t next = 0, done = 0, queued = 0;
     int idle = workers;
     double now = 0, next_aging = interval;
+    auto start = [&](int level) {
+        const auto w = queues[level].front();
+        queues[level].pop_front();
+        promoted_in[level] -= w.promoted;
+        --queued; --idle;
+        pulled_from[w.index] = level;
+        r.wait[w.index] = now - arrival(w.index);
+        running.push({now + rows[w.index].duration_ms, w.index});
+        return w;
+    };
     auto dispatch = [&] {
         while (idle > 0 && queued > 0) {
-            for (auto& level : queues) {
-                if (level.empty()) continue;
-                const auto w = level.front();
-                level.pop_front();
-                --queued; --idle;
-                r.wait[w.index] = now - arrival(w.index);
-                running.push({now + rows[w.index].duration_ms, w.index});
-                break;
+            if (weighted) {
+                int best = -1;
+                for (int level = 0; level < levels; ++level)
+                    if (!queues[level].empty() && (best < 0 || vclock[level] < vclock[best])) best = level;
+                vfloor = std::max(vfloor, vclock[best]);
+                const auto w = start(best);
+                const double cost = predicted[w.index] > 0 ? predicted[w.index]
+                    : level_cost[best] > 0 ? level_cost[best] : 1.0;
+                vclock[best] += std::max(cost, 1.0) / policy.weights[best];
+                continue;
             }
+            for (int level = 0; level < levels; ++level)
+                if (!queues[level].empty()) { start(level); break; }
         }
     };
     while (done < rows.size()) {
         const double t_arrival = next < rows.size() ? arrival(next) : INFINITY;
         const double t_complete = running.empty() ? INFINITY : running.top().first;
-        const double t_aging = queued ? next_aging : INFINITY;
+        const double t_aging = queued && policy.aging ? next_aging : INFINITY;
         now = std::min({t_arrival, t_complete, t_aging});
         if (now == t_complete) {
             const auto [end, i] = running.top();
@@ -97,19 +135,29 @@ Result simulate(const std::vector<Invocation>& rows, double compress, int worker
             ++idle; ++done;
             r.latency[i] = end - arrival(i);
             r.slowdown[i] = r.latency[i] / std::max(rows[i].duration_ms, 1.0);
+            auto& average = level_cost[pulled_from[i]];
+            average = average > 0 ? average + 0.05 * (rows[i].duration_ms - average) : rows[i].duration_ms;
             learn(rows[i], now);
         } else if (now == t_arrival) {
-            const int tier = route(rows[next], now);
-            queues[static_cast<std::size_t>(tier)].push_back({next, now});
+            const auto [tier, estimate] = route(rows[next], now);
+            predicted[next] = estimate;
+            place(tier, {next, now});
             ++queued; ++next;
         } else {
-            for (int level = 1; level < levels; ++level) {
+            for (int level = levels - 1; level >= 1; --level) {  // bottom first, as in the broker
                 auto& q = queues[static_cast<std::size_t>(level)];
+                const auto& above = queues[static_cast<std::size_t>(level - 1)];
+                if (policy.pausing && promoted_in[level - 1] && !above.empty() &&
+                    now - arrival(above.front().index) >= threshold)
+                    continue;
                 while (!q.empty() && now - q.front().placed >= threshold) {
                     auto w = q.front();
                     q.pop_front();
+                    promoted_in[level] -= w.promoted;
                     w.placed = now;
-                    queues[static_cast<std::size_t>(level - 1)].push_back(w);
+                    w.promoted = true;
+                    place(level - 1, w);
+                    if (policy.pausing) break;
                 }
             }
             next_aging = now + interval;
@@ -233,7 +281,24 @@ int main(int argc, char** argv) try {
         out << (first_u ? "" : ",") << "\"" << utilization << "\":{\"compress\":" << compress;
         first_u = false;
         for (const auto& arm_json : std::get<json::Array>(config.get("arms")->value)) {
-            const std::string arm = *arm_json.string();
+            const std::string arm_name = *arm_json.string();
+            // "routing+flag+flag": flags weights | weights_alt (level_weights | sensitivity_weights), pausing, no_aging.
+            const std::string arm = arm_name.substr(0, arm_name.find('+'));
+            Policy policy;
+            for (std::size_t at = arm_name.find('+'); at != std::string::npos;) {
+                const auto next_plus = arm_name.find('+', at + 1);
+                const auto flag = arm_name.substr(at + 1, next_plus == std::string::npos ? std::string::npos : next_plus - at - 1);
+                const char* source = flag == "weights" ? "level_weights" : flag == "weights_alt" ? "sensitivity_weights" : nullptr;
+                if (source) {
+                    const auto* list = config.get(source);
+                    if (!list) throw std::invalid_argument(std::string("arm needs ") + source);
+                    for (const auto& w : std::get<json::Array>(list->value)) policy.weights.push_back(*w.number());
+                    if (static_cast<int>(policy.weights.size()) != levels) throw std::invalid_argument("one weight per level");
+                } else if (flag == "pausing") policy.pausing = true;
+                else if (flag == "no_aging") policy.aging = false;
+                else throw std::invalid_argument("unknown arm flag " + flag);
+                at = next_plus;
+            }
             ml::PerKeyPredictorConfig pc;
             pc.num_levels = static_cast<uint8_t>(levels);
             pc.default_priority = static_cast<uint8_t>(default_tier);
@@ -257,18 +322,18 @@ int main(int argc, char** argv) try {
                     predictor.observe(trace.keys[row.key], row.duration_ms);
                 }
             }
-            const auto route = [&](const Invocation& row, double now) -> int {
-                if (arm == "fifo") return 0;
-                if (arm == "oracle") return ml::tier_of(bounds, row.duration_ms);
-                if (arm == "static_history") { const auto f = history_tier.find(row.key); return f == history_tier.end() ? default_tier : f->second; }
-                if (arm == "static_random") { const auto f = random_tier.find(row.key); return f == random_tier.end() ? default_tier : f->second; }
+            const auto route = [&](const Invocation& row, double now) -> std::pair<int, double> {
+                if (arm == "fifo") return {0, 0.0};
+                if (arm == "oracle") return {ml::tier_of(bounds, row.duration_ms), 0.0};
+                if (arm == "static_history") { const auto f = history_tier.find(row.key); return {f == history_tier.end() ? default_tier : f->second, 0.0}; }
+                if (arm == "static_random") { const auto f = random_tier.find(row.key); return {f == random_tier.end() ? default_tier : f->second, 0.0}; }
                 sim_now = now;
                 const auto p = predictor.predict(trace.keys[row.key]);
                 const auto index = static_cast<std::size_t>(&row - evaluation.data());
                 outcomes.status[index] = static_cast<uint8_t>(p.status);
                 outcomes.outstanding[index] = in_system[row.key] > 0;
                 ++in_system[row.key];
-                return p.bucket;
+                return {p.bucket, p.status == ml::PredictionStatus::Predicted && p.estimate_ms ? *p.estimate_ms : 0.0};
             };
             const auto learn = [&](const Invocation& row, double now) {
                 if (!predictive) return;
@@ -277,9 +342,9 @@ int main(int argc, char** argv) try {
                 predictor.observe(trace.keys[row.key], row.duration_ms);
             };
             const auto started = std::chrono::steady_clock::now();
-            const auto r = simulate(evaluation, compress, workers, levels, threshold, interval, route, learn);
+            const auto r = simulate(evaluation, compress, workers, levels, threshold, interval, policy, route, learn);
             const double seconds = std::chrono::duration<double>(std::chrono::steady_clock::now() - started).count();
-            out << ",\"" << arm << "\":{\"sim_seconds\":" << seconds << ",\"all\":" << window_metrics(r, cls, 0, evaluation.size()) << ",\"windows\":[";
+            out << ",\"" << arm_name << "\":{\"sim_seconds\":" << seconds << ",\"all\":" << window_metrics(r, cls, 0, evaluation.size()) << ",\"windows\":[";
             for (std::size_t w = 0; w < windows; ++w) {
                 const auto begin = evaluation.size() * w / windows, end = evaluation.size() * (w + 1) / windows;
                 out << (w ? "," : "") << window_metrics(r, cls, begin, end);
@@ -296,7 +361,7 @@ int main(int argc, char** argv) try {
                 out << "]";
             }
             out << "}";
-            std::cerr << "[sim] utilization=" << utilization << " arm=" << arm << " " << seconds << "s\n";
+            std::cerr << "[sim] utilization=" << utilization << " arm=" << arm_name << " " << seconds << "s\n";
         }
         out << "}";
     }

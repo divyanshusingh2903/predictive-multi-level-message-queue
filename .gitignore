@@ -75,6 +75,8 @@ benchmarks/results/v2-prodflow/raw/
 benchmarks/results/feature-signal-v1/raw/
 !benchmarks/results/v3-sizebins/
 benchmarks/results/v3-sizebins/raw/
+!benchmarks/results/v3-aging/
+benchmarks/results/v3-aging/prodflow/raw/
 benchmarks/results/issue5-v1/raw/*.tar.gz
 !benchmarks/results/issue4-v1/raw/*.tar.gz
 benchmarks/output/

@@ -128,9 +128,13 @@ not warranted. Details: [`benchmarks/results/feature-signal-v1/`](../benchmarks/
 
 ## 5. Follow-ups
 
-1. Aging under sustained overload: a weighted share of pulls across levels (#40) so priority still means something in
-   long backlogs; evaluate on the Azure trace with a new pre-registration. (Capping promotions was considered and
-   rejected: promoted messages still wait behind the whole top level.)
+1. Aging under sustained overload: done in #40 as opt-in `level_weights` (a worker-time share across levels) with
+   pausing aging. Evaluated in `v3-aging-1` ([results](../benchmarks/results/v3-aging/README.md)):
+   - Azure trace: mean −14.6% to −27.3% versus FIFO; gate passed at load 0.8 only.
+   - Production flow: mean −42% versus predictive routing with today's aging; gate not passed because P99 rose 12%
+     (limit 10%).
+
+   It stays off by default.
 2. Warm start: not needed. Snapshot restore already ignores downtime (key ages are stored relative to save time). The
    real problem was staleness measured from completions during backlogs, fixed in #38.
 3. Size-binned keys: implemented as opt-in `routing.key.size_source` (#35, [size bins](duration-predictor.md#size-bins-issue-35)). Evaluated under load in `v3-sizebins-1` (#39): gate not passed (mean −1.5%, interval includes no change; guardrails passed), so they stay opt-in ([results](../benchmarks/results/v3-sizebins/README.md)). A cloud repeat of the collection remains (#26, `benchmarks/collect/CLOUD.md`).

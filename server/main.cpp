@@ -41,6 +41,8 @@ void print_help() {
               << "  --routing-mode static|shadow|predictive\n"
               << "                                   Override the file's routing mode; shadow/predictive need no file\n"
               << "  --stats-interval-ms N            Print a JSON stats line every N ms (0 = off, default)\n"
+              << "  --level-weights W0,W1,...|off    Worker-time share per level (e.g. 8,3,1); aging then pauses\n"
+              << "                                   while the level above is behind (default off: strict priority)\n"
               << "Precedence: built-in defaults, then --config, then the other options (in any order).\n"
               << "  --help                          Show this help and exit\n";
 }
@@ -75,6 +77,22 @@ int main(int argc, char* argv[]) try {
             continue;
         }
         if (option == "--config") { ++i; continue; }
+        if (option == "--level-weights") {
+            if (++i == argc) throw std::invalid_argument("Missing value for --level-weights");
+            const std::string_view text{argv[i]};
+            if (text == "off") { config.level_weights.reset(); continue; }
+            std::vector<uint32_t> weights;
+            std::size_t start = 0;
+            while (start <= text.size()) {
+                const auto end = std::min(text.find(',', start), text.size());
+                const auto weight = parse_number(option, text.substr(start, end - start));
+                if (weight < 1 || weight > 1000) throw std::invalid_argument("--level-weights entries must be in [1, 1000]");
+                weights.push_back(static_cast<uint32_t>(weight));
+                start = end + 1;
+            }
+            config.level_weights = std::move(weights);
+            continue;
+        }
         if (option == "--routing-mode") {
             if (++i == argc) throw std::invalid_argument("Missing value for --routing-mode");
             const std::string_view mode{argv[i]};
