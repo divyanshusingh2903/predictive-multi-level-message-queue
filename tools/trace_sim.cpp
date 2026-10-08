@@ -64,7 +64,8 @@ struct Policy {
     /// starts no earlier than the floor of the active clocks.
     std::vector<double> weights;
     bool aging{true};
-    /// Pausing aging: promote from L to L-1 only while L-1's oldest placement has waited less than the threshold.
+    /// Pausing aging: promote from L to L-1 unless L-1 is behind, i.e. still holds promoted messages and its head has
+    /// been in the system (since arrival) for at least the threshold; at most one promotion per level per pass.
     bool pausing{false};
 };
 
@@ -75,14 +76,16 @@ struct Policy {
 template <class Route, class Learn>
 Result simulate(const std::vector<Invocation>& rows, double compress, int workers, int levels,
                 double threshold, double interval, const Policy& policy, Route route, Learn learn) {
-    struct Waiting { std::size_t index; double placed; };
+    struct Waiting { std::size_t index; double placed; bool promoted{false}; };
     std::vector<std::deque<Waiting>> queues(levels);
+    std::vector<std::size_t> promoted_in(levels, 0);
     std::vector<double> predicted(rows.size(), 0.0), vclock(levels, 0.0), level_cost(levels, 0.0);
     std::vector<int> pulled_from(rows.size(), 0);
     double vfloor = 0.0;
     const bool weighted = !policy.weights.empty();
     auto place = [&](int level, Waiting w) {
         if (weighted && queues[level].empty()) vclock[level] = std::max(vclock[level], vfloor);
+        promoted_in[level] += w.promoted;
         queues[level].push_back(w);
     };
     using Completion = std::pair<double, std::size_t>;
@@ -97,6 +100,7 @@ Result simulate(const std::vector<Invocation>& rows, double compress, int worker
     auto start = [&](int level) {
         const auto w = queues[level].front();
         queues[level].pop_front();
+        promoted_in[level] -= w.promoted;
         --queued; --idle;
         pulled_from[w.index] = level;
         r.wait[w.index] = now - arrival(w.index);
@@ -140,15 +144,20 @@ Result simulate(const std::vector<Invocation>& rows, double compress, int worker
             place(tier, {next, now});
             ++queued; ++next;
         } else {
-            for (int level = 1; level < levels; ++level) {
+            for (int level = levels - 1; level >= 1; --level) {  // bottom first, as in the broker
                 auto& q = queues[static_cast<std::size_t>(level)];
                 const auto& above = queues[static_cast<std::size_t>(level - 1)];
-                if (policy.pausing && !above.empty() && now - above.front().placed >= threshold) continue;
+                if (policy.pausing && promoted_in[level - 1] && !above.empty() &&
+                    now - arrival(above.front().index) >= threshold)
+                    continue;
                 while (!q.empty() && now - q.front().placed >= threshold) {
                     auto w = q.front();
                     q.pop_front();
+                    promoted_in[level] -= w.promoted;
                     w.placed = now;
+                    w.promoted = true;
                     place(level - 1, w);
+                    if (policy.pausing) break;
                 }
             }
             next_aging = now + interval;

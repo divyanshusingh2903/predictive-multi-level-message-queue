@@ -1,0 +1,121 @@
+{
+  "version": "v3-aging-1",
+  "frozen_on": "2026-10-08",
+  "issue": 40,
+  "trace": {
+    "name": "AzureFunctionsInvocationTraceForTwoWeeksJan2021",
+    "rar_sha256": "8bb5d1c82e89e467062b6582996232df24edfebadbaf3287a8c985ca178ba92d",
+    "txt_sha256": "d56368ef194baa8d418304bd2f87cca67668ced0d117bd89ad4ef3cf836457d2",
+    "rows": 1980951,
+    "key": "app/func",
+    "arrival": "end_timestamp - duration"
+  },
+  "history_fraction": 0.5,
+  "evaluation_days": 7,
+  "workers": 64,
+  "levels": 3,
+  "default_priority": 1,
+  "aging": {
+    "threshold_ms": 5000,
+    "interval_ms": 500
+  },
+  "utilizations": [
+    0.5,
+    0.8,
+    0.95
+  ],
+  "level_weights": [
+    8,
+    3,
+    1
+  ],
+  "sensitivity_weights": [
+    4,
+    2,
+    1
+  ],
+  "arms": [
+    "fifo",
+    "predictive_warm",
+    "predictive_warm+weights+no_aging",
+    "predictive_warm+weights",
+    "predictive_warm+weights+pausing",
+    "oracle+weights+pausing",
+    "predictive_warm+weights_alt+pausing"
+  ],
+  "primary_arm": "predictive_warm+weights+pausing",
+  "misconfigured_seed": 2026,
+  "bootstrap": {
+    "samples": 10000,
+    "seed": 2026,
+    "confidence": 0.95
+  },
+  "report_without_extreme_window": true,
+  "criteria": {
+    "P1_mean_latency_vs_fifo": {
+      "baseline": "fifo",
+      "metric": "mean_latency_ms",
+      "max_relative_delta": -0.15
+    },
+    "G1_all_p99_vs_fifo": {
+      "baseline": "fifo",
+      "metric": "p99_latency_ms",
+      "max_ratio": 2.0
+    },
+    "G2_long_class_max_wait": {
+      "baseline": "fifo",
+      "metric": "long_max_wait_ms",
+      "max_ratio": 2.0
+    },
+    "S1_pausing_vs_plain_aging": {
+      "baseline": "predictive_warm+weights",
+      "metric": "mean_latency_ms",
+      "max_relative_delta": 0.0
+    },
+    "S2_vs_todays_aging": {
+      "baseline": "predictive_warm",
+      "metric": "mean_latency_ms",
+      "max_relative_delta": 0.0
+    },
+    "S3_pausing_cost_vs_no_aging": {
+      "baseline": "predictive_warm+weights+no_aging",
+      "metric": "mean_latency_ms",
+      "max_relative_delta": 0.05
+    },
+    "S4_no_aging_long_max_wait": {
+      "arm": "predictive_warm+weights+no_aging",
+      "baseline": "fifo",
+      "metric": "long_max_wait_ms",
+      "max_ratio": 2.0
+    },
+    "S5_plain_aging_mean_vs_fifo": {
+      "arm": "predictive_warm+weights",
+      "baseline": "fifo",
+      "metric": "mean_latency_ms",
+      "max_relative_delta": -0.15
+    },
+    "S6_oracle_mean_vs_fifo": {
+      "arm": "oracle+weights+pausing",
+      "baseline": "fifo",
+      "metric": "mean_latency_ms",
+      "max_relative_delta": -0.15
+    },
+    "S7_sensitivity_mean_vs_fifo": {
+      "arm": "predictive_warm+weights_alt+pausing",
+      "baseline": "fifo",
+      "metric": "mean_latency_ms",
+      "max_relative_delta": -0.15
+    },
+    "S8_sensitivity_p99_vs_fifo": {
+      "arm": "predictive_warm+weights_alt+pausing",
+      "baseline": "fifo",
+      "metric": "p99_latency_ms",
+      "max_ratio": 2.0
+    }
+  },
+  "gate": [
+    "P1_mean_latency_vs_fifo",
+    "G1_all_p99_vs_fifo",
+    "G2_long_class_max_wait"
+  ]
+}

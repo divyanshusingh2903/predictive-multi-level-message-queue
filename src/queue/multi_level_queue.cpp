@@ -8,7 +8,7 @@ namespace harbinger {
 MultiLevelQueue::MultiLevelQueue(uint8_t num_levels, std::optional<AgingConfig> aging,
                                QueueSelection selection, std::optional<LevelShare> share)
     : num_levels_(num_levels), selection_(selection), queues_(num_levels), aging_cfg_(aging), next_aging_(num_levels),
-      share_(std::move(share)) {
+      promoted_in_(num_levels, 0), share_(std::move(share)) {
     if (!num_levels) throw std::invalid_argument("num_levels must be positive");
     if (selection != QueueSelection::StrictPriority && selection != QueueSelection::RoundRobin &&
         selection != QueueSelection::WeightedTime)
@@ -69,6 +69,7 @@ void MultiLevelQueue::place_message(Message msg, bool restore_front) {
             throw;
         }
         ++total_size_;
+        if (is_promoted(it->message)) ++promoted_in_[it->message.priority];
         note_aging_deadline(it->message.priority, it->message.enqueue_time);
         if (share_) {
             const auto lvl = it->message.priority;
@@ -100,12 +101,17 @@ void MultiLevelQueue::activate_locked(uint8_t level) {
     vclock_[level] = std::max(vclock_[level], vfloor_);
 }
 
+bool MultiLevelQueue::is_promoted(const Message& msg) noexcept { return msg.priority < msg.original_priority; }
+
 bool MultiLevelQueue::paused_locked(uint8_t level, Clock::time_point now) const {
     if (!aging_cfg_ || !aging_cfg_->pause_when_behind.value_or(false)) return false;
+    // The level above is behind when it still holds messages promoted into it and its head has been in the broker for
+    // a full threshold. Native waiting alone does not pause: only promotions can pile onto a backlog they caused.
+    if (!promoted_in_[level - 1]) return false;
     const auto& above = queues_[level - 1];
     if (above.empty()) return false;
-    const auto oldest = above.front().message.enqueue_time;
-    return now - oldest >= std::chrono::duration_cast<Clock::duration>(aging_cfg_->threshold);
+    return now - above.front().message.arrival_time >=
+           std::chrono::duration_cast<Clock::duration>(aging_cfg_->threshold);
 }
 
 LevelShareStats MultiLevelQueue::share_stats() const {
@@ -116,6 +122,7 @@ LevelShareStats MultiLevelQueue::share_stats() const {
 Message MultiLevelQueue::remove_locked(uint8_t level, Level::iterator it) {
     if (it->expiry) expiry_.erase(*it->expiry);
     Message msg = std::move(it->message);
+    if (is_promoted(msg)) --promoted_in_[level];
     queues_[level].erase(it);
     if (queues_[level].empty()) next_aging_[level].reset();
     --total_size_;
@@ -211,12 +218,14 @@ std::size_t MultiLevelQueue::age_once_locked(Clock::time_point now) {
     if (!aging_cfg_) return 0;
     std::size_t visited = 0;
     bool promoted = false;
+    const bool pausing = aging_cfg_->pause_when_behind.value_or(false);
     for (uint8_t level = num_levels_ - 1; level >= 1; --level) {
         if (!next_aging_[level] || *next_aging_[level] > now) continue;
-        // Pausing aging: the level above is itself behind, so promoting into it would only lengthen its backlog.
+        // Pausing aging: the level above is behind (see paused_locked), so promoting into it would only lengthen its backlog.
         // The cached deadline is kept (it is already due), so the level is checked again next pass without a scan.
         if (paused_locked(level, now)) continue;
         auto& q = queues_[level];
+        const auto due_before = *next_aging_[level];
         next_aging_[level].reset();
         for (auto it = q.begin(); it != q.end();) {
             auto current = it++;
@@ -225,13 +234,21 @@ std::size_t MultiLevelQueue::age_once_locked(Clock::time_point now) {
             if (msg.is_expired()) continue;
             const auto due = aging_deadline(msg.enqueue_time);
             if (due && *due <= now) {
+                if (is_promoted(msg)) --promoted_in_[level];
                 msg.priority = level - 1;
                 msg.enqueue_time = now;
+                ++promoted_in_[level - 1];
                 const bool destination_was_empty = queues_[level - 1].empty();
                 queues_[level - 1].splice(queues_[level - 1].end(), q, current);
                 if (share_ && destination_was_empty) activate_locked(level - 1);
                 note_aging_deadline(msg.priority, msg.enqueue_time);
                 promoted = true;
+                // With pausing, at most one promotion per level per pass, so a large overdue backlog moves up
+                // gradually. The unvisited rest stays due: keep the old (already due) deadline, look again next pass.
+                if (pausing) {
+                    next_aging_[level] = due_before;
+                    break;
+                }
             } else {
                 note_aging_deadline(level, msg.enqueue_time);
             }

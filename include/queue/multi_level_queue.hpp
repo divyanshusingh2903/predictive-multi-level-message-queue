@@ -84,6 +84,7 @@ private:
     Message remove_locked(uint8_t level, Level::iterator it);
     [[nodiscard]] double charge_locked(const Message& msg) const;
     void activate_locked(uint8_t level);
+    [[nodiscard]] static bool is_promoted(const Message& msg) noexcept;
     [[nodiscard]] bool paused_locked(uint8_t level, Clock::time_point now) const;
 
     uint8_t num_levels_;
@@ -100,6 +101,8 @@ private:
     std::optional<AgingConfig> aging_cfg_;
     // Conservative minima: removal can leave an earlier deadline until the next due scan.
     std::vector<std::optional<Clock::time_point>> next_aging_;
+    // Messages per level whose priority is below their original one (promoted into it by aging).
+    std::vector<std::size_t> promoted_in_;
     std::optional<LevelShare> share_;
     std::vector<double> vclock_;
     double vfloor_{0.0};

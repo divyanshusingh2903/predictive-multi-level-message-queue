@@ -27,6 +27,11 @@ struct QueueTestAccess {
     }
     static void check_cache(MultiLevelQueue& q) {
         std::lock_guard lock{q.mutex_};
+        for (uint8_t level = 0; level < q.num_levels_; ++level) {
+            std::size_t promoted = 0;
+            for (const auto& node : q.queues_[level]) promoted += node.message.priority < node.message.original_priority;
+            EXPECT_EQ(q.promoted_in_[level], promoted) << "level " << level;
+        }
         for (uint8_t level = 1; level < q.num_levels_; ++level) {
             for (const auto& node : q.queues_[level]) {
                 if (node.message.is_expired()) continue;
@@ -808,22 +813,92 @@ TEST(MultiLevelQueue, WeightedShareRejectsBadConfigurationAndBadCosts) {
     EXPECT_DOUBLE_EQ(q.share_stats().charged_ms[0], 4 * LevelShare::kMinCostMs);
 }
 
-TEST(MultiLevelQueue, PausingAgingWaitsWhileTheLevelAboveIsBehind) {
-    AgingConfig aging{std::chrono::milliseconds{1000}, std::chrono::hours{1}, true};
-    MultiLevelQueue q{2, aging};
-    q.enqueue(make_msg(0, "old-top"));
-    q.enqueue(make_msg(1, "waiting"));
-    const auto later = std::chrono::steady_clock::now() + 2s;
-    // The top level's oldest message has itself waited past the threshold: promotion would not help, so it pauses.
-    QueueTestAccess::age(q, later);
-    EXPECT_EQ(QueueTestAccess::contents(q)[1].size(), 1u);
+namespace {
+
+/// A message that entered the broker at `arrival`, as the proxy would stamp it.
+Message arrived(uint8_t priority, std::string id, std::chrono::steady_clock::time_point arrival) {
+    Message m = make_msg(priority, std::move(id));
+    m.arrival_time = arrival;
+    return m;
+}
+
+AgingConfig pausing_aging() { return {std::chrono::milliseconds{1000}, std::chrono::hours{1}, true}; }
+
+} // namespace
+
+TEST(MultiLevelQueue, PausingAgingPromotesIntoALevelThatOnlyWaitsNatively) {
+    // Level 0 holds an old message of its own, nothing promoted: promotion is not piling onto a backlog it made.
+    const auto start = std::chrono::steady_clock::now();
+    MultiLevelQueue q{2, pausing_aging()};
+    q.enqueue(arrived(0, "old-top", start));
+    q.enqueue(arrived(1, "waiting", start));
+    QueueTestAccess::age(q, start + 2s);
+    EXPECT_EQ(QueueTestAccess::contents(q)[0].size(), 2u);
     QueueTestAccess::check_cache(q);
-    // Once the level above has caught up, aging resumes on its own.
-    ASSERT_EQ(q.try_dequeue()->id, "old-top");
-    QueueTestAccess::age(q, later);
+}
+
+TEST(MultiLevelQueue, PausingAgingStopsTheFloodAfterAPromotion) {
+    const auto start = std::chrono::steady_clock::now();
+    MultiLevelQueue q{2, pausing_aging()};
+    q.enqueue(arrived(0, "native", start));
+    q.enqueue(arrived(1, "a", start));
+    q.enqueue(arrived(1, "b", start));
+    q.enqueue(arrived(1, "c", start));
+    // Pass 1 promotes one message (and only one), pass 2 finds level 0 holding a promoted message with an old head.
+    EXPECT_GT(QueueTestAccess::age(q, start + 2s), 0u);
+    EXPECT_EQ(QueueTestAccess::contents(q)[0].size(), 2u);
+    QueueTestAccess::age(q, start + 2s + 600ms);
+    EXPECT_EQ(QueueTestAccess::contents(q)[0].size(), 2u);
+    EXPECT_EQ(QueueTestAccess::contents(q)[1].size(), 2u);
+    QueueTestAccess::check_cache(q);
+    // Resumes once the promoted message is served and the level above is clear.
+    ASSERT_EQ(q.try_dequeue()->id, "native");
+    ASSERT_EQ(q.try_dequeue()->id, "a");
+    QueueTestAccess::age(q, start + 3s);
+    EXPECT_EQ(QueueTestAccess::contents(q)[0].size(), 1u);
+    QueueTestAccess::check_cache(q);
+}
+
+TEST(MultiLevelQueue, PausingAgingMovesAnOverdueBacklogOneMessagePerPass) {
+    const auto start = std::chrono::steady_clock::now();
+    MultiLevelQueue q{3, pausing_aging()};
+    for (int i = 0; i < 50; ++i) q.enqueue(arrived(2, "bulk-" + std::to_string(i), start));
+    QueueTestAccess::age(q, start + 2s);
+    EXPECT_EQ(QueueTestAccess::contents(q)[1].size(), 1u);
+    EXPECT_EQ(QueueTestAccess::contents(q)[2].size(), 49u);
+    QueueTestAccess::check_cache(q);
+    // The rest stays due: once the promoted message is served, the next pass moves exactly one more.
+    ASSERT_EQ(q.try_dequeue()->id, "bulk-0");
+    QueueTestAccess::age(q, start + 2s + 100ms);
     const auto levels = QueueTestAccess::contents(q);
-    ASSERT_EQ(levels[0].size(), 1u);
-    EXPECT_EQ(levels[0][0].id, "waiting");
+    ASSERT_EQ(levels[1].size(), 1u);
+    EXPECT_EQ(levels[1][0].id, "bulk-1");
+    EXPECT_EQ(levels[2].size(), 48u);
+    QueueTestAccess::check_cache(q);
+}
+
+TEST(MultiLevelQueue, PausingAgingCountsWaitFromArrivalNotFromPromotion) {
+    const auto start = std::chrono::steady_clock::now();
+    MultiLevelQueue q{3, pausing_aging()};
+    q.enqueue(arrived(2, "old", start));
+    q.enqueue(arrived(2, "next", start));
+    QueueTestAccess::age(q, start + 2s);  // "old" enters level 1 with a fresh enqueue_time but its original arrival
+    // Level 1 now holds a promoted message that has been in the broker 2 s > threshold: it is behind, so level 2 waits.
+    QueueTestAccess::age(q, start + 2s + 100ms);
+    EXPECT_EQ(QueueTestAccess::contents(q)[1].size(), 1u);
+    EXPECT_EQ(QueueTestAccess::contents(q)[2].size(), 1u);
+    QueueTestAccess::check_cache(q);
+}
+
+TEST(MultiLevelQueue, PausingAgingIgnoresRetriedMessagesAtTheirOriginalLevel) {
+    const auto start = std::chrono::steady_clock::now();
+    MultiLevelQueue q{2, pausing_aging()};
+    Message retried = arrived(0, "retried", start);  // a retry resets priority to original, so it is not "promoted"
+    retried.retry_count = 1;
+    q.enqueue(std::move(retried));
+    q.enqueue(arrived(1, "waiting", start));
+    QueueTestAccess::age(q, start + 2s);
+    EXPECT_EQ(QueueTestAccess::contents(q)[0].size(), 2u);
 }
 
 TEST(MultiLevelQueue, PlainAgingStillPromotesIntoABacklog) {

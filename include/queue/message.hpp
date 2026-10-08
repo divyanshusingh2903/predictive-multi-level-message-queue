@@ -23,9 +23,10 @@ struct AgingConfig {
     std::chrono::milliseconds threshold{5000};
     /// Interval between background aging scans.
     std::chrono::milliseconds interval{500};
-    /// Pausing aging (#40): promote from level L to L-1 only while the oldest message in L-1 has waited less than
-    /// threshold. Under a long backlog the level above is itself behind, so promotions pause instead of collapsing
-    /// every level into one FIFO. Unset means on with level weights, off without them (resolved by the broker).
+    /// Pausing aging (#40): promote from level L to L-1 unless L-1 is behind, meaning it still holds messages promoted
+    /// into it and its head has been in the broker (arrival_time) for at least threshold. Under a long backlog this
+    /// stops promotions from collapsing every level into one FIFO. Each pass also promotes at most one message per
+    /// level while pausing is on. Unset means on with level weights, off without them (resolved by the broker).
     std::optional<bool> pause_when_behind{};
 };
 

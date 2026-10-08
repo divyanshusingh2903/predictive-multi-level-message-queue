@@ -1,7 +1,8 @@
 // Production-like job-queue benchmark: an e-commerce backend whose services submit background jobs through the
 // real Producer client and whose workers run real CPU work (zlib, image downscaling, sorting) plus simulated
 // network calls, through the real Consumer client, against an embedded broker. Described in docs/v2-preregistration.md
-// (workload) and docs/v3-sizebins-preregistration.md (size_hint header, predictive_sized arm).
+// (workload), docs/v3-sizebins-preregistration.md (size_hint header, predictive_sized arm) and
+// docs/v3-aging-preregistration.md (predictive_weighted arm).
 #include "harbinger_service.hpp"
 #include "benchmark/hooks.hpp"
 #include "consumer/consumer.hpp"
@@ -296,6 +297,8 @@ bool execute(const Job& job, int attempt) {
 /// Size a producer knows at submission for job types whose cost follows their input; every arm sends it, only
 /// predictive_sized routes on it.
 constexpr const char* kSizeHintHeader = "size_hint";
+/// Worker-time level weights of the predictive_weighted arm (#40), frozen in benchmarks/configs/v3-aging*.json.
+const std::vector<uint32_t> kLevelWeights{8, 3, 1};
 bool has_size_hint(const std::string& type) {
     return type == "resize_image" || type == "generate_invoice" || type == "export_report";
 }
@@ -324,7 +327,7 @@ int main(int argc, char** argv) try {
     for (int i = 1; i + 1 < argc; i += 2) args[argv[i]] = argv[i + 1];
     if (argc % 2 == 0 || !args.contains("--arm") || !args.contains("--seed") || !args.contains("--out"))
         throw std::invalid_argument("usage: harbinger_prodflow --arm fifo|static_tuned|static_misconfigured|shadow|"
-            "predictive|predictive_p75|predictive_producer|predictive_sized|oracle --seed N --out NEW_DIR [--seconds 300] [--workers 4] [--rate-scale 1] [--drain-s 180]");
+            "predictive|predictive_p75|predictive_producer|predictive_sized|predictive_weighted|oracle --seed N --out NEW_DIR [--seconds 300] [--workers 4] [--rate-scale 1] [--drain-s 180]");
     const std::string arm = args["--arm"];
     const uint64_t seed = std::stoull(args["--seed"]);
     const double seconds = args.contains("--seconds") ? std::stod(args["--seconds"]) : 300;
@@ -354,7 +357,7 @@ int main(int argc, char** argv) try {
     else if (arm == "static_misconfigured") { options.policy = benchmark::Policy::Static; options.static_tiers = kMisconfiguredTiers; }
     else if (arm == "oracle") options.policy = benchmark::Policy::Oracle;
     else if (arm == "shadow" || arm == "predictive" || arm == "predictive_p75" || arm == "predictive_producer" ||
-             arm == "predictive_sized") {
+             arm == "predictive_sized" || arm == "predictive_weighted") {
         ml::PredictiveRoutingConfig routing;
         routing.mode = arm == "shadow" ? ml::RoutingMode::Shadow : ml::RoutingMode::Predictive;
         if (arm == "predictive_p75") routing.predictor.summary = ml::DurationSummary::P75;
@@ -365,6 +368,8 @@ int main(int argc, char** argv) try {
             routing.key.size_source = ml::PredictorKeyPolicy::SizeSource::Header;
             routing.key.size_header = kSizeHintHeader;
         }
+        // Worker-time share across levels (#40); the broker turns pausing aging on with weights.
+        if (arm == "predictive_weighted") config.level_weights = kLevelWeights;
         config.predictive_routing = routing;  // defaults: producer-scoped job_type key
     } else throw std::invalid_argument("unknown arm " + arm);
     config.benchmark_options = options;
