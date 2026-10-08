@@ -3,22 +3,43 @@
 #include "message.hpp"
 #include <atomic>
 #include <condition_variable>
+#include <functional>
 #include <list>
 #include <map>
 #include <mutex>
 #include <optional>
 #include <thread>
+#include <vector>
 
 namespace harbinger {
 
-enum class QueueSelection { StrictPriority, RoundRobin };
+enum class QueueSelection { StrictPriority, RoundRobin, WeightedTime };
 
-/// Thread-safe FIFO levels with strict-priority or cyclic selection and optional aging.
+/// Worker-time share across levels (#40). Each level has a virtual clock; a pull serves the non-empty level with the
+/// smallest clock and advances it by cost / weight, so while every level has messages level i receives about
+/// weights[i] / sum(weights) of worker time measured in expected cost. A level that becomes non-empty starts no
+/// earlier than the floor of the active clocks, so an empty level cannot save up credit.
+struct LevelShare {
+    std::vector<uint32_t> weights;
+    /// Expected cost in milliseconds of serving a message. Called under the queue lock: must be cheap, must not block
+    /// or take locks that are held while calling into the queue. Results below kMinCostMs are raised to it.
+    std::function<double(const Message&)> cost;
+    static constexpr double kMinCostMs = 1.0;
+};
+
+/// Pulls and expected cost charged per level since construction (weighted mode only).
+struct LevelShareStats {
+    std::vector<uint64_t> pulls;
+    std::vector<double> charged_ms;
+};
+
+/// Thread-safe FIFO levels with strict-priority, cyclic or worker-time-weighted selection and optional aging.
 class MultiLevelQueue {
 public:
     explicit MultiLevelQueue(uint8_t num_levels = 3,
                              std::optional<AgingConfig> aging = std::nullopt,
-                             QueueSelection selection = QueueSelection::StrictPriority);
+                             QueueSelection selection = QueueSelection::StrictPriority,
+                             std::optional<LevelShare> share = std::nullopt);
     ~MultiLevelQueue();
     MultiLevelQueue(const MultiLevelQueue&) = delete;
     MultiLevelQueue& operator=(const MultiLevelQueue&) = delete;
@@ -41,6 +62,8 @@ public:
     [[nodiscard]] std::size_t size(uint8_t level) const;
     [[nodiscard]] bool empty() const noexcept { return size() == 0; }
     [[nodiscard]] uint8_t num_levels() const noexcept { return num_levels_; }
+    /// Per-level pulls and charged cost; empty vectors unless selection is WeightedTime.
+    [[nodiscard]] LevelShareStats share_stats() const;
 
 private:
     friend struct QueueTestAccess;
@@ -59,6 +82,9 @@ private:
     void place_message(Message msg, bool restore_front);
     std::optional<Message> dequeue_locked();
     Message remove_locked(uint8_t level, Level::iterator it);
+    [[nodiscard]] double charge_locked(const Message& msg) const;
+    void activate_locked(uint8_t level);
+    [[nodiscard]] bool paused_locked(uint8_t level, Clock::time_point now) const;
 
     uint8_t num_levels_;
     QueueSelection selection_;
@@ -74,6 +100,11 @@ private:
     std::optional<AgingConfig> aging_cfg_;
     // Conservative minima: removal can leave an earlier deadline until the next due scan.
     std::vector<std::optional<Clock::time_point>> next_aging_;
+    std::optional<LevelShare> share_;
+    std::vector<double> vclock_;
+    double vfloor_{0.0};
+    std::vector<uint64_t> pulls_;
+    std::vector<double> charged_;
     std::thread aging_thread_;
 };
 

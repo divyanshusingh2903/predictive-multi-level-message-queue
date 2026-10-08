@@ -3,6 +3,7 @@
 #include <chrono>
 #include <cstdint>
 #include <memory>
+#include <optional>
 #include <string>
 #include <unordered_map>
 #include <vector>
@@ -22,6 +23,10 @@ struct AgingConfig {
     std::chrono::milliseconds threshold{5000};
     /// Interval between background aging scans.
     std::chrono::milliseconds interval{500};
+    /// Pausing aging (#40): promote from level L to L-1 only while the oldest message in L-1 has waited less than
+    /// threshold. Under a long backlog the level above is itself behind, so promotions pause instead of collapsing
+    /// every level into one FIFO. Unset means on with level weights, off without them (resolved by the broker).
+    std::optional<bool> pause_when_behind{};
 };
 
 /// Single queue message.

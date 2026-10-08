@@ -107,6 +107,20 @@ void apply_broker(Section s, HarbingerConfig& c) {
     s.read_ms("completion_retention_ms", c.completion_retention, 1);
     s.read("completion_cache_max_entries", c.completion_cache_max_entries, 1, 1u << 30);
     s.read("maintenance_batch_size", c.maintenance_batch_size, 1, 1u << 20);
+    if (s.has("level_weights")) {
+        if (s.is_null("level_weights")) c.level_weights.reset();
+        else {
+            const auto* list = std::get_if<json::Array>(&s.raw("level_weights").value);
+            if (!list || list->empty() || list->size() > 255) s.fail("level_weights must be an array of 1 to 255 integers");
+            std::vector<uint32_t> weights;
+            for (const auto& item : *list) {
+                const auto* w = std::get_if<int64_t>(&item.value);
+                if (!w || *w < 1 || *w > 1000) s.fail("level_weights entries must be integers in [1, 1000]");
+                weights.push_back(static_cast<uint32_t>(*w));
+            }
+            c.level_weights = std::move(weights);
+        }
+    }
     if (s.has("aging")) {
         if (s.is_null("aging")) c.aging.reset();
         else {
@@ -114,6 +128,11 @@ void apply_broker(Section s, HarbingerConfig& c) {
             AgingConfig aging = c.aging.value_or(AgingConfig{});
             a.read_ms("threshold_ms", aging.threshold, 1);
             a.read_ms("interval_ms", aging.interval, 1);
+            if (a.has("pause_when_behind")) {
+                bool pause = false;
+                a.read_bool("pause_when_behind", pause);
+                aging.pause_when_behind = pause;
+            }
             a.finish();
             c.aging = aging;
         }
@@ -293,7 +312,14 @@ std::string describe_config(const HarbingerConfig& c, const ServerSettings& serv
     out << "listen=" << server.listen_address << " levels=" << int(c.num_levels)
         << " default_priority=" << int(c.default_priority) << " max_retries=" << c.default_max_retries
         << " default_ttl_ms=" << c.default_ttl.count() << " aging="
-        << (c.aging ? std::to_string(c.aging->threshold.count()) + "/" + std::to_string(c.aging->interval.count()) + "ms" : "off")
+        << (c.aging ? std::to_string(c.aging->threshold.count()) + "/" + std::to_string(c.aging->interval.count()) + "ms" +
+                (c.aging->pause_when_behind.value_or(c.level_weights.has_value()) ? "(pausing)" : "") : "off")
+        << " level_weights=" << [&] {
+               if (!c.level_weights) return std::string("off");
+               std::string text;
+               for (const auto w : *c.level_weights) text += (text.empty() ? "" : "/") + std::to_string(w);
+               return text;
+           }()
         << " delivery_lease_ms=" << c.delivery_lease.count()
         << " features=" << (c.ingress_features ? c.ingress_features->schema.version : "off")
         << " feedback=" << (c.feedback ? c.feedback->path.string() : "off") << " routing=";
@@ -319,6 +345,18 @@ std::string stats_json(const HarbingerService& service) {
     for (auto d : f.dropped) dropped += d;
     out << ",\"feedback\":{\"enabled\":" << (f.enabled ? "true" : "false") << ",\"written\":" << f.written
         << ",\"dropped\":" << dropped << ",\"pending\":" << f.pending_records << "}";
+    if (const auto share = service.level_share()) {
+        const auto list = [&](const auto& values) {
+            out << '[';
+            for (std::size_t i = 0; i < values.size(); ++i) out << (i ? "," : "") << values[i];
+            out << ']';
+        };
+        out << ",\"levels\":{\"weights\":"; list(share->weights);
+        out << ",\"pulls\":"; list(share->pulls);
+        out << ",\"charged_ms\":"; list(share->charged_ms);
+        out << ",\"average_cost_ms\":"; list(share->average_cost_ms);
+        out << "}";
+    }
     const auto r = service.routing_stats();
     out << ",\"routing\":{\"enabled\":" << (r.enabled ? "true" : "false");
     if (r.enabled) {
