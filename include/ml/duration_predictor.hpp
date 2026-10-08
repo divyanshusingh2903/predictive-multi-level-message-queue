@@ -67,7 +67,10 @@ struct PerKeyPredictorConfig {
     double global_decay{0.9999};
     /// Wall-clock half-life applied to a key's history across idle gaps of at least one second; zero disables.
     std::chrono::milliseconds time_half_life{600000};
-    /// A key idle this long is not predicted, and its history is discarded on its next observation; zero disables.
+    /// A key with no activity this long is not predicted, and its history is discarded on its next observation; zero
+    /// disables. Activity is an observation or a prediction made while the key was still fresh, so a key whose jobs are
+    /// stuck behind a backlog (arrivals but no completions yet) keeps its history (#38). A stale key stays stale until
+    /// new evidence arrives: predicting it does not revive it.
     std::chrono::milliseconds stale_after{1800000};
     /// Histograms share one layout: [0, min_ms), geometric bins up to max_ms, last bin includes everything above.
     /// Durations are integer milliseconds on the wire, so min_ms = 1 puts every sub-millisecond job in one bin.
@@ -78,7 +81,7 @@ struct PerKeyPredictorConfig {
     /// Hard cap on tracked keys; observations for extra keys are counted as overflow and not learned per key.
     std::size_t max_keys{16384};
     std::size_t shards{16};
-    /// A full shard recycles its least recently updated key if it is proven but idle this long...
+    /// A full shard recycles its least recently active key if it is proven but idle this long...
     std::chrono::milliseconds idle_eviction{600000};
     /// ...or still unproven (< min_samples) and idle this long. The grace stops a working set larger than the cap
     /// from thrashing while still letting a flood of one-off keys be displaced.
@@ -175,7 +178,7 @@ private:
     struct Entry {
         DecayingHistogram histogram;
         std::list<const std::string*>::iterator position;
-        Clock::time_point last_update;
+        Clock::time_point last_activity;
         Clock::time_point last_decay;
         int tier{-1};
     };

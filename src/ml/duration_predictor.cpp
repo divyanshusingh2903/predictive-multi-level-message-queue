@@ -203,20 +203,20 @@ DurationPrediction PerKeyPredictor::fallback(PredictionStatus status, uint64_t s
 }
 
 bool PerKeyPredictor::stale(const Entry& entry, Clock::time_point at) const {
-    return config_.stale_after.count() > 0 && at - entry.last_update > config_.stale_after;
+    return config_.stale_after.count() > 0 && at - entry.last_activity > config_.stale_after;
 }
 
 PerKeyPredictor::Entry* PerKeyPredictor::touch_locked(Shard& shard, std::string_view key, Clock::time_point at) {
     auto found = shard.keys.find(key);
     if (found == shard.keys.end()) {
         if (shard.keys.size() >= per_shard_cap_) {
-            // The least recently updated key is recycled only if it is idle: proven keys for idle_eviction, unproven
+            // The least recently active key is recycled only if it is idle: proven keys for idle_eviction, unproven
             // ones for the shorter cold_eviction_grace. Otherwise every tracked key is live and the newcomer is
             // counted as overflow rather than displacing one.
             const auto old = shard.keys.find(*shard.recency.back());
             const bool cold = old->second.histogram.observations() < config_.min_samples;
             const auto limit = cold ? config_.cold_eviction_grace : config_.idle_eviction;
-            if (limit.count() <= 0 || at - old->second.last_update < limit) return nullptr;
+            if (limit.count() <= 0 || at - old->second.last_activity < limit) return nullptr;
             shard.recency.pop_back();
             shard.keys.erase(old);
             ++shard.evictions;
@@ -277,8 +277,13 @@ DurationPrediction PerKeyPredictor::predict(std::string_view key) {
     std::lock_guard lock{shard.mutex};
     const auto found = shard.keys.find(key);
     if (found == shard.keys.end()) return fallback(PredictionStatus::ColdKey, 0);
-    if (stale(found->second, at)) return fallback(PredictionStatus::StaleKey, found->second.histogram.observations());
-    return evaluate(found->second, *snap);
+    Entry& entry = found->second;
+    if (stale(entry, at)) return fallback(PredictionStatus::StaleKey, entry.histogram.observations());
+    // A fresh key that is still receiving work is active even when none of it has completed yet (a backlog), so its
+    // history must not age out underneath it. A stale key is not revived here; only new evidence does that.
+    entry.last_activity = at;
+    shard.recency.splice(shard.recency.begin(), shard.recency, entry.position);
+    return evaluate(entry, *snap);
 }
 
 bool PerKeyPredictor::record_key(std::string_view key, double duration_ms, Clock::time_point at) {
@@ -290,7 +295,7 @@ bool PerKeyPredictor::record_key(std::string_view key, double duration_ms, Clock
         return false;
     }
     entry->histogram.add(duration_ms);
-    entry->last_update = at;
+    entry->last_activity = at;
     shard.recency.splice(shard.recency.begin(), shard.recency, entry->position);
     return true;
 }
@@ -334,7 +339,7 @@ bool PerKeyPredictor::observe_censored(std::string_view key) {
         return false;
     }
     entry->histogram.add_censored();
-    entry->last_update = at;
+    entry->last_activity = at;
     shard.recency.splice(shard.recency.begin(), shard.recency, entry->position);
     censored_.fetch_add(1, std::memory_order_relaxed);
     return true;
@@ -483,7 +488,7 @@ void PerKeyPredictor::save(const std::filesystem::path& path, std::string_view c
         std::lock_guard lock{shard->mutex};
         for (const auto& [key, entry] : shard->keys)
             keys.push_back({key, entry.histogram,
-                std::chrono::duration_cast<std::chrono::milliseconds>(at - entry.last_update).count(), entry.tier});
+                std::chrono::duration_cast<std::chrono::milliseconds>(at - entry.last_activity).count(), entry.tier});
     }
     std::optional<DecayingHistogram> global;
     uint64_t global_observations = 0;

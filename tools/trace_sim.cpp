@@ -2,9 +2,11 @@
 // with the broker's tier/aging rules; the predictive arms use the broker's own PerKeyPredictor on simulation time.
 // Usage: harbinger_trace_sim AZURE_TRACE.txt CONFIG.json OUT.json
 #include "ml/duration_predictor.hpp"
+#include "ml/predictive_routing.hpp"
 #include "util/json.hpp"
 
 #include <algorithm>
+#include <array>
 #include <chrono>
 #include <cmath>
 #include <deque>
@@ -118,6 +120,40 @@ Result simulate(const std::vector<Invocation>& rows, double compress, int worker
     return r;
 }
 
+/// Prediction outcomes per evaluation row (predictive arms only): status, and whether the key had work queued or
+/// running at that moment. Used to separate keys that are truly idle from keys stuck behind a backlog (#38).
+struct Outcomes {
+    std::vector<uint8_t> status;
+    std::vector<uint8_t> outstanding;
+};
+
+std::string outcome_metrics(const Outcomes& o, const Result& r, std::size_t begin, std::size_t end) {
+    std::array<uint64_t, ml::kPredictionStatusCount> counts{};
+    uint64_t stale_outstanding = 0, backlog = 0, backlog_stale = 0, backlog_predicted = 0, quiet_stale = 0;
+    const auto stale = static_cast<uint8_t>(ml::PredictionStatus::StaleKey);
+    const auto predicted = static_cast<uint8_t>(ml::PredictionStatus::Predicted);
+    for (std::size_t i = begin; i < end; ++i) {
+        ++counts[o.status[i]];
+        stale_outstanding += o.status[i] == stale && o.outstanding[i];
+        // "Backlog" = the message itself waited over a minute (descriptive, measured after the fact).
+        if (r.wait[i] > 60'000.0) {
+            ++backlog;
+            backlog_stale += o.status[i] == stale;
+            backlog_predicted += o.status[i] == predicted;
+        } else {
+            quiet_stale += o.status[i] == stale;
+        }
+    }
+    std::ostringstream out;
+    out << "{";
+    for (std::size_t s = 0; s < counts.size(); ++s)
+        out << (s ? "," : "") << '"' << ml::to_string(static_cast<ml::PredictionStatus>(s)) << "\":" << counts[s];
+    out << ",\"stale_with_work_outstanding\":" << stale_outstanding << ",\"backlog_rows\":" << backlog
+        << ",\"backlog_stale\":" << backlog_stale << ",\"backlog_predicted\":" << backlog_predicted
+        << ",\"quiet_rows\":" << (end - begin - backlog) << ",\"quiet_stale\":" << quiet_stale << "}";
+    return out.str();
+}
+
 std::string window_metrics(const Result& r, const std::vector<int>& cls, std::size_t begin, std::size_t end) {
     std::vector<double> latency(r.latency.begin() + static_cast<long>(begin), r.latency.begin() + static_cast<long>(end));
     std::vector<double> slowdown(r.slowdown.begin() + static_cast<long>(begin), r.slowdown.begin() + static_cast<long>(end));
@@ -201,10 +237,18 @@ int main(int argc, char** argv) try {
             ml::PerKeyPredictorConfig pc;
             pc.num_levels = static_cast<uint8_t>(levels);
             pc.default_priority = static_cast<uint8_t>(default_tier);
+            // Optional, for exploratory runs only; frozen configs omit it and keep the predictor default.
+            if (const auto* stale = config.get("stale_after_ms")) pc.stale_after = std::chrono::milliseconds(static_cast<int64_t>(*stale->number()));
             double sim_now = 0;
             pc.clock = [&sim_now] { return std::chrono::steady_clock::time_point{} + std::chrono::microseconds(static_cast<int64_t>(sim_now * 1000)); };
             ml::PerKeyPredictor predictor{pc};
             const bool predictive = arm.starts_with("predictive");
+            Outcomes outcomes;
+            std::vector<uint32_t> in_system(trace.keys.size(), 0);  // per key: queued + running
+            if (predictive) {
+                outcomes.status.assign(evaluation.size(), 0);
+                outcomes.outstanding.assign(evaluation.size(), 0);
+            }
             if (arm == "predictive_warm") {
                 // History sits before the evaluation start on the same compressed clock (negative simulation time).
                 const double e0 = evaluation.front().arrival_ms;
@@ -220,10 +264,15 @@ int main(int argc, char** argv) try {
                 if (arm == "static_random") { const auto f = random_tier.find(row.key); return f == random_tier.end() ? default_tier : f->second; }
                 sim_now = now;
                 const auto p = predictor.predict(trace.keys[row.key]);
+                const auto index = static_cast<std::size_t>(&row - evaluation.data());
+                outcomes.status[index] = static_cast<uint8_t>(p.status);
+                outcomes.outstanding[index] = in_system[row.key] > 0;
+                ++in_system[row.key];
                 return p.bucket;
             };
             const auto learn = [&](const Invocation& row, double now) {
                 if (!predictive) return;
+                --in_system[row.key];
                 sim_now = now;
                 predictor.observe(trace.keys[row.key], row.duration_ms);
             };
@@ -239,6 +288,12 @@ int main(int argc, char** argv) try {
             if (predictive) {
                 const auto s = predictor.stats();
                 out << ",\"predictor\":{\"keys\":" << s.keys << ",\"observations\":" << s.observations << ",\"snapshots\":" << s.snapshots << "}";
+                out << ",\"outcomes\":" << outcome_metrics(outcomes, r, 0, evaluation.size()) << ",\"outcome_windows\":[";
+                for (std::size_t w = 0; w < windows; ++w) {
+                    const auto begin = evaluation.size() * w / windows, end = evaluation.size() * (w + 1) / windows;
+                    out << (w ? "," : "") << outcome_metrics(outcomes, r, begin, end);
+                }
+                out << "]";
             }
             out << "}";
             std::cerr << "[sim] utilization=" << utilization << " arm=" << arm << " " << seconds << "s\n";
