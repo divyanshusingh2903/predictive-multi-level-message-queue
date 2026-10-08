@@ -81,9 +81,17 @@ borrowing its parent.
   censored share exceeds `max_censored_fraction` (5%) falls back. Only delivered attempts count:
   a message that expired in the queue says nothing about its handler. The replay CLI calls it for
   `lease_expiry` events that carry an attempt. The broker must do the same in #7.
-- **Staleness.** A key idle longer than `stale_after` (30 min) is not predicted and its history is
-  discarded on its next observation, so a regime change while a key was quiet (or starved in a slow
-  tier and unmeasured) is relearned from scratch rather than blended with old evidence.
+- **Staleness.** A key with no activity for longer than `stale_after` (30 min) is not predicted and
+  its history is discarded on its next observation, so a regime change while a key was quiet is
+  relearned from scratch rather than blended with old evidence. Activity is an observation or a
+  prediction made while the key was still fresh (#38): a key whose jobs are stuck behind a backlog
+  keeps receiving messages but completes none, and it must not lose its history for that. Before
+  this change the predictor switched itself off for exactly those keys (about half of all predictions
+  during backlogs in the Azure trace simulation;
+  [exploratory note](../benchmarks/results/v2-azure-sim/exploratory-staleness/README.md)). A stale
+  key is not revived by being predicted; only new evidence does that. Staleness is not a starvation
+  escape: a key starved in a slow tier is kept measured by aging (and #40), not by falling back to
+  the default tier.
 - **Boundaries.** Quantiles `i / num_levels` of the global histogram. The first snapshot is
   published when `global_min_samples` is reached, then recomputed every `boundary_refresh_every`
   global observations and swapped atomically as an immutable `shared_ptr`. A boundary only moves when

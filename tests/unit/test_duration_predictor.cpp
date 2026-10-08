@@ -377,6 +377,65 @@ TEST(DurationPredictor, UntrackedAndUnseenKeysNeverBorrowOtherKeysHistory) {
     EXPECT_EQ(p.predict("heavy-overflow").status, PredictionStatus::ColdKey);
 }
 
+TEST(DurationPredictor, BacklogWithoutCompletionsDoesNotMakeAKeyStale) {
+    // #38: staleness used to run from the last completion, so a key whose jobs sat in a long backlog went stale while
+    // its messages kept arriving, and the predictor switched itself off for exactly the keys stuck in the queue.
+    FakeClock clock;
+    auto c = base();
+    c.clock = clock.fn();
+    c.stale_after = std::chrono::minutes(30);
+    c.time_half_life = std::chrono::milliseconds(0);
+    PerKeyPredictor p{c};
+    train_three_tiers(p);
+    const auto before = p.predict("slow");
+    ASSERT_EQ(before.status, PredictionStatus::Predicted);
+    // Two hours of arrivals every 20 minutes and no completions.
+    for (int i = 0; i < 6; ++i) {
+        clock.advance(std::chrono::minutes(20));
+        const auto during = p.predict("slow");
+        ASSERT_EQ(during.status, PredictionStatus::Predicted) << i;
+        EXPECT_EQ(during.estimate_ms, before.estimate_ms);
+        EXPECT_EQ(during.bucket, before.bucket);
+    }
+    // The backlog drains: the first completion adds to the history instead of discarding it.
+    p.observe("slow", 200.0);
+    EXPECT_EQ(p.predict("slow").status, PredictionStatus::Predicted);
+    EXPECT_EQ(p.predict("slow").key_observations, before.key_observations + 1);
+}
+
+TEST(DurationPredictor, StaleKeyIsNotRevivedByPredictingIt) {
+    // A key with no activity past stale_after stays stale until new evidence arrives, however often it is asked for.
+    FakeClock clock;
+    auto c = base();
+    c.clock = clock.fn();
+    c.stale_after = std::chrono::minutes(30);
+    PerKeyPredictor p{c};
+    train_three_tiers(p);
+    clock.advance(std::chrono::minutes(31));
+    for (int i = 0; i < 5; ++i) {
+        EXPECT_EQ(p.predict("slow").status, PredictionStatus::StaleKey);
+        clock.advance(std::chrono::minutes(1));
+    }
+    p.observe("slow", 2.0);
+    EXPECT_EQ(p.predict("slow").status, PredictionStatus::ColdKey);  // old history discarded, as before
+}
+
+TEST(DurationPredictor, KeysStillReceivingWorkAreNotRecycledAsIdle) {
+    FakeClock clock;
+    auto c = base();
+    c.shards = 1;
+    c.max_keys = 3;
+    c.clock = clock.fn();
+    PerKeyPredictor p{c};
+    train_three_tiers(p);  // fills the shard: fast, mid, slow
+    clock.advance(c.idle_eviction + std::chrono::milliseconds(1));
+    // "fast" is still being routed (its jobs are queued), "mid" and "slow" are truly idle.
+    ASSERT_EQ(p.predict("fast").status, PredictionStatus::Predicted);
+    EXPECT_TRUE(p.observe("newcomer", 5.0));
+    EXPECT_EQ(p.stats().evictions, 1u);
+    EXPECT_EQ(p.predict("fast").status, PredictionStatus::Predicted);  // the active key kept its history
+}
+
 TEST(DurationPredictor, StaleKeyFallsBackAndForgetsOldHistory) {
     FakeClock clock;
     auto c = base();

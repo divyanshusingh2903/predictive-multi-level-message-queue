@@ -1,0 +1,81 @@
+{
+ "version": "v2-azure-sim-1",
+ "frozen_on": "2026-10-05",
+ "trace": {
+  "name": "AzureFunctionsInvocationTraceForTwoWeeksJan2021",
+  "rar_sha256": "8bb5d1c82e89e467062b6582996232df24edfebadbaf3287a8c985ca178ba92d",
+  "txt_sha256": "d56368ef194baa8d418304bd2f87cca67668ced0d117bd89ad4ef3cf836457d2",
+  "rows": 1980951,
+  "key": "app/func",
+  "arrival": "end_timestamp - duration"
+ },
+ "history_fraction": 0.5,
+ "evaluation_days": 7,
+ "workers": 64,
+ "levels": 3,
+ "default_priority": 1,
+ "aging": {
+  "threshold_ms": 1000000000000000.0,
+  "interval_ms": 500
+ },
+ "utilizations": [
+  0.5,
+  0.8,
+  0.95
+ ],
+ "arms": [
+  "fifo",
+  "predictive_warm",
+  "oracle"
+ ],
+ "misconfigured_seed": 2026,
+ "bootstrap": {
+  "samples": 10000,
+  "seed": 2026,
+  "confidence": 0.95
+ },
+ "criteria": {
+  "P1_mean_latency_vs_fifo": {
+   "arm": "predictive_warm",
+   "baseline": "fifo",
+   "metric": "mean_latency_ms",
+   "max_relative_delta": -0.15
+  },
+  "G1_all_p99_vs_fifo": {
+   "arm": "predictive_warm",
+   "baseline": "fifo",
+   "metric": "p99_latency_ms",
+   "max_ratio": 1.25
+  },
+  "G2_long_class_max_wait": {
+   "arm": "predictive_warm",
+   "baseline": "fifo",
+   "metric": "long_max_wait_ms",
+   "max_ratio": 2.0
+  },
+  "S1_vs_static_history_noninferior": {
+   "arm": "predictive_warm",
+   "baseline": "static_history",
+   "metric": "mean_latency_ms",
+   "max_relative_delta": 0.1
+  },
+  "S2_beats_static_random": {
+   "arm": "predictive_warm",
+   "baseline": "static_random",
+   "metric": "mean_latency_ms",
+   "max_relative_delta": 0.0
+  },
+  "S3_cold_start_vs_fifo": {
+   "arm": "predictive_cold",
+   "baseline": "fifo",
+   "metric": "mean_latency_ms",
+   "max_relative_delta": -0.05
+  }
+ },
+ "gate": [
+  "P1_mean_latency_vs_fifo",
+  "G1_all_p99_vs_fifo",
+  "G2_long_class_max_wait"
+ ],
+ "stale_after_ms": 0
+}

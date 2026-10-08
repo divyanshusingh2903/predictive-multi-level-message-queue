@@ -82,8 +82,11 @@ Every policy, including the oracle, was within 1–3% of FIFO. The guardrails pa
 - With aging on (5 s), every message in a backlog that long is promoted to the top tier within seconds, so all
   policies collapse to FIFO. Re-running with aging disabled (`exploratory-no-aging.json`) separates them: oracle
   −50%, predictive −31%, static history map −2% versus FIFO at load 0.5.
-- The cold and warm predictor arms are identical because the history half is more than `stale_after` (30 min) older
-  than the evaluation in simulation time, so the warm history is discarded as stale.
+- The cold and warm predictor arms are nearly identical because busy keys relearn from `min_samples` labels within
+  seconds, and the keys whose warm history goes stale before their first evaluation call are rarely called (corrected
+  in #38; an earlier version of this report blamed staleness for all of it). The same check found that staleness ran
+  from each key's last completion, so keys stuck in a backlog fell back as stale; that is fixed
+  ([exploratory note](../benchmarks/results/v2-azure-sim/exploratory-staleness/README.md)).
 - A pool of 64 workers shared by all functions is not how serverless platforms scale; the model, not just the
   predictor, limits what this trace can show.
 
@@ -125,9 +128,10 @@ not warranted. Details: [`benchmarks/results/feature-signal-v1/`](../benchmarks/
 
 ## 5. Follow-ups
 
-1. Aging under sustained overload: make aging relative to the backlog (or cap promotions per level) so priority still
-   means something in multi-minute backlogs; evaluate on the Azure trace with a new pre-registration.
-2. Warm start: snapshot restore after long downtime is treated as stale; consider keeping restored keys usable until
-   enough new evidence arrives.
+1. Aging under sustained overload: a weighted share of pulls across levels (#40) so priority still means something in
+   long backlogs; evaluate on the Azure trace with a new pre-registration. (Capping promotions was considered and
+   rejected: promoted messages still wait behind the whole top level.)
+2. Warm start: not needed. Snapshot restore already ignores downtime (key ages are stored relative to save time). The
+   real problem was staleness measured from completions during backlogs, fixed in #38.
 3. Size-binned keys: implemented as opt-in `routing.key.size_source` (#35, [size bins](duration-predictor.md#size-bins-issue-35)); not yet evaluated end-to-end in the broker. A cloud repeat of the collection remains (#26, `benchmarks/collect/CLOUD.md`).
 4. Per-function worker pools in the trace simulator to model serverless scaling.
