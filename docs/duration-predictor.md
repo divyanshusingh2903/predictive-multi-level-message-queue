@@ -56,6 +56,12 @@ Size bins help only where cost follows size: the control key in `feature-signal-
 unrelated to its payload) gained nothing, and a binned key needs `min_samples` labels per bin before it stops
 borrowing its parent.
 
+**Under load (`v3-sizebins-1`, #39, pre-registered): not shown to help.** In the production-flow benchmark, bins cut
+the predictor's mean |log2 error| from 0.84 to 0.66 octaves, but mean latency changed by −1.5% (95% interval −5.1% to
++1.7%) against the pre-registered −3%. Every guardrail passed. Bins moved large invoices down and small resizes up, as
+shortest-expected-first should, but size-driven jobs carry little of the work there. They stay opt-in.
+[Results](../benchmarks/results/v3-sizebins/README.md).
+
 ## Model
 
 - **State.** A decaying duration histogram per key plus one global histogram, all with an

@@ -133,5 +133,5 @@ not warranted. Details: [`benchmarks/results/feature-signal-v1/`](../benchmarks/
    rejected: promoted messages still wait behind the whole top level.)
 2. Warm start: not needed. Snapshot restore already ignores downtime (key ages are stored relative to save time). The
    real problem was staleness measured from completions during backlogs, fixed in #38.
-3. Size-binned keys: implemented as opt-in `routing.key.size_source` (#35, [size bins](duration-predictor.md#size-bins-issue-35)); not yet evaluated end-to-end in the broker. A cloud repeat of the collection remains (#26, `benchmarks/collect/CLOUD.md`).
+3. Size-binned keys: implemented as opt-in `routing.key.size_source` (#35, [size bins](duration-predictor.md#size-bins-issue-35)). Evaluated under load in `v3-sizebins-1` (#39): gate not passed (mean −1.5%, interval includes no change; guardrails passed), so they stay opt-in ([results](../benchmarks/results/v3-sizebins/README.md)). A cloud repeat of the collection remains (#26, `benchmarks/collect/CLOUD.md`).
 4. Per-function worker pools in the trace simulator to model serverless scaling.
