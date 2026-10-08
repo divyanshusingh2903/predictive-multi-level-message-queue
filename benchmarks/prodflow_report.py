@@ -1,9 +1,13 @@
-"""Pre-registered analysis for the production-flow benchmark (v2-prodflow-1).
+"""Pre-registered analysis for the production-flow benchmark (v2-prodflow-1, v3-sizebins-1).
 
 Usage: python -m benchmarks.prodflow_report CONFIG RESULTS_DIR [--out DIR]
 
 RESULTS_DIR holds seed-<seed>/<arm>/{messages.tsv,run.json}. Every criterion is computed from paired per-seed
 values exactly as frozen in CONFIG; nothing here is tuned after seeing predictive results.
+
+A criterion's metric is any key of the per-run metrics, including the per-class keys "class_mean_ms:<job_type>" and
+"shifted_class_mean_ms:<job_type>" (mean latency in the shifted phase) and, when CONFIG lists "sized_classes",
+"unsized_mean_ms" (mean latency of every other job type).
 """
 from __future__ import annotations
 
@@ -58,7 +62,17 @@ def metrics(run: dict, rows: list[dict], config: dict) -> dict:
         cohorts[name] = {"count": len(values), "mean_ms": statistics.mean(values) if values else None,
                          "p50_ms": percentile(values, 50), "p99_ms": percentile(values, 99)}
     routing = run.get("broker", {}).get("routing", {})
+    per_class_keys = {}
+    for name in classes:
+        values = [latency[int(r["seq"])] for r in done if r["job_type"] == name]
+        shifted = [latency[int(r["seq"])] for r in done if r["job_type"] == name and r["phase"] == "4"]
+        per_class_keys[f"class_mean_ms:{name}"] = statistics.mean(values) if values else None
+        per_class_keys[f"shifted_class_mean_ms:{name}"] = statistics.mean(shifted) if shifted else None
+    if "sized_classes" in config:
+        unsized = [latency[int(r["seq"])] for r in done if r["job_type"] not in config["sized_classes"]]
+        per_class_keys["unsized_mean_ms"] = statistics.mean(unsized) if unsized else None
     return {
+        **per_class_keys,
         "messages": len(rows), "completed": len(done), "dlq": run["dlq"], "submit_errors": run["submit_errors"],
         "mean_latency_ms": statistics.mean(all_latency), "p50_latency_ms": percentile(all_latency, 50),
         "p95_latency_ms": percentile(all_latency, 95), "p99_latency_ms": percentile(all_latency, 99),
@@ -180,16 +194,39 @@ def report(config: dict, table: dict, evaluation: dict) -> str:
     for phase in ["steady", "ramp", "flash_sale", "recovery", "shifted"]:
         cells = [fmt(statistics.median(m["cohorts"][phase]["mean_ms"] for m in table[arm].values())) for arm in arms]
         lines.append(f"| {phase} | " + " | ".join(cells) + " |")
-    if "predictive" in table:
-        r = [m["routing"] for m in table["predictive"].values() if m["routing"].get("enabled")]
-        if r:
-            outcomes = {k: statistics.median(x["outcomes"][k] for x in r) for k in r[0]["outcomes"]}
-            lines += ["", "## Predictor behaviour (predictive arm, median across seeds)", "",
-                      f"Lookups {statistics.median(x['lookups'] for x in r):.0f}, routed by prediction "
-                      f"{statistics.median(x['routed'] for x in r):.0f}; outcomes {outcomes}; "
-                      f"lookup mean {statistics.median(x['lookup_mean_us'] for x in r):.2f} µs; "
-                      f"tier agreement {statistics.median(x['tier_agreement'] for x in r):.2f}; "
-                      f"drift alerts {statistics.median(x['drift_alerts'] for x in r):.0f}."]
+    if "sized_classes" in config:
+        lines += ["", "## Size-driven classes: mean latency overall / in the shifted phase (ms, median across seeds)", "",
+                  "| Class | " + " | ".join(arms) + " |", "|---|" + "---|" * len(arms)]
+        for name in config["sized_classes"]:
+            cells = []
+            for arm in arms:
+                overall = [m.get(f"class_mean_ms:{name}") for m in table[arm].values()]
+                shifted = [m.get(f"shifted_class_mean_ms:{name}") for m in table[arm].values()]
+                med = lambda v: statistics.median(x for x in v if x is not None) if any(x is not None for x in v) else None
+                cells.append(f"{fmt(med(overall))} / {fmt(med(shifted))}")
+            lines.append(f"| {name} | " + " | ".join(cells) + " |")
+        cells = [fmt(statistics.median(m["unsized_mean_ms"] for m in table[arm].values())) for arm in arms]
+        lines.append("| *all other classes* | " + " | ".join(cells) + " |")
+    for arm in arms:
+        if not arm.startswith("predictive"):
+            continue
+        r = [m["routing"] for m in table[arm].values() if m["routing"].get("enabled")]
+        if not r:
+            continue
+        outcomes = {k: statistics.median(x["outcomes"][k] for x in r) for k in r[0]["outcomes"]}
+        extra = ""
+        if "abs_log2_error" in r[0]:
+            extra += f"; mean |log2 error| {statistics.median(x['abs_log2_error'] for x in r):.2f}"
+        if "keys" in r[0]:
+            extra += f"; keys {statistics.median(x['keys'] for x in r):.0f}"
+        if "parent_fallbacks" in r[0]:
+            extra += f"; parent fallbacks {statistics.median(x['parent_fallbacks'] for x in r):.0f}"
+        lines += ["", f"## Predictor behaviour ({arm} arm, median across seeds)", "",
+                  f"Lookups {statistics.median(x['lookups'] for x in r):.0f}, routed by prediction "
+                  f"{statistics.median(x['routed'] for x in r):.0f}; outcomes {outcomes}; "
+                  f"lookup mean {statistics.median(x['lookup_mean_us'] for x in r):.2f} µs; "
+                  f"tier agreement {statistics.median(x['tier_agreement'] for x in r):.2f}; "
+                  f"drift alerts {statistics.median(x['drift_alerts'] for x in r):.0f}{extra}."]
     return "\n".join(lines) + "\n"
 
 

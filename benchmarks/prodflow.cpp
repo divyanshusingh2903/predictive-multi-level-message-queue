@@ -1,6 +1,7 @@
 // Production-like job-queue benchmark: an e-commerce backend whose services submit background jobs through the
 // real Producer client and whose workers run real CPU work (zlib, image downscaling, sorting) plus simulated
-// network calls, through the real Consumer client, against an embedded broker. See docs/prodflow-benchmark.md.
+// network calls, through the real Consumer client, against an embedded broker. Described in docs/v2-preregistration.md
+// (workload) and docs/v3-sizebins-preregistration.md (size_hint header, predictive_sized arm).
 #include "harbinger_service.hpp"
 #include "benchmark/hooks.hpp"
 #include "consumer/consumer.hpp"
@@ -292,6 +293,13 @@ bool execute(const Job& job, int attempt) {
 
 // ── Arms ────────────────────────────────────────────────────────────────────
 
+/// Size a producer knows at submission for job types whose cost follows their input; every arm sends it, only
+/// predictive_sized routes on it.
+constexpr const char* kSizeHintHeader = "size_hint";
+bool has_size_hint(const std::string& type) {
+    return type == "resize_image" || type == "generate_invoice" || type == "export_report";
+}
+
 const std::map<std::string, uint8_t> kTunedTiers{
     // An operator's informed static map: fast I/O jobs first, CPU-heavy and batch work last.
     {"reserve_inventory", 0}, {"push_notification", 0}, {"reindex_product", 0},
@@ -316,7 +324,7 @@ int main(int argc, char** argv) try {
     for (int i = 1; i + 1 < argc; i += 2) args[argv[i]] = argv[i + 1];
     if (argc % 2 == 0 || !args.contains("--arm") || !args.contains("--seed") || !args.contains("--out"))
         throw std::invalid_argument("usage: harbinger_prodflow --arm fifo|static_tuned|static_misconfigured|shadow|"
-            "predictive|predictive_p75|predictive_producer|oracle --seed N --out NEW_DIR [--seconds 300] [--workers 4] [--rate-scale 1] [--drain-s 180]");
+            "predictive|predictive_p75|predictive_producer|predictive_sized|oracle --seed N --out NEW_DIR [--seconds 300] [--workers 4] [--rate-scale 1] [--drain-s 180]");
     const std::string arm = args["--arm"];
     const uint64_t seed = std::stoull(args["--seed"]);
     const double seconds = args.contains("--seconds") ? std::stod(args["--seconds"]) : 300;
@@ -345,12 +353,18 @@ int main(int argc, char** argv) try {
     else if (arm == "static_tuned") { options.policy = benchmark::Policy::Static; options.static_tiers = kTunedTiers; }
     else if (arm == "static_misconfigured") { options.policy = benchmark::Policy::Static; options.static_tiers = kMisconfiguredTiers; }
     else if (arm == "oracle") options.policy = benchmark::Policy::Oracle;
-    else if (arm == "shadow" || arm == "predictive" || arm == "predictive_p75" || arm == "predictive_producer") {
+    else if (arm == "shadow" || arm == "predictive" || arm == "predictive_p75" || arm == "predictive_producer" ||
+             arm == "predictive_sized") {
         ml::PredictiveRoutingConfig routing;
         routing.mode = arm == "shadow" ? ml::RoutingMode::Shadow : ml::RoutingMode::Predictive;
         if (arm == "predictive_p75") routing.predictor.summary = ml::DurationSummary::P75;
         // Zero-configuration control: producers do not label jobs, so each service is one key.
         if (arm == "predictive_producer") routing.key.job_header.clear();
+        // Size-binned keys (#35, #39): the producer's size hint (pixels, line items, chunks) adds a log2 bin.
+        if (arm == "predictive_sized") {
+            routing.key.size_source = ml::PredictorKeyPolicy::SizeSource::Header;
+            routing.key.size_header = kSizeHintHeader;
+        }
         config.predictive_routing = routing;  // defaults: producer-scoped job_type key
     } else throw std::invalid_argument("unknown arm " + arm);
     config.benchmark_options = options;
@@ -403,6 +417,7 @@ int main(int argc, char** argv) try {
                 std::this_thread::sleep_until(origin + std::chrono::microseconds(job.at_us));
                 std::unordered_map<std::string, std::string> headers{
                     {"job_type", job.type}, {"bench_seq", std::to_string(seq)}};
+                if (has_size_hint(job.type)) headers[kSizeHintHeader] = std::to_string(job.units);
                 if (arm == "oracle")
                     headers[benchmark::kOracleTierHeader] = std::to_string(
                         std::upper_bound(oracle_bounds.begin(), oracle_bounds.end(), job.planned_ms) - oracle_bounds.begin());
@@ -438,7 +453,8 @@ int main(int argc, char** argv) try {
     for (auto& c : consumers) lost += c->leases_lost();
     std::ofstream run(out / "run.json");
     run << "{\"benchmark\":\"prodflow-v1\",\"arm\":\"" << arm << "\",\"seed\":" << seed << ",\"seconds\":" << seconds
-        << ",\"workers\":" << workers << ",\"rate_scale\":" << rate_scale << ",\"messages\":" << jobs.size()
+        << ",\"workers\":" << workers << ",\"rate_scale\":" << rate_scale
+        << ",\"size_hint_header\":\"" << kSizeHintHeader << "\"" << ",\"messages\":" << jobs.size()
         << ",\"completed\":" << completed.load() << ",\"dlq\":" << service.dlq_size()
         << ",\"submit_errors\":" << submit_errors.load() << ",\"leases_lost\":" << lost
         << ",\"oracle_boundaries_ms\":[" << oracle_bounds[0] << "," << oracle_bounds[1] << "]"
