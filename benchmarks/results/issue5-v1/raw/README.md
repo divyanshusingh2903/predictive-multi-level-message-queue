@@ -33,8 +33,8 @@ tar -xzf dataset-v1.tar.gz -C /tmp/opencode
 Then, from the repository root, use the pinned environment:
 
 ```bash
-.venv/bin/python -m ml_engine.compare --dataset /tmp/opencode/dataset \
-  --config ml_engine/configs/online-comparison-v1.json \
+.venv/bin/python -m analysis.compare --dataset /tmp/opencode/dataset \
+  --config analysis/configs/online-comparison-v1.json \
   --output /tmp/opencode/issue5-replayed-report
 ```
 

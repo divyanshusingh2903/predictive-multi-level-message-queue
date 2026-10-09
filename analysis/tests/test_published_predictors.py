@@ -4,8 +4,8 @@ from pathlib import Path
 import tarfile
 import unittest
 
-from ml_engine.dataset import fingerprint, rows
-from ml_engine.publish import sha256
+from analysis.dataset import fingerprint, rows
+from analysis.publish import sha256
 
 ROOT = Path(__file__).resolve().parents[2]
 EVIDENCE = ROOT / "benchmarks/results/issue5-v1"
@@ -14,7 +14,7 @@ EVIDENCE = ROOT / "benchmarks/results/issue5-v1"
 @unittest.skipUnless(EVIDENCE.exists(), "published issue-5 evidence not present yet")
 class PublishedPredictors(unittest.TestCase):
     def test_frozen_configuration_complete_pairs_and_decision_consistency(self):
-        config = json.loads((ROOT / "ml_engine/configs/online-comparison-v1.json").read_text())
+        config = json.loads((ROOT / "analysis/configs/online-comparison-v1.json").read_text())
         manifest = json.loads((EVIDENCE / "manifest.json").read_text())
         decision = json.loads((EVIDENCE / "decision.json").read_text())
         self.assertEqual(manifest["config_sha256"], fingerprint(config))

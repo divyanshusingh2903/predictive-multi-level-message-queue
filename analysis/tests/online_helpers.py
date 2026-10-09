@@ -3,15 +3,15 @@ import copy
 import json
 from pathlib import Path
 
-from ml_engine.dataset import canonical
-from ml_engine.feedback import dimensions
+from analysis.dataset import canonical
+from analysis.feedback import dimensions
 
 ROOT = Path(__file__).resolve().parents[2]
 RUN = "fixture-s101-r0-disabled"
 
 
 def config():
-    result = json.loads((ROOT / "ml_engine/configs/online-comparison-v1.json").read_text())
+    result = json.loads((ROOT / "analysis/configs/online-comparison-v1.json").read_text())
     result["policy"]["ready_labels"] = 1
     result["group_min_labels"] = 1
     result["candidates"] = ["global_mean", "job_mean"]

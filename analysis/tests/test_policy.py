@@ -1,8 +1,8 @@
 import math
 import unittest
 
-from ml_engine.policy import DurationPolicy
-from ml_engine.tests.online_helpers import config
+from analysis.policy import DurationPolicy
+from analysis.tests.online_helpers import config
 
 
 class Policy(unittest.TestCase):

@@ -4,8 +4,8 @@ from pathlib import Path
 import tempfile
 import unittest
 
-from ml_engine.features import FeatureSchema
-from ml_engine.feedback import FeedbackIndex, dimensions, strict_json, validate_record
+from analysis.features import FeatureSchema
+from analysis.feedback import FeedbackIndex, dimensions, strict_json, validate_record
 
 FIXTURE = Path(__file__).resolve().parents[2] / "tests/fixtures/ml/feedback_v1.json"
 

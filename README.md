@@ -7,9 +7,9 @@
 
 # Harbinger — Predictive Multi-Level Message Queue
 
-*Harbinger (formerly PMLMQ) — the queue that knows what's coming: it learns each kind of message's cost, then prioritizes.*
+*Harbinger — the queue that knows what's coming: it learns each kind of message's cost, then prioritizes.*
 
-A research messaging system that learns **per-key processing-time statistics online** and uses them for **multi-level priority scheduling**, so operators do not have to classify heavy and light endpoints by hand or benchmark them in advance.
+A research messaging system that predicts each message's processing time by **statistical analysis of the durations it has already observed for that kind of message** (a per-key, decaying duration histogram), not with a trained machine-learning model, and uses the prediction for **multi-level priority scheduling**. Operators do not have to classify heavy and light endpoints by hand or benchmark them in advance.
 
 **Research hypothesis (revised):** Learning each key's duration distribution from observed handler times and routing short-expected work first reduces median and mean latency and head-of-line blocking relative to FIFO, and matches a well-configured static priority map without hand configuration. It is expected to stay robust where a static map is wrong or stale. Tail (P99) latency is *not* expected to improve when long jobs are common; see [Design direction](#design-direction).
 
@@ -17,7 +17,7 @@ A research messaging system that learns **per-key processing-time statistics onl
 
 ## Status
 
-**Phase 1 complete; Phase 2 implemented and evaluated.** The core gRPC broker includes multi-level priority queues, producer/consumer clients, DLQ, aging, retries, and in-flight management. Phase 2 adds an in-process [per-key duration predictor](docs/duration-predictor.md) wired into `route_message()` with shadow and opt-in predictive modes, learning from Ack settlement, snapshots, drift counters and a [standalone config file](docs/configuration.md), plus [versioned ingress features](ml_engine/README.md) and [bounded persistent feedback](docs/feedback.md). **Default routing stays static.**
+**Phase 1 complete; Phase 2 implemented and evaluated.** The core gRPC broker includes multi-level priority queues, producer/consumer clients, DLQ, aging, retries, and in-flight management. Phase 2 adds an in-process [per-key duration predictor](docs/duration-predictor.md) wired into `route_message()` with shadow and opt-in predictive modes, learning from Ack settlement, snapshots, drift counters and a [standalone config file](docs/configuration.md), plus [versioned ingress features](analysis/README.md) and [bounded persistent feedback](docs/feedback.md). **Default routing stays static.**
 
 [Phase 2 results](docs/phase2-report.md), against criteria [frozen before any run](docs/v2-preregistration.md):
 
@@ -37,8 +37,8 @@ Evidence so far, and the resulting Phase 2 plan:
 - **Synthetic evidence only.** The workloads use one 3-value categorical header and a fixed 16-byte payload, so a per-key average is close to the best possible predictor there. These results do not show whether richer features help on real traffic.
 - **Shortest-job-first trade-off.** With a non-preemptive scheduler, prioritizing short jobs lowers median latency (about 40–60% in the bimodal cells) and leaves P95 flat or makes P99 worse when long jobs are a large fraction of messages. Reordering cannot reduce a long job's own service time. Primary metrics are therefore per-class percentiles, slowdown, mean latency, and long-job starvation, with all-message P99 as a guardrail.
 - **Predictor: per-key duration statistics, in C++.** Each message has a *key*: the broker-assigned producer id, optionally joined to a producer-supplied `job_type` header (there is no queue/topic name; the broker is one logical queue). The broker keeps a decaying duration histogram per key plus a global histogram, estimates a message's duration from its key at ingress inside `route_message()`, and maps it to a tier using boundaries derived from global quantiles. Cold or high-variance keys use the middle tier; aging is unchanged. Only successful, non-replayed handler durations are learned. Per-key state is bounded in memory.
-- **Python is the offline evaluation harness**, not a serving component. River models remain optional offline challengers, and richer features are added only if real or numeric-feature workloads show the per-key model losing.
-- **Not yet shown.** No predictive scheduling benefit, real-workload generalization, or activation is claimed. The v1 budgets cannot be met even by an oracle-like static map, so Phase 2 comparisons move to a pre-registered v2 matrix.
+- **Statistics, not machine learning.** In an offline comparison (issue #5), none of eight candidates passed every frozen quality gate. The candidates were learned models (River regressors and trees) and simple statistics (per-key means, EWMA). The broker therefore uses the simplest option, per-key statistics, which then passed the v2 production-flow gate. It serves no learned model. Python code lives in [`analysis/`](analysis/README.md) as offline tooling and never runs with the broker. Learned models would be reconsidered only if real workloads show the per-key statistics losing.
+- **Not yet shown.** Generalization beyond one real trace and one synthetic production workload, and comparison with production queues (RabbitMQ, Redis). Predictive routing stays opt-in.
 
 ---
 
@@ -53,16 +53,16 @@ Producer::send()
  │                                                                 │
  │  Proxy::accept()  →  route_message()  →  MultiLevelQueue        │
  │    stamp ID              ▲                  Level 0 (HIGH)      │
- │    arrival_time    Phase 2: ML              Level 1 (MED)       │
- │    producer_id     classifier               Level 2 (LOW)       │
- │                    goes here                     │              │
+ │    arrival_time    per-key duration         Level 1 (MED)       │
+ │    producer_id     statistics pick          Level 2 (LOW)       │
+ │                    the level                     │              │
  │                                            aging thread         │
  │                                            (promotes stale msgs)│
  │                                                  │              │
  │  Consumer Pull() ◄───────────────────────────────┘              │
  │  (tier-blind)                                                   │
  │       │                                                         │
- │  Ack / Nack  ──  processing_time_ms  ──►  (Phase 2 ML feedback) │
+ │  Ack / Nack  ──  processing_time_ms  ──►  (updates statistics)  │
  │       │                                                         │
  │  DeadLetterQueue (max retries / TTL expired)                    │
  └─────────────────────────────────────────────────────────────────┘
@@ -84,11 +84,11 @@ Producer::send()
 - [Producer guide](docs/producers.md) — connect, send messages, set TTL, and understand Submit outcomes.
 - [Consumer guide](docs/consumers.md) — handlers, delivery leases, acknowledgements, retries, and shutdown.
 - [Broker and queue internals](docs/internals.md) — state transitions, priority ordering, aging, expiry, and recovery.
-- [Ingress features and encoding](ml_engine/README.md) — implemented opt-in C++ capture and matching Python representation.
+- [Ingress features and encoding](analysis/README.md) — implemented opt-in C++ capture and matching Python representation.
 - [Persistent feedback](docs/feedback.md) — embedded static-mode collection, JSONL storage, retention, loss counters, and durability/shutdown limits.
 - [Synthetic baselines and feedback export](benchmarks/README.md) — seeded open-loop gRPC replay, outcome/fairness accounting, paired uncertainty, and frozen experiment budgets.
 - [Online predictors](docs/online-predictor.md) — cited literature, eight candidates, delayed validation, readiness/fallback, and the frozen v1 selection budgets (result: no qualifier).
-- [ML contract](docs/ml-contract.md), [architecture decision](docs/adr/0001-phase2-ml-contract.md), and [validation plan](docs/phase2-validation.md) — Phase 2 boundaries; inference transport and activation remain planned.
+- [ML contract](docs/ml-contract.md), [architecture decision](docs/adr/0001-phase2-ml-contract.md), and [validation plan](docs/phase2-validation.md) — Phase 2 boundaries. Their classifier-service transport is superseded by the in-process statistical predictor; their feature, feedback and versioning rules still apply.
 
 ---
 
@@ -115,7 +115,7 @@ harbinger/
 │   └── unit/                  # GoogleTest sources; built as harbinger_unit_tests
 │                              # (queue, DLQ, proxy — no gRPC) and
 │                              # harbinger_integration_tests (broker, client over gRPC)
-├── ml_engine/                 # Features, feedback validation, offline evaluation harness
+├── analysis/                 # Offline Python tools (formats, studies); not run by the broker
 ├── benchmarks/                # Opt-in cleanup + synthetic scheduler baselines and dataset export
 └── CMakeLists.txt
 ```
@@ -201,7 +201,7 @@ ctest --test-dir build --output-on-failure
 auto producer = harbinger::Producer::connect("127.0.0.1:50051");
 std::string msg_id = producer->send(
     {0x01, 0x02},                          // payload bytes
-    {{"job_type", "resize"}, {"src", "a"}} // headers (used for ML features in Phase 2)
+    {{"job_type", "resize"}, {"src", "a"}} // headers (job_type keys the duration predictor)
 );
 
 // Consumer
@@ -228,7 +228,7 @@ consumer->stop();
 | `level_weights` | `nullopt` (strict priority) | Opt-in worker-time share per level, e.g. `{8, 3, 1}`; one weight in [1, 1000] per level. Not combinable with the round-robin benchmark policy |
 | `default_max_retries` | `3` | Nack attempts before the message moves to the DLQ |
 | `default_ttl` | `0` (off) | TTL from arrival; `0` = no expiry |
-| `default_priority` | `1` (medium) | Static priority for Phase 1; ML classifier overrides in Phase 2 |
+| `default_priority` | `1` (medium) | Level for static routing, and for predictive routing when a key has no usable estimate (cold, stale or high-spread) |
 | `max_pull_wait` | `5000 ms` | Server-side cap on consumer pull timeout |
 | `ttl_sweep_interval` | `100 ms` | Background TTL sweep interval; `0` disables it |
 | `delivery_lease` | `30000 ms` | Fixed ownership lease per delivery; no renewal |
@@ -343,7 +343,7 @@ idempotency and durable storage are not implemented.
 - [x] Producer and Consumer gRPC clients
 - [x] Unit + integration test suite
 
-### Phase 2 — ML integration (implemented and evaluated)
+### Phase 2 — Statistical duration prediction (implemented and evaluated)
 
 The [Phase 2 tracker](https://github.com/divyanshusingh2903/predictive-multi-level-message-queue/issues/11) sequences implementation from the [ML contract](docs/ml-contract.md). Prediction begins in shadow mode; explicit predictive routing requires the [synthetic validation gate](docs/phase2-validation.md).
 
@@ -359,6 +359,7 @@ The [Phase 2 tracker](https://github.com/divyanshusingh2903/predictive-multi-lev
 - [x] Per-key predictability on a real trace (Azure Functions 2021)
 - [x] Feature signal on self-generated data (`feature-signal-v1`) and opt-in log2 size-binned keys with cold-bin parent fallback ([size bins](docs/duration-predictor.md#size-bins-issue-35)); under load they did not pass their pre-registered gate ([v3-sizebins-1](benchmarks/results/v3-sizebins/README.md))
 - [x] v2 activation gate: passed on the production-flow benchmark; not passed on the Azure trace simulation ([Phase 2 report](docs/phase2-report.md))
+- [x] Opt-in worker-time level weights with pausing aging for sustained overload ([v3-aging-1](benchmarks/results/v3-aging/README.md), #40)
 
 ### Phase 3 — Benchmarking & validation
 - [ ] Expand synthetic workload coverage beyond the Phase 2 activation gate
@@ -369,7 +370,7 @@ The [Phase 2 tracker](https://github.com/divyanshusingh2903/predictive-multi-lev
 ### Phase 4 — Enhancements (optional)
 - [ ] Streaming mode (persistent events, multi-consumer replay)
 - [ ] Multi-tenancy
-- [ ] Dynamic online classifier retraining
+- [ ] Learned-model challengers, only if real workloads show per-key statistics losing
 
 ---
 

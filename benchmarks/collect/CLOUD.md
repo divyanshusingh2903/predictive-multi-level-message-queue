@@ -28,5 +28,5 @@ bash cloud_run.sh            # or: bash cloud_run.sh 60  for only the long runs
 # 4. Delete the VM and its disk.
 ```
 
-Bring the archive back and run `python -m ml_engine.feature_signal` over its CSVs (the archive already contains
+Bring the archive back and run `python -m analysis.feature_signal` over its CSVs (the archive already contains
 `analysis.json`). Compare with the local result in `benchmarks/results/feature-signal-v1/`.

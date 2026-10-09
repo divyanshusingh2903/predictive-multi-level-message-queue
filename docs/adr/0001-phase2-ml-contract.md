@@ -1,6 +1,6 @@
 # ADR 0001: Phase 2 ML routing and feedback
 
-Status: Phase 2 design with [feature capture/encoding](../../ml_engine/README.md) and [embedded persistent feedback](../feedback.md) implemented. Prediction transport and predictive activation remain planned. Implemented feedback limits and proposed inference/performance budgets still require performance evaluation before rollout.
+Status: Phase 2 design with [feature capture/encoding](../../analysis/README.md) and [embedded persistent feedback](../feedback.md) implemented. Prediction transport and predictive activation remain planned. Implemented feedback limits and proposed inference/performance budgets still require performance evaluation before rollout.
 
 Tracking: [contract issue #1](https://github.com/divyanshusingh2903/predictive-multi-level-message-queue/issues/1), under [Phase 2 tracker #11](https://github.com/divyanshusingh2903/predictive-multi-level-message-queue/issues/11).
 

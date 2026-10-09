@@ -1,8 +1,8 @@
 import unittest
 
-from ml_engine.models import Candidate, FeatureAdapter
-from ml_engine.features import FeatureSchema
-from ml_engine.tests.online_helpers import config, snapshot
+from analysis.models import Candidate, FeatureAdapter
+from analysis.features import FeatureSchema
+from analysis.tests.online_helpers import config, snapshot
 
 
 class Models(unittest.TestCase):

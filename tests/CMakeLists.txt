@@ -47,7 +47,7 @@ else()
 endif()
 if(Python3_Interpreter_FOUND)
     add_test(NAME ml_feature_python_tests COMMAND "${Python3_EXECUTABLE}"
-        -m unittest discover -s ml_engine/tests -v)
+        -m unittest discover -s analysis/tests -v)
     set_tests_properties(ml_feature_python_tests PROPERTIES
         WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}" TIMEOUT 60
         ENVIRONMENT "HARBINGER_PREDICTOR_REPLAY=$<TARGET_FILE:harbinger_predictor_replay>")
