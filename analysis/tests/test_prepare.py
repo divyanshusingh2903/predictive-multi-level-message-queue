@@ -5,8 +5,8 @@ import tempfile
 import unittest
 from unittest.mock import patch
 
-from ml_engine.prepare import HEALTH, coverage
-from ml_engine.tests.online_helpers import config, write_export
+from analysis.prepare import HEALTH, coverage
+from analysis.tests.online_helpers import config, write_export
 
 
 class Preparation(unittest.TestCase):
@@ -20,7 +20,7 @@ class Preparation(unittest.TestCase):
             def fake_export(_source, target, fraction):
                 target.mkdir(); write_export(target)
             (root / "run.json").write_text(json.dumps(run))
-            with patch("ml_engine.prepare.export_run", side_effect=fake_export):
+            with patch("analysis.prepare.export_run", side_effect=fake_export):
                 self.assertEqual(coverage(root, 4, config()), [])
             for mutation in ("feedback_drops", "feedback_pending_records", "feedback_sync_failures", "pull_errors"):
                 changed = copy.deepcopy(run); changed["summary"][mutation] = "1"

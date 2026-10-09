@@ -60,7 +60,7 @@ Estimate capacity from disabled/static baseline runs before choosing absolute ar
 
 Model evaluation uses time-ordered delayed feedback. Predict on ingress, evaluate the stored prediction when its label arrives, then learn. Do not use future feedback, actual synthetic runtime, or retry outcomes as ingress features. Group attempts by message when splitting/exporting data; report failed/censored/missing labels and success-only selection bias. Fit no preprocessing on future evaluation labels.
 
-Issue #5 implements this offline protocol in `ml_engine.compare`. The separately
+Issue #5 implements this offline protocol in `analysis.compare`. The separately
 frozen `online-comparison-v1` uses eight candidate configurations, six clean
 2,000-message cells, five seeds/two repeats, a 50% temporal split, independent
 run state, and 10/100 ms availability-delay sensitivity. Its quality gates are

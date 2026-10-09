@@ -52,7 +52,7 @@ dist/
 *.joblib
 *.model
 *.bin
-ml_engine/models/
+analysis/models/
 
 # IDE / editor
 .vscode/

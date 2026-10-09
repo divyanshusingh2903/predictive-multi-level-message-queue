@@ -1,6 +1,6 @@
 """Does any ingress feature predict duration better than the key? (#24, frozen as feature-signal-v1)
 
-Usage: python -m ml_engine.feature_signal CONFIG RUN.csv [RUN.csv ...] [--out report.json]
+Usage: python -m analysis.feature_signal CONFIG RUN.csv [RUN.csv ...] [--out report.json]
 
 Each run is split in time order (first 60% train, last 40% test, no look-ahead). Models:
   global_median           one median for everything
@@ -8,7 +8,7 @@ Each run is split in time order (first 60% train, last 40% test, no look-ahead).
   per_key_size_bin_median per key and floor(log2(primary size feature)); sparse bins fall back to the key median
   gradient_boosting       sklearn HistGradientBoostingRegressor on log1p(duration), key + log1p(numeric features)
 The decision rule is read from CONFIG and applied across runs. Gradient boosting needs scikit-learn
-(`ml_engine/requirements-analysis.txt`); without it that model is reported as unavailable.
+(`analysis/requirements-analysis.txt`); without it that model is reported as unavailable.
 """
 from __future__ import annotations
 

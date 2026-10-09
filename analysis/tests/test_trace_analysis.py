@@ -1,7 +1,7 @@
 import random
 import unittest
 
-from ml_engine.trace_analysis import analyse
+from analysis.trace_analysis import analyse
 
 
 def rows(seed=1, n=6000):

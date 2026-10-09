@@ -6,10 +6,10 @@ import unittest
 
 from benchmarks.evaluate import run_experiment
 from benchmarks.export_feedback import export_run
-from ml_engine.dataset import TemporalDataset
-from ml_engine.models import Candidate
-from ml_engine.replay import replay
-from ml_engine.tests.online_helpers import config
+from analysis.dataset import TemporalDataset
+from analysis.models import Candidate
+from analysis.replay import replay
+from analysis.tests.online_helpers import config
 
 
 @unittest.skipUnless(os.environ.get("HARBINGER_BENCHMARK_RUNNER"), "runner supplied by benchmark CTest")

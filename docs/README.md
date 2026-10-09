@@ -7,7 +7,7 @@ The operational guides below describe the core broker and implemented Phase 2 fe
 | [Producers](producers.md) | Registering, sending bytes and headers, per-message TTL, and Submit failure semantics |
 | [Consumers](consumers.md) | Handler callbacks, polling, Ack/Nack, delivery leases, retries, and shutdown |
 | [Broker and queue internals](internals.md) | The full message state machine, scheduling, aging, TTL, leases, DLQ, and concurrency |
-| [Ingress features and encoding](../ml_engine/README.md) | Implemented programmatic feature capture, schema validation, and Python sparse encoding |
+| [Ingress features and encoding](../analysis/README.md) | Implemented programmatic feature capture, schema validation, and Python sparse encoding |
 | [Server configuration](configuration.md) | `--config` file format, routing modes, stats line, and rollback |
 | [Persistent feedback](feedback.md) | Embedded configuration, event labels, bounded JSONL, retention/recovery, and durability limits |
 

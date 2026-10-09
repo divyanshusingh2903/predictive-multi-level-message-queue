@@ -8,8 +8,8 @@ import json
 from pathlib import Path
 import tempfile
 
-from ml_engine.features import FeatureSchema
-from ml_engine.feedback import FeedbackIndex, dimensions, strict_json
+from analysis.features import FeatureSchema
+from analysis.feedback import FeedbackIndex, dimensions, strict_json
 from .evaluate import dump, read_tsv
 from .workloads import SCHEMA
 

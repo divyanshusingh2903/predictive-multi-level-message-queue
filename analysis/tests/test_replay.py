@@ -1,9 +1,9 @@
 import copy
 import unittest
 
-from ml_engine.models import Candidate
-from ml_engine.replay import replay
-from ml_engine.tests.online_helpers import config, events
+from analysis.models import Candidate
+from analysis.replay import replay
+from analysis.tests.online_helpers import config, events
 
 
 class Replay(unittest.TestCase):

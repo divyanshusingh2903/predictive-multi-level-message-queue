@@ -165,7 +165,7 @@ def compare(dataset_path: Path, config_path: Path, output: Path, profile: bool =
         root = Path(__file__).resolve().parents[1]
         manifest["revision"] = subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=root, text=True).strip()
         manifest["source_sha256"] = {str(path.relative_to(root)): __import__("hashlib").sha256(path.read_bytes()).hexdigest()
-                                     for path in sorted((root / "ml_engine").glob("*.py"))}
+                                     for path in sorted((root / "analysis").glob("*.py"))}
         dump(output / "manifest.json", manifest)
         reports, sensitivity = [], []
         collection = json.loads((root / config["collection_config"]).read_text())
