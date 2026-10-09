@@ -136,7 +136,7 @@ were computed before freezing; no scheduling result had been.
 
 **Frozen 2026-10-06, before any counted collection run** (a one-minute plumbing pilot with an unlisted seed was run
 and is not used). Configuration: [`benchmarks/configs/feature-signal-v1.json`](../benchmarks/configs/feature-signal-v1.json);
-collector `benchmarks/collect/collect_jobs.py`; analysis `ml_engine/feature_signal.py`.
+collector `benchmarks/collect/collect_jobs.py`; analysis `analysis/feature_signal.py`.
 
 - **Question.** Do ingress features a producer could send (payload bytes, image width/height/pixels, row counts)
   predict handler duration better than the job key alone?

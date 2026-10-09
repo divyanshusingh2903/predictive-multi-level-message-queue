@@ -7,12 +7,12 @@ selected and predictive activation remains false.
 
 The [research/design guide](../../../docs/online-predictor.md) describes the
 literature, algorithms and limitations. Reproduction commands live in
-[`ml_engine/README.md`](../../../ml_engine/README.md). This is a duration-predictor
+[`analysis/README.md`](../../../analysis/README.md). This is a duration-predictor
 comparison, not evidence of predictive scheduling benefit.
 
 ## Protocol and complete coverage
 
-- Configuration: [`online-comparison-v1`](../../../ml_engine/configs/online-comparison-v1.json).
+- Configuration: [`online-comparison-v1`](../../../analysis/configs/online-comparison-v1.json).
   Schema `synthetic-job-v1`; adapter `numeric-scale-indicator-zero-v1`; policy
   `synthetic-duration-3-10-v1`, boundaries `[3,10]` ms, readiness at 100 unique
   eligible labels and per-job global backoff below 20 category labels.
@@ -92,7 +92,7 @@ significant. Budgets were not relaxed after observing results.
 The collection revision is the fetched issue-#4 merge with a dirty working tree;
 source fingerprints and the complete comparison configuration identify the
 implementation used. Dependencies are exactly pinned in
-[`requirements-models.txt`](../../../ml_engine/requirements-models.txt). Golden
+[`requirements-models.txt`](../../../analysis/requirements-models.txt). Golden
 evidence consistency is checked in CI, and archive fingerprints are checked when
 the (untracked) archives are present; CI does not rerun this full timing matrix.
 
@@ -125,3 +125,5 @@ matrix. Publication after writer admission approximates feedback availability;
 durable ingestion delay is not measured. No real-workload generalization,
 production allocation bound, broker-latency gain, or predictive activation is
 claimed. The justified current operating choice remains static routing.
+
+> The offline tools used here lived in `ml_engine/` when these results were produced; the folder is now `analysis/` (same code), so manifests record the old paths.

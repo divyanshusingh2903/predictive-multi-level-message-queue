@@ -1,8 +1,8 @@
 import math
 import unittest
 
-from ml_engine.metrics import Quality, deep_size, paired_interval
-from ml_engine.policy import Prediction
+from analysis.metrics import Quality, deep_size, paired_interval
+from analysis.policy import Prediction
 
 
 class Metrics(unittest.TestCase):

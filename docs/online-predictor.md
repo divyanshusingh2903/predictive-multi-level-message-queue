@@ -37,7 +37,7 @@ depth limit guarantees a hard process-memory cap.
 ## Candidate implementations
 
 The complexity order is frozen in
-[`online-comparison-v1.json`](../ml_engine/configs/online-comparison-v1.json):
+[`online-comparison-v1.json`](../analysis/configs/online-comparison-v1.json):
 
 1. Global running arithmetic mean.
 2. Fixed-vocabulary per-job arithmetic mean, with global-mean backoff.
@@ -148,7 +148,7 @@ use seeds 101/202, distinct from final seeds 11/22/33/44/55.
 Primary evidence requires five clean seeds, two repeats and at least 500 eligible
 evaluation labels per run. Full drains, all offered/accepted/successful messages,
 zero feedback/observation loss, healthy writer/consumer counters and a valid
-learning export are required. `ml_engine.prepare` preserves invalid trials and
+learning export are required. `analysis.prepare` preserves invalid trials and
 uses at most two coverage-only replacements per missing pair. The existing
 runner indexes repeats from zero, so a replacement for repeat 1 also retains an
 unused repeat 0; the matching repeat alone is admitted. Predictor quality is

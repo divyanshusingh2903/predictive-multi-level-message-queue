@@ -3,9 +3,9 @@ from pathlib import Path
 import tempfile
 import unittest
 
-from ml_engine.compare import compare, selection
-from ml_engine.tests.online_helpers import config, write_export
-from ml_engine.dataset import canonical
+from analysis.compare import compare, selection
+from analysis.tests.online_helpers import config, write_export
+from analysis.dataset import canonical
 
 
 def reports(spec):

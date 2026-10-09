@@ -195,7 +195,7 @@ per run. `--help` lists the flags. `--size-source payload|header:NAME` applies t
 learning; its summary adds `parent_fallbacks`. The broker test `InBrokerPredictionsMatchOfflineReplayWithSizeBins`
 checks that the broker and the CLI agree exactly on a binned stream.
 
-`ml_engine/cpp_replay.py` runs the binary and scores its predictions with the existing `Quality`
+`analysis/cpp_replay.py` runs the binary and scores its predictions with the existing `Quality`
 metrics. Tiers are learned, so each label's actual bucket uses the boundaries in force at that
 message's ingress; only an unready prediction (no boundaries yet) falls back to the run's final
 boundaries.

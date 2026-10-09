@@ -4,7 +4,7 @@ from pathlib import Path
 import struct
 import unittest
 
-from ml_engine.features import (
+from analysis.features import (
     FeatureError, FeatureSchema, HeaderFeature, MAX_FEATURE_BYTES,
     encode, extract_features, snapshot_json, validate_snapshot,
 )

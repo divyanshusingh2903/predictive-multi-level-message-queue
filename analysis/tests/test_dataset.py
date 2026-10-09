@@ -4,8 +4,8 @@ from pathlib import Path
 import tempfile
 import unittest
 
-from ml_engine.dataset import TemporalDataset, canonical
-from ml_engine.tests.online_helpers import config, events, write_export
+from analysis.dataset import TemporalDataset, canonical
+from analysis.tests.online_helpers import config, events, write_export
 
 
 class Dataset(unittest.TestCase):

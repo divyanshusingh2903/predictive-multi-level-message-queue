@@ -4,7 +4,7 @@ from pathlib import Path
 import tempfile
 import unittest
 
-from ml_engine.cpp_replay import run_replay, score
+from analysis.cpp_replay import run_replay, score
 
 BINARY = os.environ.get("HARBINGER_PREDICTOR_REPLAY")
 MS = 1_000_000

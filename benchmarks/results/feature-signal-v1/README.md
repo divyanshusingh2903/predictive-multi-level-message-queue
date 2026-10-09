@@ -37,7 +37,7 @@ today; size bins would make them routable.
 
 ## Files
 
-- `analysis.json`: full output of `python -m ml_engine.feature_signal benchmarks/configs/feature-signal-v1.json raw/*.csv`.
+- `analysis.json`: full output of `python -m analysis.feature_signal benchmarks/configs/feature-signal-v1.json raw/*.csv`.
 - `corpus-manifest.json`: every corpus file with its kind, size, dimensions or rows, and SHA-256.
 - `SHA256SUMS`: hashes of the six raw CSVs (69 MB, not committed). `collection-log.txt`: run log.
 
@@ -50,3 +50,5 @@ One machine; job mix, corpus and handlers chosen by us; millisecond-scale jobs; 
 upscaled to camera resolutions. The result shows that size carries most of the remaining signal for content-dependent
 jobs like these; it does not say how common such jobs are in a given deployment. A producer must send the size as a
 header unless the content itself is the message payload.
+
+> The offline tools used here lived in `ml_engine/` when these results were produced; the folder is now `analysis/` (same code), so manifests record the old paths.

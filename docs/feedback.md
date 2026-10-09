@@ -25,7 +25,7 @@ config.feedback = harbinger::ml::FeedbackConfig{.path = "/var/lib/harbinger/feed
 harbinger::HarbingerService broker{config};
 ```
 
-`feedback=nullopt` is the default: no feedback thread, serialization, or filesystem access. Feature capture may be enabled without persistence; persistence requires explicit `ingress_features`. An empty allowlist captures payload size only. Schema/policy identifiers describe immutable specifications; change the identifier when changing the corresponding specification. See the [feature guide](../ml_engine/README.md).
+`feedback=nullopt` is the default: no feedback thread, serialization, or filesystem access. Feature capture may be enabled without persistence; persistence requires explicit `ingress_features`. An empty allowlist captures payload size only. Schema/policy identifiers describe immutable specifications; change the identifier when changing the corresponding specification. See the [feature guide](../analysis/README.md).
 
 Configuration is copied at construction and has no runtime reload. Standalone schema-file loading and feedback command-line options are not implemented. The storage backend supports POSIX systems (Linux/macOS).
 
@@ -76,7 +76,7 @@ Retention removes oldest sealed/suspect files when age, byte, or segment-count l
 
 Future readers must validate record version/JSON, reject malformed complete records and incomplete final lines, and deduplicate by event identity. Do not interpret an entire `.suspect` file as confirmed durable data: even its complete prefix may have been unsynced. Model/cursor checkpointing and at-least-once ingestion belong to later issues.
 
-Issue #4 implements this sealed-segment reader in `ml_engine/feedback.py` and
+Issue #4 implements this sealed-segment reader in `analysis/feedback.py` and
 [dataset export](../benchmarks/README.md#leakage-safe-static-feedback-export).
 It validates registered schemas/label precedence, rejects conflicting duplicate
 identities, indexes message/attempt groups in SQLite, and keeps outcome,

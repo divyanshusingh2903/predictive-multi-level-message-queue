@@ -251,7 +251,7 @@ def run_experiment(config_path: Path, runner: Path, output: Path) -> dict:
                                      "CMAKE_CXX_FLAGS", "HARBINGER_", "gRPC_DIR:", "Protobuf_DIR:"))}}
     root = Path(__file__).resolve().parents[1]
     runtime_sources = [*root.glob("include/**/*.hpp"), *root.glob("src/**/*.cpp"),
-                       *root.glob("benchmarks/*.cpp"), *root.glob("benchmarks/*.py"), *root.glob("ml_engine/*.py"),
+                       *root.glob("benchmarks/*.cpp"), *root.glob("benchmarks/*.py"), *root.glob("analysis/*.py"),
                        root / "CMakeLists.txt", root / "benchmarks/CMakeLists.txt", root / "proto/harbinger.proto"]
     manifest["source_sha256"] = {str(path.relative_to(root)): hashlib.sha256(path.read_bytes()).hexdigest()
                                  for path in sorted(runtime_sources)}

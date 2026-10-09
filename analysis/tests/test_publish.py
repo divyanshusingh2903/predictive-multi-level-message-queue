@@ -4,7 +4,7 @@ import tarfile
 import tempfile
 import unittest
 
-from ml_engine.publish import archive, publish, sha256
+from analysis.publish import archive, publish, sha256
 
 
 class Publication(unittest.TestCase):

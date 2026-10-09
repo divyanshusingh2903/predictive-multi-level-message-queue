@@ -74,7 +74,7 @@ Level 2 (lowest):  [E]
 
 `HarbingerConfig::ingress_features` is optional and programmatic. When present, a validated schema allowlists bounded numeric/categorical headers and captures exact payload byte count. Extraction and deterministic size validation run before enqueue, outside broker locks. Unknown categories remain valid values; invalid individual values have explicit missing reasons. Complete feature overflow leaves null features and an explicit validity reason without altering submission/priority semantics.
 
-Context records disabled/static mode and actual ingress priority; model/prediction/fallback/inference-time fields are absent. Retries and aging never re-extract it. The configured schema is owned by the broker, independent of caller mutation. No capture means no context allocation. This is in-memory capture, not a feedback writer, and no standalone feature flag or ML service exists yet. See [feature configuration and Python encoding](../ml_engine/README.md).
+Context records disabled/static mode and actual ingress priority; model/prediction/fallback/inference-time fields are absent. Retries and aging never re-extract it. The configured schema is owned by the broker, independent of caller mutation. No capture means no context allocation. This is in-memory capture, not a feedback writer, and no standalone feature flag or ML service exists yet. See [feature configuration and Python encoding](../analysis/README.md).
 
 ### Aging
 

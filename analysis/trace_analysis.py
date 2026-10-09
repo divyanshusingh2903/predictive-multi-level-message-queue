@@ -7,8 +7,8 @@ split (no look-ahead):
 - how much of the traffic the broker's predictor would actually route (N_min and the p99/p50 spread gate).
 
 Usage:
-  python -m ml_engine.trace_analysis azure2021 TRACE.txt [--split 0.5] [--out report.json]
-  python -m ml_engine.trace_analysis csv FILE.csv --time COL --key COL[,COL] --duration COL [--duration-unit ms|s]
+  python -m analysis.trace_analysis azure2021 TRACE.txt [--split 0.5] [--out report.json]
+  python -m analysis.trace_analysis csv FILE.csv --time COL --key COL[,COL] --duration COL [--duration-unit ms|s]
 """
 from __future__ import annotations
 

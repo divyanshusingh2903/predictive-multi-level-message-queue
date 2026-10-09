@@ -1,6 +1,21 @@
-# Ingress features and model encoding
+# `analysis/`: offline Python tools
 
-Issue #2 implements a bounded C++ feature extractor, immutable broker-only routing context, and matching Python validation/sparse encoding. Issue #3 adds optional [persistent broker feedback](../docs/feedback.md). Issue #5 adds offline online-model comparison and delayed learning from validated exports. Classifier serving remains planned; routing remains static.
+This folder is **not part of the running broker.** Harbinger predicts processing times with **per-key statistics**
+inside the C++ broker: a decaying duration histogram per key, read at the median, mapped to a tier
+([duration predictor](../docs/duration-predictor.md)). No machine-learning model is served, and no Python runs next to
+the broker. The Python code here is the offline toolkit used to check the broker's data formats and to produce
+published evidence. (Before October 2026 this folder was called `ml_engine/`; manifests of results published before
+the rename record that path.)
+
+| Part | Files | Status |
+|---|---|---|
+| Feature and feedback formats | `features.py`, `feedback.py` | **Live.** Python mirror of the broker's ingress-feature encoding and reader for its persistent feedback files; used by `benchmarks/export_feedback.py`. |
+| Real-trace predictability | `trace_analysis.py`, `feature_signal.py` | **Reproduces published results:** `benchmarks/results/azure2021/` (`trace_analysis.py`) and `feature-signal-v1/` (#24, `feature_signal.py`). |
+| C++ predictor cross-check | `cpp_replay.py` | **Live.** Scores `harbinger_predictor_replay` (the broker's own predictor) on a temporal export. |
+| Online-model comparison (#5) | `dataset.py`, `models.py`, `policy.py`, `replay.py`, `metrics.py`, `compare.py`, `prepare.py`, `publish.py` | **Archived.** Compared learned models (River regressors and trees) with simple statistics (per-key means, EWMA). None of the eight candidates passed every gate (`benchmarks/results/issue5-v1/`). The broker uses the simplest option, per-key statistics. Kept to reproduce that result. |
+
+Core tools need only the Python 3.10+ standard library. `requirements-models.txt` (River) is needed only to rerun
+the archived comparison, and `requirements-analysis.txt` only for the #24 study.
 
 ## Enable capture in an embedded broker
 
@@ -42,7 +57,7 @@ Vocabularies are bounded configuration, not per-message data: the maximum raw ca
 Python 3.10+ and its standard library suffice:
 
 ```python
-from ml_engine.features import FeatureSchema, HeaderFeature, encode
+from analysis.features import FeatureSchema, HeaderFeature, encode
 
 schema = FeatureSchema("features-v1-job-units", (
     HeaderFeature("job_type", "categorical", vocabulary=("resize", "convert", "thumbnail")),
@@ -73,7 +88,7 @@ Vocabulary categories are one-hot, not ordinal numeric values. Unseen values use
 `snapshot_json()` in both languages emits the same compact UTF-8 feature object: fixed top-level order, sorted header/reason keys, explicit ASCII control escapes, and 17-significant-digit scientific numeric values. The 8 KiB limit uses these bytes rather than language-specific default JSON formatting. Illustrative JSON objects in the contract are semantic examples, not necessarily this exact byte representation.
 
 ```bash
-python3 -m unittest discover -s ml_engine/tests -v
+python3 -m unittest discover -s analysis/tests -v
 cmake -S . -B build -DHARBINGER_WARNINGS_AS_ERRORS=ON -DHARBINGER_REQUIRE_PYTHON_TESTS=ON
 cmake --build build --parallel 2
 ctest --test-dir build --output-on-failure
@@ -81,7 +96,7 @@ ctest --test-dir build --output-on-failure
 
 Both suites consume `tests/fixtures/ml/features_v1.json`, including numeric bit patterns, fixed hash bins, UTF-8/escape examples, privacy exclusions, and exact size admission boundaries. Python tests are registered with CTest when Python 3.10+ is available; `HARBINGER_REQUIRE_PYTHON_TESTS=ON` makes its absence a configuration error and is required by the normal CI job.
 
-Feedback event capture/persistence and delivery ordinals are implemented in #3 through embedded `HarbingerConfig::feedback`, separately from feature capture. Serving follows in #6 and routing activation in #7. Use the [feedback guide](../docs/feedback.md) and [ML contract](../docs/ml-contract.md) for their interfaces.
+Feedback event capture/persistence and delivery ordinals are implemented in #3 through embedded `HarbingerConfig::feedback`, separately from feature capture. Use the [feedback guide](../docs/feedback.md) and [ML contract](../docs/ml-contract.md) for their interfaces. Prediction and predictive routing are implemented in the broker's C++ [duration predictor](../docs/duration-predictor.md); the ingress features captured here are recorded for analysis and are not inputs to that predictor.
 
 ## Feedback validation and temporal datasets
 
@@ -103,7 +118,9 @@ oracle costs, retries, outcomes, and identities are audit metadata. Issue #5's
 learners consume only causally available eligible labels. Legacy feedback-only export provides
 audit views, not an invented precise temporal training split.
 
-## Online model comparison (issue #5)
+## Online model comparison (issue #5, archived)
+
+Historical: this comparison ended with `no_qualifier` and is kept only so the published result can be reproduced.
 
 The [predictor guide](../docs/online-predictor.md) explains the literature,
 algorithms, sparse-indicator adapter, delayed evaluation, and selection limits.
@@ -113,10 +130,10 @@ Dependencies are isolated from the standard-library feature/feedback tools:
 
 ```bash
 python3 -m venv .venv
-.venv/bin/python -m pip install -r ml_engine/requirements-models.txt
+.venv/bin/python -m pip install -r analysis/requirements-models.txt
 .venv/bin/python -m pip check
-python3 -m unittest discover -s ml_engine/tests -v
-.venv/bin/python -m unittest discover -s ml_engine/model_tests -v
+python3 -m unittest discover -s analysis/tests -v
+.venv/bin/python -m unittest discover -s analysis/model_tests -v
 ```
 
 Use fresh output roots. Build the benchmark runner as described in
@@ -128,8 +145,8 @@ python3 -m benchmarks.evaluate --config benchmarks/configs/predictor-development
   --runner build-issue5/benchmarks/harbinger_synthetic_benchmark --output /tmp/opencode/issue5-dev-runs
 python3 -m benchmarks.export_feedback --run /tmp/opencode/issue5-dev-runs \
   --train-fraction 0.5 --output /tmp/opencode/issue5-dev-data
-.venv/bin/python -m ml_engine.compare --dataset /tmp/opencode/issue5-dev-data \
-  --config ml_engine/configs/online-comparison-v1.json --output /tmp/opencode/issue5-dev-report
+.venv/bin/python -m analysis.compare --dataset /tmp/opencode/issue5-dev-data \
+  --config analysis/configs/online-comparison-v1.json --output /tmp/opencode/issue5-dev-report
 ```
 
 The frozen full collection takes approximately 80–90 minutes on the recorded
@@ -139,12 +156,12 @@ preserves invalid trials and admits only coverage-selected replacements:
 ```bash
 python3 -m benchmarks.evaluate --config benchmarks/configs/predictor-datasets-v1.json \
   --runner build-issue5/benchmarks/harbinger_synthetic_benchmark --output /tmp/opencode/issue5-runs-v1
-python3 -m ml_engine.prepare --source /tmp/opencode/issue5-runs-v1 \
+python3 -m analysis.prepare --source /tmp/opencode/issue5-runs-v1 \
   --runner build-issue5/benchmarks/harbinger_synthetic_benchmark \
-  --config ml_engine/configs/online-comparison-v1.json --output /tmp/opencode/issue5-prepared-v1
-.venv/bin/python -m ml_engine.compare --dataset /tmp/opencode/issue5-prepared-v1/dataset \
-  --config ml_engine/configs/online-comparison-v1.json --output /tmp/opencode/issue5-comparison-v1
-python3 -m ml_engine.publish --source /tmp/opencode/issue5-runs-v1 \
+  --config analysis/configs/online-comparison-v1.json --output /tmp/opencode/issue5-prepared-v1
+.venv/bin/python -m analysis.compare --dataset /tmp/opencode/issue5-prepared-v1/dataset \
+  --config analysis/configs/online-comparison-v1.json --output /tmp/opencode/issue5-comparison-v1
+python3 -m analysis.publish --source /tmp/opencode/issue5-runs-v1 \
   --prepared /tmp/opencode/issue5-prepared-v1 --comparison /tmp/opencode/issue5-comparison-v1 \
   --output benchmarks/results/issue5-v1
 ```

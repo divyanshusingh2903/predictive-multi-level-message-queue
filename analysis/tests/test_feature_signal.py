@@ -5,7 +5,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from ml_engine.feature_signal import decide, evaluate_run, load
+from analysis.feature_signal import decide, evaluate_run, load
 
 CONFIG = json.loads((Path(__file__).resolve().parents[2] / "benchmarks/configs/feature-signal-v1.json").read_text())
 FIELDS = ["run", "seq", "submit_unix", "service", "job_type", "payload_bytes", "width", "height", "pixels", "rows",
