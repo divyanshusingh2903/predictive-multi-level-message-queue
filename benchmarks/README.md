@@ -339,3 +339,45 @@ A 30-second local smoke run (seed 11, 4 workers, rate scale 1.8; not a registere
 - **Retries:** all three retried the same 12 failed webhook attempts.
 - **`rabbitmq_priority`:** short jobs at a 22 ms median, but the longest export wait grew to 14 s.
 - **Sidecar:** 9 µs per lookup.
+
+### Broker cost microbenchmark (#37; E4 in #46)
+
+`harbinger_brokerbench` (`benchmarks/brokerbench.cpp`) measures the brokers alone: producers publish small messages,
+and consumers acknowledge each one at once, with no work in the handler. It runs against:
+- `harbinger_server`, the production server with default settings;
+- RabbitMQ and Redis, in the same non-persistent setup as the production-flow arms.
+
+Each broker is its own process. Producers and consumers share one process, so latency (publish start to delivery
+start) is measured on one clock, even with the broker on another host.
+
+- **`--rate R`** runs an open-loop schedule at R msg/s, shared round robin by the producers. A producer that falls
+  behind sends late rather than skipping, and the lateness is reported, so a broker that cannot accept the rate shows
+  it.
+- **`--rate 0`** sends as fast as possible. The delivery rate is then the peak sustained throughput; the latency there
+  only reflects the backlog.
+- A warm-up is excluded. Lost and duplicated deliveries are counted.
+
+```bash
+CONFIG=benchmarks/configs/<config>.json benchmarks/run_brokerbench.sh "$CONFIG" <results dir>
+python -m benchmarks.brokerbench_report "$CONFIG" <results dir>
+```
+
+**What the runner does:**
+- Starts a fresh broker container for every run, with the kind order rotated per repetition, and records the package
+  versions on both sides.
+- Takes its settings from the config: `kinds`, `rates`, `repetitions`, `seconds`, `warmup_s`, `drain_s`,
+  `producers`, `consumers` and `payload_bytes`.
+- With `BROKER_SSH=user@host` and `BROKER_HOST=<ip>`, starts the brokers on a second machine over SSH.
+- Overhead is reported, with no pass/fail (#37).
+
+A local smoke run (8 s per run; not a registered result) delivered all messages on every broker.
+
+| Broker | P50 / P99 at 1k msg/s | Peak delivered/s (4 consumers) |
+|---|---|---|
+| Harbinger | 0.25 / 0.35 ms | 5.3k |
+| RabbitMQ | 0.19 / 0.52 ms | 16.9k |
+| Redis | 0.07 / 0.19 ms | 22.0k |
+
+Harbinger's and Redis's consumers each make two blocking calls per message: Pull and Ack for Harbinger, `BLMOVE` and
+`LREM` for Redis. RabbitMQ pushes messages to its consumers. This benchmark does not measure where Harbinger's extra
+cost per call comes from.

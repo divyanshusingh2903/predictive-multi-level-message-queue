@@ -21,6 +21,10 @@ find_package(ZLIB REQUIRED)
 add_executable(harbinger_prodflow prodflow.cpp)
 target_link_libraries(harbinger_prodflow PRIVATE harbinger_benchmark_server_lib harbinger_client_lib ZLIB::ZLIB)
 harbinger_target_warnings(harbinger_prodflow)
+add_executable(harbinger_brokerbench brokerbench.cpp)
+target_link_libraries(harbinger_brokerbench PRIVATE harbinger_client_lib)
+harbinger_target_warnings(harbinger_brokerbench)
+
 if(HARBINGER_BUILD_BROKER_ADAPTERS)
     # rabbitmq-c and hiredis from the system (benchmarks/docker/Dockerfile installs Ubuntu 24.04's 0.11.0 and 1.2.0).
     find_package(PkgConfig REQUIRED)
@@ -32,6 +36,8 @@ if(HARBINGER_BUILD_BROKER_ADAPTERS)
     harbinger_target_warnings(harbinger_broker_adapters)
     target_link_libraries(harbinger_prodflow PRIVATE harbinger_broker_adapters)
     target_compile_definitions(harbinger_prodflow PRIVATE HARBINGER_BROKER_ADAPTERS=1)
+    target_link_libraries(harbinger_brokerbench PRIVATE harbinger_broker_adapters)
+    target_compile_definitions(harbinger_brokerbench PRIVATE HARBINGER_BROKER_ADAPTERS=1)
 endif()
 
 add_executable(harbinger_benchmark_tests tests/test_replay.cpp)
@@ -45,5 +51,5 @@ if(Python3_Interpreter_FOUND)
         -m unittest discover -s benchmarks/tests -v)
     set_tests_properties(synthetic_benchmark_python_tests PROPERTIES
         WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}" TIMEOUT 60
-        ENVIRONMENT "HARBINGER_BENCHMARK_RUNNER=$<TARGET_FILE:harbinger_synthetic_benchmark>;HARBINGER_PRODFLOW=$<TARGET_FILE:harbinger_prodflow>")
+        ENVIRONMENT "HARBINGER_BENCHMARK_RUNNER=$<TARGET_FILE:harbinger_synthetic_benchmark>;HARBINGER_PRODFLOW=$<TARGET_FILE:harbinger_prodflow>;HARBINGER_BROKERBENCH=$<TARGET_FILE:harbinger_brokerbench>")
 endif()

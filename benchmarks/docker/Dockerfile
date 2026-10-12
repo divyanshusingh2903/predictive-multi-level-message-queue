@@ -6,6 +6,7 @@
 #   docker build -f benchmarks/docker/Dockerfile -t harbinger-bench .
 #   docker run --rm --network host harbinger-bench rabbitmq        # AMQP on 5672
 #   docker run --rm --network host harbinger-bench redis           # Redis on 6379
+#   docker run --rm --network host harbinger-bench harbinger_server                # Harbinger on 50051
 #   docker run --rm --network host harbinger-bench harbinger_prodflow --arm ... (any benchmark command)
 FROM ubuntu:24.04@sha256:534baea6a22c03a63003dbc8dbe78fe34bc0d7e595d9a9dc9834884ff530eb55
 
@@ -23,8 +24,9 @@ WORKDIR /src
 COPY . .
 RUN cmake -S . -B /build -G Ninja -DCMAKE_BUILD_TYPE=Release -DHARBINGER_BUILD_BENCHMARKS=ON \
         -DHARBINGER_BUILD_BROKER_ADAPTERS=ON \
-    && cmake --build /build --target harbinger_prodflow harbinger_server \
-    && install -m 0755 /build/benchmarks/harbinger_prodflow /build/harbinger_server /usr/local/bin/ \
+    && cmake --build /build --target harbinger_prodflow harbinger_brokerbench harbinger_server \
+    && install -m 0755 /build/benchmarks/harbinger_prodflow /build/benchmarks/harbinger_brokerbench /build/harbinger_server \
+        /usr/local/bin/ \
     && install -m 0755 benchmarks/docker/entrypoint.sh /usr/local/bin/entrypoint.sh
 
 ENTRYPOINT ["entrypoint.sh"]
