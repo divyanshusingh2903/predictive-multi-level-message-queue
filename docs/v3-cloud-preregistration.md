@@ -1,8 +1,7 @@
-# Cloud runs: pre-registration (issue #26, `v3-cloud`) — DRAFT
+# Cloud runs: pre-registration (issue #26, `v3-cloud`)
 
-**DRAFT, not frozen.** It is frozen together with [`v3-brokers`](v3-brokers-preregistration.md) after the AWS debug
-pass ([runbook](../benchmarks/cloud/README.md), step 4), by the commit that removes this notice and sets `frozen_on`
-in both configs, before any registered run.
+**Frozen 2026-10-12, together with [`v3-brokers`](v3-brokers-preregistration.md), after the AWS debug pass and before
+any registered run.**
 
 | | |
 |---|---|
@@ -99,7 +98,7 @@ repetition** (`every_seed`):
 - the predictor's drift alerts, tier agreement and keys;
 - the per-class means in the shifted phase.
 
-## What was seen before drafting
+## What was seen before freezing
 
 - **The local results these runs repeat:**
   - `v2-prodflow-1`: gate passed; `predictive` −28% mean vs FIFO.
@@ -109,7 +108,17 @@ repetition** (`every_seed`):
   - Every run of E1–E4 completed every message.
   - From the 10-minute E2 runs, only the drain was read: 35 s after the last arrival for `fifo`, 34 s for
     `predictive`, with the longest queue wait about 57 s in both. No other latency was examined.
-- **No cloud run yet.** The AWS debug pass (seed 7, short durations) will be listed here before freezing.
+- **AWS debug pass** (2026-10-12, 22:25–23:00 UTC; the registered hosts; seed 7, debug durations; commit
+  `f42f21d`):
+  - **Hosts and image:** client `c8i.2xlarge`, broker `c8i.xlarge`, both Xeon 6975P-C, kernel 7.0.0-1014-aws, us-east-1a,
+    one placement group. Identical image `sha256:65821c67…` and package versions on both.
+  - **Completeness:** all 12 production-flow runs (E1 2, E2 2, E3 8) completed every message, with no worker errors
+    and every Harbinger run merged. All 12 E4 runs lost nothing.
+  - **CPU speed:** the client's kernel calibration (resize 6.6 ms/megapixel, export 17.5 ms/chunk) is about 2× faster
+    than the local quiet re-run and about 20% faster than the original v2 run, so the same workload is a lighter load
+    here.
+  - **E2 drain:** from the 10-minute E2 runs, only the drain was read: 0.6 s after the last arrival for both arms, with
+    the longest queue wait 47 s. The 600 s drain stays. No other E1 or E2 latency was examined.
 
 ## Expectations, stated before running
 
@@ -131,9 +140,9 @@ A failed check will be published as such.
 - E2 has only two repetitions, so its checks are per-repetition, without intervals.
 - The network is one placement group: low latency, not a WAN.
 
-## Open decisions before freezing
+## Decisions settled before freezing (2026-10-12)
 
-1. **E2 repetitions**: two (about 5 h), or three (about 7.5 h) so a single odd run cannot pass every check? Default:
-   two, as #26 asks.
-2. **E2 drain**: 600 s, raised before freezing if the 10-minute debug runs show FIFO barely draining. Default: 600 s.
-3. **C1 bar**: −15% in every repetition, the same bar as v2? Default: yes.
+1. **E2 repetitions:** two, as #26 asks.
+2. **E2 drain:** 600 s. The debug pass drained in 0.6 s.
+3. **C1 bar:** −15% in every repetition, the same bar as v2.
+4. **Running order:** all four experiments run sequentially on one pair (E4, E3, E2, then E1), about 15 h.

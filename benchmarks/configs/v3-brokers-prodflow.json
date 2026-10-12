@@ -1,6 +1,6 @@
 {
  "version": "v3-brokers-prodflow-1",
- "frozen_on": null,
+ "frozen_on": "2026-10-12",
  "issue": 37,
  "preregistration": "docs/v3-brokers-preregistration.md",
  "environment": {
