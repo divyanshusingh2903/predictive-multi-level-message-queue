@@ -4,8 +4,9 @@ Usage: python -m benchmarks.brokerbench_report CONFIG RESULTS_DIR [--out DIR]
 
 RESULTS_DIR holds rep-<r>/<kind>/rate-<rate>.json from benchmarks/run_brokerbench.sh. Rate 0 is the as-fast-as-possible
 run: its delivery rate is the peak sustained throughput and its latency only reflects the backlog, so it is not shown.
-At a fixed rate a broker keeps up when it delivered every message and its producers ran on schedule; lateness shows
-when publishing itself could not accept the rate.
+At a fixed rate a broker keeps up in a run when it lost nothing, delivered at least 99% of the offered rate, and its
+producers' send lateness stayed at or under 10 ms at P99; lateness shows when publishing itself could not accept the
+rate. "Kept up" counts the repetitions that did.
 """
 from __future__ import annotations
 
@@ -24,6 +25,11 @@ def load(results: Path) -> dict:
     return table
 
 
+def kept_up(run: dict) -> bool:
+    return (run["lost"] == 0 and run["publish_errors"] == 0 and run["delivery_rate_per_s"] >= 0.99 * run["rate"]
+            and run["lateness_ms"]["p99"] <= 10.0)
+
+
 def summarise(runs: list[dict]) -> dict:
     med = lambda values: statistics.median(values) if values else None
     pick = lambda f: [f(r) for r in runs]
@@ -37,6 +43,7 @@ def summarise(runs: list[dict]) -> dict:
         "latency_ms": {q: med(pick(lambda r: r["latency_ms"][q])) for q in ("p50", "p90", "p99", "p999", "max")},
         "latency_p99_range": [min(pick(lambda r: r["latency_ms"]["p99"])), max(pick(lambda r: r["latency_ms"]["p99"]))],
         "lateness_p99_ms": med([r["lateness_ms"]["p99"] for r in runs if "lateness_ms" in r]),
+        "kept_up": sum(kept_up(r) for r in runs if r["rate"] > 0),
     }
 
 
@@ -56,14 +63,14 @@ def report(config: dict, table: dict) -> tuple[str, dict]:
                          f"{s['delivery_rate_range'][1]:,.0f} | {s['send_rate_per_s']:,.0f} | {s['lost']} |")
     for rate in [r for r in config["rates"] if r > 0]:
         lines += ["", f"## Offered {rate:,} msg/s", "",
-                  "| Broker | Delivered/s | P50 ms | P90 ms | P99 ms (range) | P99.9 ms | Max ms | Send lateness P99 ms | Lost |",
-                  "|---|---|---|---|---|---|---|---|---|"]
+                  "| Broker | Kept up | Delivered/s | P50 ms | P90 ms | P99 ms (range) | P99.9 ms | Max ms | Send lateness P99 ms | Lost |",
+                  "|---|---|---|---|---|---|---|---|---|---|"]
         for kind in kinds:
             s = summary[kind].get(str(float(rate)))
             if not s:
                 continue
             l = s["latency_ms"]
-            lines.append(f"| {kind} | {s['delivery_rate_per_s']:,.0f} | {l['p50']:.3f} | {l['p90']:.3f} | {l['p99']:.3f} "
+            lines.append(f"| {kind} | {s['kept_up']}/{s['repetitions']} | {s['delivery_rate_per_s']:,.0f} | {l['p50']:.3f} | {l['p90']:.3f} | {l['p99']:.3f} "
                          f"({s['latency_p99_range'][0]:.3f}–{s['latency_p99_range'][1]:.3f}) | {l['p999']:.3f} | "
                          f"{l['max']:.1f} | {s['lateness_p99_ms']:.3f} | {s['lost']} |")
     return "\n".join(lines) + "\n", summary

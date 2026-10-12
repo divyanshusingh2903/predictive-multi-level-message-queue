@@ -340,6 +340,26 @@ A 30-second local smoke run (seed 11, 4 workers, rate scale 1.8; not a registere
 - **`rabbitmq_priority`:** short jobs at a 22 ms median, but the longest export wait grew to 14 s.
 - **Sidecar:** 9 µs per lookup.
 
+### Two-host matrix (#37, #47)
+
+`benchmarks/run_prodflow_split.sh CONFIG RESULTS_DIR [SEED...]` runs a production-flow config with the broker on its
+own host. Run it from the repository root.
+
+For every seed, every arm runs once (arm order rotated per seed, as in `run_prodflow.sh`) with a fresh broker
+container:
+- **Harbinger arms:** `harbinger_prodflow --role broker` on the broker host, the clients here, then a stop and
+  `merge_split_run.py`.
+- **RabbitMQ and Redis arms:** their server on the broker host; the client writes `run.json` directly.
+
+**Settings:**
+- `IMAGE` (default `harbinger-bench`).
+- `BROKER_SSH` (for example `ubuntu@10.0.0.5`; unset runs the brokers on this host) and `BROKER_HOST` (the address the
+  clients use).
+- `BROKER_WORKDIR`, where the broker host keeps Harbinger's `broker.json`.
+
+Both hosts' package versions are recorded. Results are laid out as `run_prodflow.sh`'s, so
+`python -m benchmarks.prodflow_report` reads them unchanged.
+
 ### Broker cost microbenchmark (#37; E4 in #46)
 
 `harbinger_brokerbench` (`benchmarks/brokerbench.cpp`) measures the brokers alone: producers publish small messages,

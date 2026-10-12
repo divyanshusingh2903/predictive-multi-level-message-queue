@@ -39,6 +39,8 @@ class BrokerbenchReport(unittest.TestCase):
         self.assertAlmostEqual(summary["redis"]["1000.0"]["latency_ms"]["p99"], 0.3)
         self.assertIn("## Offered 1,000 msg/s", text)
         self.assertIn("| redis | 20,000 |", text)
+        self.assertEqual(summary["redis"]["1000.0"]["kept_up"], 2)  # the repetition that lost a message did not
+        self.assertIn("| harbinger | 2/3 | 1,000 |", text)
 
 
 @unittest.skipUnless(BINARY, "HARBINGER_BROKERBENCH not set")

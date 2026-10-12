@@ -1,0 +1,32 @@
+{
+ "version": "v3-brokers-cost-1",
+ "frozen_on": null,
+ "issue": 37,
+ "preregistration": "docs/v3-brokers-preregistration.md",
+ "environment": {
+  "provider": "AWS us-east-1, one availability zone, one cluster placement group",
+  "broker_host": "c8i.xlarge (4 vCPU, 8 GiB)",
+  "client_host": "c8i.2xlarge (8 vCPU, 16 GiB)",
+  "os": "Ubuntu 24.04",
+  "image": "harbinger-bench built from the freeze commit (benchmarks/docker/Dockerfile)",
+  "network": "Docker host networking on both hosts"
+ },
+ "kinds": [
+  "harbinger",
+  "rabbitmq",
+  "redis"
+ ],
+ "rates": [
+  0,
+  1000,
+  5000,
+  20000
+ ],
+ "repetitions": 5,
+ "seconds": 30,
+ "warmup_s": 5,
+ "drain_s": 60,
+ "producers": 4,
+ "consumers": 4,
+ "payload_bytes": 64
+}
