@@ -68,12 +68,62 @@ FIFO (+1% to +9%, intervals including 0).
 - **Short jobs gain 4–11×. Long jobs wait 2.5–4.6× longer.**
 - Long jobs carry 88% of the work, so the mean worsens, and P99 and long-job waits breach the 2× guardrails.
 - The oracle with the same scheduler improves every window without that cost.
-- **Likely mechanism (exploratory, not verified):** with fixed weights `[8, 3, 1]` the bottom level gets about 1/12 of
-  the workers while the upper levels are busy. Here the bottom level holds most of the work. Mispredicted jobs make the
-  upper levels busier and longer.
+- **Why:** see the exploratory diagnosis below. Wrong predictions misorder jobs, and the 5 s pausing aging promotes
+  large jobs over hours-long waits.
 
 **The scheduler is not the limit: the predictions and their time-scale settings are.** With perfect sizes the same
 overload design cuts mean latency 30–54% at loads 0.8–0.95 on both logs.
+
+## Exploratory diagnosis of the DAS2-fs2 harm (not pre-registered)
+
+Run after the results above, to explain them, on DAS2-fs2 at load 0.8 only. These are extra arms of the same simulator
+(`exploratory-das2-diagnosis/config.json` and `simulation.json`). They are not part of any gate.
+
+Mean latency over all evaluation jobs (the gated tables above average per-window changes instead, so gate B shows +89%
+there):
+
+| Variant | Mean | vs FIFO | Short | Medium | Long | Longest long-job wait |
+|---|---|---|---|---|---|---|
+| FIFO | 3.82 h | — | 0.70 h | 6.52 h | 12.44 h | 25.1 h |
+| Predictions, strict, 5 s aging (gate A) | 3.82 h | 0% | 0.70 h | 6.52 h | 12.44 h | 25.1 h |
+| Predictions, strict, **no aging** | 5.44 h | +43% | 0.20 h | 9.36 h | 24.03 h | 73.9 h |
+| Predictions, weights `[8, 3, 1]`, **no aging** | 3.56 h | −7% | 0.65 h | 6.27 h | 10.44 h | 32.2 h |
+| Predictions, weights, pausing aging (gate B) | 5.51 h | +44% | 0.27 h | 9.61 h | 22.81 h | 61.5 h |
+| Predictions, weights `[4, 2, 1]`, pausing aging | 5.32 h | +39% | 0.48 h | 9.24 h | 20.60 h | 58.3 h |
+| Oracle, strict, no aging | 1.68 h | −56% | 0.03 h | 2.02 h | 13.16 h | 27.5 h |
+| Oracle, weights, pausing aging | 1.73 h | −55% | 0.05 h | 2.12 h | 13.13 h | 27.5 h |
+
+Predictor outcomes in gate B's run:
+
+| Outcome | Share of jobs |
+|---|---|
+| Predicted | 63% |
+| Stale key | 19% |
+| Cold key | 14% |
+| High spread | 4% |
+
+**What the diagnosis shows:**
+
+1. **The predictor misorders jobs.**
+   - With the predictor's tiers and no aging, short jobs gain (0.70 → 0.20 h), but medium jobs get slower
+     (6.5 → 9.4 h) and long jobs wait about twice as long.
+   - With correct tiers (the oracle), medium jobs get faster (6.5 → 2.0 h) and long jobs lose 6%.
+   - The predictions, about as good as a global median on this log, put jobs in the wrong order.
+2. **Wrong guesses are expensive here.** Workers do not preempt. A job predicted short that runs for a day holds a
+   worker for that day, ahead of work that waited. On serverless traces a misjudged job costs about a second.
+3. **The 5 s aging is the wrong time scale.**
+   - Plain aging promotes everything within seconds, so gate A is exactly FIFO.
+   - Pausing aging promotes one job per level every 0.5 s while the level above is not behind. Over waits of hours
+     that moves thousands of jobs, large mispredicted ones included, into the upper levels.
+   - Weights without aging are 7% better than FIFO; with pausing aging, 44% worse.
+4. **Weights alone limit the damage.** The weighted share keeps the lower levels moving, so predictions + weights
+   without aging do not lose to FIFO. The softer `[4, 2, 1]` weights change little.
+
+**The method's preconditions, which these logs do not meet:**
+- per-key predictability;
+- aging thresholds on the jobs' own time scale.
+
+Scaling aging (and `stale_after`) to the workload was not tested; it needs its own pre-registration.
 
 ## Against the stated expectations
 
@@ -103,6 +153,9 @@ overload design cuts mean latency 30–54% at loads 0.8–0.95 on both logs.
   - SHA-256 LPC-EGEE `16a1bee451a5c00d2fbf201f228c951241341942ddb8f4958eecbe31441d5519`.
   - SHA-256 DAS2-fs2 `c6694f35a37064e622496d4443c69d4ac564e4575f5657c2614114c41548d804`.
 - `<log>/report.md`, `<log>/summary.json`: output of `python -m benchmarks.sim_report CONFIG SIMULATION.json`.
+- `exploratory-das2-diagnosis/`: the diagnosis above (not pre-registered).
+  - `config.json`: the frozen DAS2-fs2 config with load 0.8 and extra arms.
+  - `simulation.json`: SHA-256 `7baaa05fa3019d18361299c57430d0c807d91984dc5e3527b33943be81ef1cc6`.
 
 **Reproduce:** convert the logs as in the configs, then run
 `harbinger_trace_sim TRACE.csv benchmarks/configs/v3-traces2-<log>.json OUT.json` and the report command.
