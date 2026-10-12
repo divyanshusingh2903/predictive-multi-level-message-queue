@@ -267,3 +267,27 @@ producers, nine job types doing real CPU work plus simulated network calls, four
 and analyse it with `python -m benchmarks.prodflow_report <config> <raw dir>`. Pre-registrations:
 [v2](../docs/v2-preregistration.md) (`v2-prodflow-1`) and [size bins](../docs/v3-sizebins-preregistration.md)
 (`v3-sizebins-1`).
+
+### Broker on a separate host (#47)
+
+By default the broker runs inside the benchmark process over loopback. To put it on its own host, start the arm's
+broker there, run the clients against it, stop the broker, and merge the two halves:
+
+```bash
+# broker host: serves until SIGINT/SIGTERM, then writes broker.json
+harbinger_prodflow --role broker --arm predictive --listen 0.0.0.0:50051 --out <dir>
+# client host: producers and workers; writes messages.tsv and client.json
+harbinger_prodflow --role client --broker <broker-ip>:50051 --arm predictive --seed 11 --out <run dir> [--seconds ...]
+# after stopping the broker, copy broker.json into <run dir>, then write run.json
+python -m benchmarks.merge_split_run <run dir>
+```
+
+- **Same arm on both sides.** The broker holds the arm's routing, predictor and level weights; the client needs the
+  arm for the oracle header. The merge refuses mismatched arms.
+- **Fresh broker per run.** Restart it for every arm and seed, as the embedded mode does.
+- **One clock.** Every latency timestamp is taken on the client host, so the hosts' clocks are never compared.
+- **DLQ during drain.** The client polls the broker's DLQ size once a second. The broker's final count in
+  `broker.json` is the one recorded in `run.json`.
+
+A 30-second local check (seed 11, `predictive`, both processes on one machine) matched the embedded run: same counts,
+no lost work, mean latency within 4% and P99 within 1%.

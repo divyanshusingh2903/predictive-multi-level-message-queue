@@ -3,6 +3,11 @@
 // network calls, through the real Consumer client, against an embedded broker. Described in docs/v2-preregistration.md
 // (workload), docs/v3-sizebins-preregistration.md (size_hint header, predictive_sized arm) and
 // docs/v3-aging-preregistration.md (predictive_weighted arm).
+//
+// Roles (#47): the default runs broker and clients in one process over loopback. `--role broker` serves only the
+// arm's broker until SIGINT/SIGTERM and then writes broker.json; `--role client --broker HOST:PORT` runs producers
+// and workers against it and writes client.json. benchmarks/merge_split_run.py joins the two into run.json. Every
+// latency timestamp is taken on the client host, so the hosts' clocks never mix.
 #include "harbinger_service.hpp"
 #include "benchmark/hooks.hpp"
 #include "consumer/consumer.hpp"
@@ -21,6 +26,8 @@
 #include <iostream>
 #include <map>
 #include <mutex>
+#include <csignal>
+#include <pthread.h>
 #include <random>
 #include <sstream>
 #include <string>
@@ -320,32 +327,8 @@ struct Record {
     std::atomic<bool> done{false};
 };
 
-} // namespace
-
-int main(int argc, char** argv) try {
-    std::map<std::string, std::string> args;
-    for (int i = 1; i + 1 < argc; i += 2) args[argv[i]] = argv[i + 1];
-    if (argc % 2 == 0 || !args.contains("--arm") || !args.contains("--seed") || !args.contains("--out"))
-        throw std::invalid_argument("usage: harbinger_prodflow --arm fifo|static_tuned|static_misconfigured|shadow|"
-            "predictive|predictive_p75|predictive_producer|predictive_sized|predictive_weighted|oracle --seed N --out NEW_DIR [--seconds 300] [--workers 4] [--rate-scale 1] [--drain-s 180]");
-    const std::string arm = args["--arm"];
-    const uint64_t seed = std::stoull(args["--seed"]);
-    const double seconds = args.contains("--seconds") ? std::stod(args["--seconds"]) : 300;
-    const int workers = args.contains("--workers") ? std::stoi(args["--workers"]) : 4;
-    const double rate_scale = args.contains("--rate-scale") ? std::stod(args["--rate-scale"]) : 1.0;
-    const double drain_s = args.contains("--drain-s") ? std::stod(args["--drain-s"]) : 180;
-    const std::filesystem::path out = args["--out"];
-    if (std::filesystem::exists(out)) throw std::invalid_argument("refusing to overwrite " + out.string());
-    std::filesystem::create_directories(out);
-
-    const auto cal = calibrate();
-    auto jobs = generate(seed, seconds, rate_scale, cal);
-    // Oracle tiers: terciles of the planned cost over the whole trace (same quantile rule as the predictor).
-    std::vector<double> planned;
-    for (const auto& j : jobs) planned.push_back(j.planned_ms);
-    std::sort(planned.begin(), planned.end());
-    const std::vector<double> oracle_bounds{planned[planned.size() / 3], planned[planned.size() * 2 / 3]};
-
+/// The broker configuration of one arm; the same in the embedded and the broker-only role.
+HarbingerConfig arm_config(const std::string& arm) {
     HarbingerConfig config;
     config.aging = AgingConfig{std::chrono::milliseconds{5000}, std::chrono::milliseconds{500}};  // server default
     config.delivery_lease = std::chrono::milliseconds{30000};
@@ -373,15 +356,110 @@ int main(int argc, char** argv) try {
         config.predictive_routing = routing;  // defaults: producer-scoped job_type key
     } else throw std::invalid_argument("unknown arm " + arm);
     config.benchmark_options = options;
+    return config;
+}
 
-    HarbingerService service{config};
+std::filesystem::path fresh_dir(const std::string& path) {
+    const std::filesystem::path out = path;
+    if (std::filesystem::exists(out)) throw std::invalid_argument("refusing to overwrite " + out.string());
+    std::filesystem::create_directories(out);
+    return out;
+}
+
+/// Broker-only role: serve the arm until SIGINT/SIGTERM, then record the broker's final counters in broker.json.
+int run_broker(const std::string& arm, const std::string& listen, const std::filesystem::path& out) {
+    sigset_t signals;
+    sigemptyset(&signals);
+    sigaddset(&signals, SIGINT);
+    sigaddset(&signals, SIGTERM);
+    // Block before gRPC starts its threads so only sigwait below receives the signal.
+    if (pthread_sigmask(SIG_BLOCK, &signals, nullptr) != 0) throw std::runtime_error("cannot block signals");
+    HarbingerService service{arm_config(arm)};
     int port = 0;
     grpc::ServerBuilder builder;
-    builder.AddListeningPort("127.0.0.1:0", grpc::InsecureServerCredentials(), &port);
+    builder.AddListeningPort(listen, grpc::InsecureServerCredentials(), &port);
     builder.RegisterService(&service);
     auto server = builder.BuildAndStart();
-    if (!server || !port) throw std::runtime_error("cannot start broker");
-    const std::string address = "127.0.0.1:" + std::to_string(port);
+    if (!server || !port) throw std::runtime_error("cannot listen on " + listen);
+    std::cout << "[prodflow] broker ready arm=" << arm << " port=" << port << std::endl;
+    int signal = 0;
+    if (sigwait(&signals, &signal) != 0) throw std::runtime_error("sigwait failed");
+    const auto stats = stats_json(service);
+    const auto dlq = service.dlq_size();
+    server->Shutdown(std::chrono::system_clock::now() + std::chrono::seconds{2});
+    std::ofstream(out / "broker.json") << "{\"arm\":\"" << arm << "\",\"dlq\":" << dlq << ",\"broker\":" << stats << "}\n";
+    std::cout << "[prodflow] broker stopped arm=" << arm << " dlq=" << dlq << '\n';
+    return 0;
+}
+
+} // namespace
+
+int main(int argc, char** argv) try {
+    std::map<std::string, std::string> args;
+    for (int i = 1; i + 1 < argc; i += 2) args[argv[i]] = argv[i + 1];
+    const std::string role = args.contains("--role") ? args["--role"] : "all";
+    const bool usage_ok = argc % 2 == 1 && args.contains("--arm") && args.contains("--out") &&
+        (role == "broker" || ((role == "all" || (role == "client" && args.contains("--broker"))) && args.contains("--seed")));
+    if (!usage_ok)
+        throw std::invalid_argument("usage: harbinger_prodflow --arm fifo|static_tuned|static_misconfigured|shadow|"
+            "predictive|predictive_p75|predictive_producer|predictive_sized|predictive_weighted|oracle --seed N --out NEW_DIR [--seconds 300] [--workers 4] [--rate-scale 1] [--drain-s 180]\n"
+            "       harbinger_prodflow --role broker --arm ARM --out NEW_DIR [--listen 0.0.0.0:50051]\n"
+            "       harbinger_prodflow --role client --broker HOST:PORT --arm ARM --seed N --out NEW_DIR [options above]");
+    const std::string arm = args["--arm"];
+    if (role == "broker")
+        return run_broker(arm, args.contains("--listen") ? args["--listen"] : "0.0.0.0:50051", fresh_dir(args["--out"]));
+    const uint64_t seed = std::stoull(args["--seed"]);
+    const double seconds = args.contains("--seconds") ? std::stod(args["--seconds"]) : 300;
+    const int workers = args.contains("--workers") ? std::stoi(args["--workers"]) : 4;
+    const double rate_scale = args.contains("--rate-scale") ? std::stod(args["--rate-scale"]) : 1.0;
+    const double drain_s = args.contains("--drain-s") ? std::stod(args["--drain-s"]) : 180;
+    const auto config = arm_config(arm);  // validates the arm before any work
+    const auto out = fresh_dir(args["--out"]);
+
+    const auto cal = calibrate();
+    auto jobs = generate(seed, seconds, rate_scale, cal);
+    // Oracle tiers: terciles of the planned cost over the whole trace (same quantile rule as the predictor).
+    std::vector<double> planned;
+    for (const auto& j : jobs) planned.push_back(j.planned_ms);
+    std::sort(planned.begin(), planned.end());
+    const std::vector<double> oracle_bounds{planned[planned.size() / 3], planned[planned.size() * 2 / 3]};
+
+    std::unique_ptr<HarbingerService> service;
+    std::unique_ptr<grpc::Server> server;
+    std::string address;
+    std::unique_ptr<harbinger_rpc::Broker::Stub> remote;
+    if (role == "all") {
+        service = std::make_unique<HarbingerService>(config);
+        int port = 0;
+        grpc::ServerBuilder builder;
+        builder.AddListeningPort("127.0.0.1:0", grpc::InsecureServerCredentials(), &port);
+        builder.RegisterService(service.get());
+        server = builder.BuildAndStart();
+        if (!server || !port) throw std::runtime_error("cannot start broker");
+        address = "127.0.0.1:" + std::to_string(port);
+    } else {
+        address = args["--broker"];
+        auto channel = grpc::CreateChannel(address, grpc::InsecureChannelCredentials());
+        if (!channel->WaitForConnected(std::chrono::system_clock::now() + std::chrono::seconds{30}))
+            throw std::runtime_error("cannot reach broker at " + address);
+        remote = harbinger_rpc::Broker::NewStub(channel);
+    }
+    // Messages the broker has dead-lettered. Remotely read via InspectDlq, at most once per second.
+    uint64_t remote_dlq = 0;
+    auto last_dlq_poll = Clock::now() - std::chrono::seconds{1};
+    const auto dlq_size = [&]() -> uint64_t {
+        if (service) return service->dlq_size();
+        if (Clock::now() - last_dlq_poll >= std::chrono::seconds{1}) {
+            grpc::ClientContext context;
+            context.set_deadline(std::chrono::system_clock::now() + std::chrono::seconds{5});
+            harbinger_rpc::InspectDlqRequest request;
+            request.set_limit(1);
+            harbinger_rpc::InspectDlqResponse response;
+            if (remote->InspectDlq(&context, request, &response).ok()) remote_dlq = response.total_size();
+            last_dlq_poll = Clock::now();
+        }
+        return remote_dlq;
+    };
 
     std::vector<Record> records(jobs.size());
     std::atomic<std::size_t> completed{0};
@@ -437,12 +515,12 @@ int main(int argc, char** argv) try {
     }
     for (auto& p : producers) p.join();
     const auto arrivals_done = Clock::now();
-    while (completed.load() + service.dlq_size() < jobs.size() &&
+    while (completed.load() + dlq_size() < jobs.size() &&
            Clock::now() - arrivals_done < std::chrono::duration<double>(drain_s))
         std::this_thread::sleep_for(std::chrono::milliseconds{50});
-    const auto stats = stats_json(service);
+    const auto stats = service ? stats_json(*service) : std::string{};
     for (auto& c : consumers) c->stop();
-    server->Shutdown(std::chrono::system_clock::now() + std::chrono::seconds{2});
+    if (server) server->Shutdown(std::chrono::system_clock::now() + std::chrono::seconds{2});
 
     std::ofstream tsv(out / "messages.tsv");
     tsv << "seq\tservice\tjob_type\tphase\tplanned_ms\tsubmit_ns\tfirst_start_ns\tstart_ns\tend_ns\tattempts\thandler_ms\tdone\n";
@@ -456,18 +534,25 @@ int main(int argc, char** argv) try {
     }
     uint64_t lost = 0;
     for (auto& c : consumers) lost += c->leases_lost();
-    std::ofstream run(out / "run.json");
+    // The client role cannot read the broker's counters; merge_split_run.py adds them (and the final DLQ count)
+    // from broker.json.
+    last_dlq_poll = Clock::now() - std::chrono::seconds{1};
+    const auto dlq = dlq_size();
+    std::ofstream run(out / (service ? "run.json" : "client.json"));
     run << "{\"benchmark\":\"prodflow-v1\",\"arm\":\"" << arm << "\",\"seed\":" << seed << ",\"seconds\":" << seconds
         << ",\"workers\":" << workers << ",\"rate_scale\":" << rate_scale
         << ",\"size_hint_header\":\"" << kSizeHintHeader << "\"" << ",\"messages\":" << jobs.size()
-        << ",\"completed\":" << completed.load() << ",\"dlq\":" << service.dlq_size()
+        << ",\"completed\":" << completed.load() << ",\"dlq\":" << dlq
         << ",\"submit_errors\":" << submit_errors.load() << ",\"leases_lost\":" << lost
         << ",\"oracle_boundaries_ms\":[" << oracle_bounds[0] << "," << oracle_bounds[1] << "]"
         << ",\"calibration_ms_per_unit\":{\"render_kb\":" << cal.render_kb << ",\"invoice_item\":" << cal.invoice_item
         << ",\"resize_mp\":" << cal.resize_mp << ",\"reindex_word\":" << cal.reindex_word
-        << ",\"export_chunk\":" << cal.export_chunk << "},\"broker\":" << stats << "}\n";
+        << ",\"export_chunk\":" << cal.export_chunk << "}";
+    if (service) run << ",\"broker\":" << stats;
+    else run << ",\"role\":\"client\",\"broker_address\":\"" << address << "\"";
+    run << "}\n";
     std::cout << "[prodflow] arm=" << arm << " seed=" << seed << " messages=" << jobs.size()
-              << " completed=" << completed.load() << " dlq=" << service.dlq_size() << '\n';
+              << " completed=" << completed.load() << " dlq=" << dlq << '\n';
     return completed.load() == jobs.size() ? 0 : 3;
 } catch (const std::exception& error) {
     std::cerr << "[prodflow] " << error.what() << '\n';
