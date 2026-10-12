@@ -8,6 +8,7 @@ split (no look-ahead):
 
 Usage:
   python -m analysis.trace_analysis azure2021 TRACE.txt [--split 0.5] [--out report.json]
+  python -m analysis.trace_analysis harbinger TRACE.csv [--split 0.5] [--out report.json]   (harbinger-trace-v1, #47)
   python -m analysis.trace_analysis csv FILE.csv --time COL --key COL[,COL] --duration COL [--duration-unit ms|s]
 """
 from __future__ import annotations
@@ -21,6 +22,8 @@ import statistics
 from collections import defaultdict
 from pathlib import Path
 
+from analysis import trace_format
+
 
 def azure2021(path: Path):
     """Azure Functions 2021: app,func,end_timestamp(s),duration(s); arrival is reconstructed as end - duration."""
@@ -31,6 +34,12 @@ def azure2021(path: Path):
         for app, func, end, duration in reader:
             seconds = float(duration)
             yield float(end) - seconds, app[:12] + "/" + func[:12], seconds * 1000.0
+
+
+def harbinger(path: Path):
+    """The common harbinger-trace-v1 format (analysis/trace_format.py); arrival_ms becomes seconds."""
+    for row in trace_format.read(path):
+        yield row.arrival_ms / 1000.0, row.key, row.duration_ms
 
 
 def generic(path: Path, time: str, keys: list[str], duration: str, unit: str):
@@ -112,7 +121,7 @@ def analyse(rows, split: float = 0.5, min_samples: int = 20, max_spread: float =
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    parser.add_argument("format", choices=["azure2021", "csv"])
+    parser.add_argument("format", choices=["azure2021", "harbinger", "csv"])
     parser.add_argument("path", type=Path)
     parser.add_argument("--time")
     parser.add_argument("--key")
@@ -123,6 +132,8 @@ def main() -> None:
     args = parser.parse_args()
     if args.format == "azure2021":
         rows = list(azure2021(args.path))
+    elif args.format == "harbinger":
+        rows = list(harbinger(args.path))
     else:
         rows = list(generic(args.path, args.time, args.key.split(","), args.duration, args.duration_unit))
     result = analyse(rows, args.split)

@@ -1,0 +1,167 @@
+{
+ "version": "das2-diagnostic-exploratory",
+ "frozen_on": "2026-10-12",
+ "issue": 46,
+ "preregistration": "docs/v3-traces-2-preregistration.md",
+ "trace": {
+  "title": "Parallel Workloads Archive DAS2-fs2-2003 trace simulation",
+  "name": "DAS2-fs2-2003-1 (Parallel Workloads Archive)",
+  "source": "https://www.cs.huji.ac.il/labs/parallel/workload/ (Feitelson, Tsafrir and Krakov, JPDC 2014)",
+  "swf_sha256": "e5b2dcac208df5221a191c89ade6f479e3d7dc1cad59c86eac65bc81ae3d0af8",
+  "converted_sha256": "f410b083220bccdb79c0d94c3ef10f2f84a07f2bff214edb648b50c3633df135",
+  "rows": 64660,
+  "key": "user,executable",
+  "arrival": "submit time",
+  "duration": "run time",
+  "size": "requested run time (not used by any arm)",
+  "jobs": "all jobs; a parallel job occupies one simulated worker for its run time (a stated simplification)",
+  "convert": "python -m analysis.trace_format convert pwa DAS2-fs2-2003-1.swf.gz das2-fs2-2003.csv --key user,executable"
+ },
+ "history_split": "time",
+ "history_fraction": 0.5,
+ "window_split": "time",
+ "evaluation_days": 7,
+ "class_bounds_ms": [
+  60000,
+  600000
+ ],
+ "workers": 64,
+ "levels": 3,
+ "default_priority": 1,
+ "aging": {
+  "threshold_ms": 5000,
+  "interval_ms": 500
+ },
+ "utilizations": [
+  0.8
+ ],
+ "level_weights": [
+  8,
+  3,
+  1
+ ],
+ "arms": [
+  "fifo",
+  "predictive_warm",
+  "predictive_warm+no_aging",
+  "predictive_warm+weights+no_aging",
+  "predictive_warm+weights+pausing",
+  "predictive_warm+weights_alt+pausing",
+  "oracle+no_aging",
+  "oracle+weights+pausing"
+ ],
+ "misconfigured_seed": 2026,
+ "bootstrap": {
+  "samples": 10000,
+  "seed": 2026,
+  "confidence": 0.95
+ },
+ "report_without_extreme_window": true,
+ "criteria": {
+  "A_P1_mean_latency_vs_fifo": {
+   "arm": "predictive_warm",
+   "baseline": "fifo",
+   "metric": "mean_latency_ms",
+   "max_relative_delta": -0.15
+  },
+  "A_G1_all_p99_vs_fifo": {
+   "arm": "predictive_warm",
+   "baseline": "fifo",
+   "metric": "p99_latency_ms",
+   "max_ratio": 2.0
+  },
+  "A_G2_long_max_wait_vs_fifo": {
+   "arm": "predictive_warm",
+   "baseline": "fifo",
+   "metric": "long_max_wait_ms",
+   "max_ratio": 2.0,
+   "floor": "long_class_bound",
+   "min_class_count": {
+    "class": "long",
+    "count": 30
+   }
+  },
+  "B_P1_mean_latency_vs_fifo": {
+   "arm": "predictive_warm+weights+pausing",
+   "baseline": "fifo",
+   "metric": "mean_latency_ms",
+   "max_relative_delta": -0.15
+  },
+  "B_G1_all_p99_vs_fifo": {
+   "arm": "predictive_warm+weights+pausing",
+   "baseline": "fifo",
+   "metric": "p99_latency_ms",
+   "max_ratio": 2.0
+  },
+  "B_G2_long_max_wait_vs_fifo": {
+   "arm": "predictive_warm+weights+pausing",
+   "baseline": "fifo",
+   "metric": "long_max_wait_ms",
+   "max_ratio": 2.0,
+   "floor": "long_class_bound",
+   "min_class_count": {
+    "class": "long",
+    "count": 30
+   }
+  },
+  "S1_short_p50_vs_fifo": {
+   "arm": "predictive_warm",
+   "baseline": "fifo",
+   "metric": "short_p50_ms",
+   "max_relative_delta": -0.3
+  },
+  "S2_vs_static_history_noninferior": {
+   "arm": "predictive_warm",
+   "baseline": "static_history",
+   "metric": "mean_latency_ms",
+   "max_relative_delta": 0.1
+  },
+  "S3_beats_static_random": {
+   "arm": "predictive_warm",
+   "baseline": "static_random",
+   "metric": "mean_latency_ms",
+   "max_relative_delta": 0.0
+  },
+  "S4_cold_start_vs_fifo": {
+   "arm": "predictive_cold",
+   "baseline": "fifo",
+   "metric": "mean_latency_ms",
+   "max_relative_delta": -0.05
+  },
+  "S5_oracle_vs_fifo": {
+   "arm": "oracle",
+   "baseline": "fifo",
+   "metric": "mean_latency_ms",
+   "max_relative_delta": -0.15
+  },
+  "S6_oracle_weights_pausing_vs_fifo": {
+   "arm": "oracle+weights+pausing",
+   "baseline": "fifo",
+   "metric": "mean_latency_ms",
+   "max_relative_delta": -0.15
+  },
+  "S7_weights_pausing_vs_predictive_warm": {
+   "arm": "predictive_warm+weights+pausing",
+   "baseline": "predictive_warm",
+   "metric": "mean_latency_ms",
+   "max_relative_delta": 0.0
+  }
+ },
+ "gates": {
+  "A_predictive_routing": [
+   "A_P1_mean_latency_vs_fifo",
+   "A_G1_all_p99_vs_fifo",
+   "A_G2_long_max_wait_vs_fifo"
+  ],
+  "B_overload_design": [
+   "B_P1_mean_latency_vs_fifo",
+   "B_G1_all_p99_vs_fifo",
+   "B_G2_long_max_wait_vs_fifo"
+  ]
+ },
+ "sensitivity_weights": [
+  4,
+  2,
+  1
+ ]
+}

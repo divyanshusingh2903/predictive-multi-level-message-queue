@@ -1,5 +1,7 @@
 # Aging under sustained overload (`v3-aging-1`, issue #40)
 
+**Re-run (2026-10-12).** The production-flow guardrails were re-run on a quiet machine. Every criterion was within 0.2 points and kept its verdict (P99 1.12× again). The simulation reproduced byte for byte. See [rerun-2026-10-12](../rerun-2026-10-12/README.md).
+
 Pre-registered in [docs/v3-aging-preregistration.md](../../../docs/v3-aging-preregistration.md) (frozen in commit
 `e87f38d` before any registered run). Simulation: `harbinger_trace_sim` built from `e87f38d`, Azure Functions 2021
 trace (`.rar` and `.txt` SHA-256 match the config), 27 s on one machine. The `fifo` and `predictive_warm` arms

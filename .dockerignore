@@ -1,0 +1,7 @@
+# Local build trees and caches never enter the benchmark image (benchmarks/docker/Dockerfile).
+build*/
+cmake-build-*/
+**/__pycache__/
+.git/
+.opencode/
+benchmarks/results/**/raw/

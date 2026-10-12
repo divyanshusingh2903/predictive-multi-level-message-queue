@@ -1,6 +1,8 @@
 // Trace-driven multi-level queue simulator (issue #25). Replays an invocation trace through non-preemptive workers
 // with the broker's tier/aging rules; the predictive arms use the broker's own PerKeyPredictor on simulation time.
-// Usage: harbinger_trace_sim AZURE_TRACE.txt CONFIG.json OUT.json
+// Usage: harbinger_trace_sim TRACE CONFIG.json OUT.json
+// TRACE is the Azure Functions 2021 invocation file or any trace in the common harbinger-trace-v1 format (#47,
+// analysis/trace_format.py); the header tells them apart.
 #include "ml/duration_predictor.hpp"
 #include "ml/predictive_routing.hpp"
 #include "util/json.hpp"
@@ -29,12 +31,53 @@ struct Invocation { double arrival_ms; uint32_t key; double duration_ms; };
 struct Trace {
     std::vector<Invocation> rows;
     std::vector<std::string> keys;
+    /// Per-row size hints in row order, NaN when unknown; empty when the trace has no size column.
+    std::vector<double> sizes;
 };
+
+/// harbinger-trace-v1: arrival_ms,key,duration_ms[,size], sorted by arrival (ties keep file order).
+Trace load_common(std::ifstream& in, bool sized) {
+    Trace t;
+    std::unordered_map<std::string, uint32_t> ids;
+    std::string line;
+    double previous = -INFINITY;
+    for (std::size_t number = 2; std::getline(in, line); ++number) {
+        const auto fail = [&](const char* what) {
+            return std::runtime_error("line " + std::to_string(number) + ": " + what);
+        };
+        const auto a = line.find(','), b = line.find(',', a + 1), c = line.find(',', b + 1);
+        if (b == std::string::npos || (sized ? c == std::string::npos || line.find(',', c + 1) != std::string::npos
+                                             : c != std::string::npos))
+            throw fail("wrong number of fields");
+        const auto key = line.substr(a + 1, b - a - 1);
+        if (key.empty() || key.find('"') != std::string::npos) throw fail("bad key");
+        const double arrival = std::stod(line.substr(0, a));
+        const double duration = std::stod(line.substr(b + 1, sized ? c - b - 1 : std::string::npos));
+        if (!std::isfinite(arrival) || arrival < previous) throw fail("rows must be sorted by arrival_ms");
+        if (!std::isfinite(duration) || duration < 0) throw fail("bad duration_ms");
+        previous = arrival;
+        if (sized) {
+            const auto field = line.substr(c + 1);
+            const double size = field.empty() ? NAN : std::stod(field);
+            if (!field.empty() && (!std::isfinite(size) || size < 0)) throw fail("bad size");
+            t.sizes.push_back(size);
+        }
+        const auto [it, fresh] = ids.emplace(key, static_cast<uint32_t>(t.keys.size()));
+        if (fresh) t.keys.push_back(key);
+        t.rows.push_back({arrival, it->second, duration});
+    }
+    return t;
+}
 
 Trace load(const std::string& path) {
     std::ifstream in(path);
+    if (!in) throw std::runtime_error("cannot open " + path);
     std::string line;
-    if (!std::getline(in, line) || line != "app,func,end_timestamp,duration") throw std::runtime_error("unexpected header");
+    if (!std::getline(in, line)) throw std::runtime_error("empty trace");
+    if (line == "arrival_ms,key,duration_ms") return load_common(in, false);
+    if (line == "arrival_ms,key,duration_ms,size") return load_common(in, true);
+    if (line != "app,func,end_timestamp,duration") throw std::runtime_error("unexpected header");
+    // Azure Functions 2021, read as for the published results: arrival reconstructed as end - duration.
     Trace t;
     std::unordered_map<std::string, uint32_t> ids;
     while (std::getline(in, line)) {
@@ -202,7 +245,10 @@ std::string outcome_metrics(const Outcomes& o, const Result& r, std::size_t begi
     return out.str();
 }
 
-std::string window_metrics(const Result& r, const std::vector<int>& cls, std::size_t begin, std::size_t end) {
+/// `class_counts` (v3-traces rules only) adds short/medium/long_count, so a report can tell an empty class from a
+/// class that never waited.
+std::string window_metrics(const Result& r, const std::vector<int>& cls, std::size_t begin, std::size_t end,
+                           bool class_counts = false) {
     std::vector<double> latency(r.latency.begin() + static_cast<long>(begin), r.latency.begin() + static_cast<long>(end));
     std::vector<double> slowdown(r.slowdown.begin() + static_cast<long>(begin), r.slowdown.begin() + static_cast<long>(end));
     double sum = 0, long_wait = 0;
@@ -223,6 +269,7 @@ std::string window_metrics(const Result& r, const std::vector<int>& cls, std::si
         for (double v : by_class[c]) mean += v;
         o << ",\"" << names[c] << "_mean_ms\":" << (by_class[c].empty() ? 0.0 : mean / static_cast<double>(by_class[c].size()))
           << ",\"" << names[c] << "_p50_ms\":" << (by_class[c].empty() ? 0.0 : quantile(by_class[c], 0.5));
+        if (class_counts) o << ",\"" << names[c] << "_count\":" << by_class[c].size();
     }
     o << "}";
     return o.str();
@@ -231,7 +278,7 @@ std::string window_metrics(const Result& r, const std::vector<int>& cls, std::si
 } // namespace
 
 int main(int argc, char** argv) try {
-    if (argc != 4) throw std::invalid_argument("usage: harbinger_trace_sim TRACE.txt CONFIG.json OUT.json");
+    if (argc != 4) throw std::invalid_argument("usage: harbinger_trace_sim TRACE CONFIG.json OUT.json");
     std::ifstream config_file(argv[2]);
     const std::string config_text{std::istreambuf_iterator<char>(config_file), {}};
     const auto config = json::Parser(config_text).parse();
@@ -242,11 +289,35 @@ int main(int argc, char** argv) try {
     const double threshold = num(*config.get("aging"), "threshold_ms"), interval = num(*config.get("aging"), "interval_ms");
     const double history_fraction = num(config, "history_fraction");
     const auto windows = static_cast<std::size_t>(num(config, "evaluation_days"));
+    // Optional v3-traces rules (#46); configs without them keep the published behaviour byte for byte.
+    //   history_split "time": history is the first history_fraction of the time span, not of the rows.
+    //   window_split "time": evaluation windows of equal duration, not of equal row count.
+    //   class_bounds_ms [a, b]: metric classes short < a <= medium < b <= long, instead of the history terciles.
+    const auto option = [&](const char* key) {
+        const auto* value = config.get(key);
+        const std::string text = value ? *value->string() : "rows";
+        if (text != "rows" && text != "time") throw std::invalid_argument(std::string(key) + " must be rows or time");
+        return text;
+    };
+    const std::string history_split = option("history_split"), window_split = option("window_split");
+    std::vector<double> class_bounds;
+    if (const auto* list = config.get("class_bounds_ms"))
+        for (const auto& b : std::get<json::Array>(list->value)) class_bounds.push_back(*b.number());
+    if (!class_bounds.empty() && (class_bounds.size() != 2 || !(0 < class_bounds[0] && class_bounds[0] < class_bounds[1])))
+        throw std::invalid_argument("class_bounds_ms needs two increasing positive values");
+    const bool v3_rules = config.get("history_split") || config.get("window_split") || !class_bounds.empty();
     std::vector<double> utilizations;
     for (const auto& u : std::get<json::Array>(config.get("utilizations")->value)) utilizations.push_back(*u.number());
 
     const auto trace = load(argv[1]);
-    const auto cut = static_cast<std::size_t>(static_cast<double>(trace.rows.size()) * history_fraction);
+    const auto arrival_index = [](const std::vector<Invocation>& rows, double at) {
+        return static_cast<std::size_t>(std::lower_bound(rows.begin(), rows.end(), at,
+            [](const Invocation& row, double t) { return row.arrival_ms < t; }) - rows.begin());
+    };
+    const auto cut = history_split == "time"
+        ? arrival_index(trace.rows, trace.rows.front().arrival_ms +
+                        history_fraction * (trace.rows.back().arrival_ms - trace.rows.front().arrival_ms))
+        : static_cast<std::size_t>(static_cast<double>(trace.rows.size()) * history_fraction);
     const std::vector<Invocation> history(trace.rows.begin(), trace.rows.begin() + static_cast<long>(cut));
     const std::vector<Invocation> evaluation(trace.rows.begin() + static_cast<long>(cut), trace.rows.end());
 
@@ -265,15 +336,31 @@ int main(int argc, char** argv) try {
     std::vector<int> cls(evaluation.size());
     double work = 0;
     for (std::size_t i = 0; i < evaluation.size(); ++i) {
-        cls[i] = std::min(2, static_cast<int>(ml::tier_of(bounds, evaluation[i].duration_ms)));
+        cls[i] = std::min(2, static_cast<int>(ml::tier_of(class_bounds.empty() ? bounds : class_bounds, evaluation[i].duration_ms)));
         work += evaluation[i].duration_ms;
     }
     const double span = evaluation.back().arrival_ms - evaluation.front().arrival_ms;
+    // Evaluation window w is rows [edges[w], edges[w + 1]).
+    std::vector<std::size_t> edges{0};
+    for (std::size_t w = 1; w < windows; ++w)
+        edges.push_back(window_split == "time"
+            ? arrival_index(evaluation, evaluation.front().arrival_ms + span * static_cast<double>(w) / static_cast<double>(windows))
+            : evaluation.size() * w / windows);
+    edges.push_back(evaluation.size());
+    for (std::size_t w = 0; w < windows; ++w)
+        if (edges[w] == edges[w + 1]) throw std::runtime_error("evaluation window " + std::to_string(w) + " is empty");
 
     std::ofstream out(argv[3]);
     out << "{\"version\":\"" << *config.get("version")->string() << "\",\"evaluation_rows\":" << evaluation.size()
-        << ",\"history_rows\":" << history.size() << ",\"boundaries_ms\":[" << bounds[0] << "," << bounds[1] << "]"
-        << ",\"results\":{";
+        << ",\"history_rows\":" << history.size() << ",\"boundaries_ms\":[" << bounds[0] << "," << bounds[1] << "]";
+    if (v3_rules) {
+        out << ",\"history_split\":\"" << history_split << "\",\"window_split\":\"" << window_split << "\",\"class_bounds_ms\":[";
+        const auto& used = class_bounds.empty() ? bounds : class_bounds;
+        out << used[0] << "," << used[1] << "],\"window_rows\":[";
+        for (std::size_t w = 0; w < windows; ++w) out << (w ? "," : "") << edges[w + 1] - edges[w];
+        out << "]";
+    }
+    out << ",\"results\":{";
     bool first_u = true;
     for (const double utilization : utilizations) {
         // Compress arrivals so offered load = utilization x workers.
@@ -344,10 +431,10 @@ int main(int argc, char** argv) try {
             const auto started = std::chrono::steady_clock::now();
             const auto r = simulate(evaluation, compress, workers, levels, threshold, interval, policy, route, learn);
             const double seconds = std::chrono::duration<double>(std::chrono::steady_clock::now() - started).count();
-            out << ",\"" << arm_name << "\":{\"sim_seconds\":" << seconds << ",\"all\":" << window_metrics(r, cls, 0, evaluation.size()) << ",\"windows\":[";
+            out << ",\"" << arm_name << "\":{\"sim_seconds\":" << seconds << ",\"all\":" << window_metrics(r, cls, 0, evaluation.size(), v3_rules) << ",\"windows\":[";
             for (std::size_t w = 0; w < windows; ++w) {
-                const auto begin = evaluation.size() * w / windows, end = evaluation.size() * (w + 1) / windows;
-                out << (w ? "," : "") << window_metrics(r, cls, begin, end);
+                const auto begin = edges[w], end = edges[w + 1];
+                out << (w ? "," : "") << window_metrics(r, cls, begin, end, v3_rules);
             }
             out << "]";
             if (predictive) {
@@ -355,7 +442,7 @@ int main(int argc, char** argv) try {
                 out << ",\"predictor\":{\"keys\":" << s.keys << ",\"observations\":" << s.observations << ",\"snapshots\":" << s.snapshots << "}";
                 out << ",\"outcomes\":" << outcome_metrics(outcomes, r, 0, evaluation.size()) << ",\"outcome_windows\":[";
                 for (std::size_t w = 0; w < windows; ++w) {
-                    const auto begin = evaluation.size() * w / windows, end = evaluation.size() * (w + 1) / windows;
+                    const auto begin = edges[w], end = edges[w + 1];
                     out << (w ? "," : "") << outcome_metrics(outcomes, r, begin, end);
                 }
                 out << "]";

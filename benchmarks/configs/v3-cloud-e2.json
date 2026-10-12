@@ -1,0 +1,125 @@
+{
+ "version": "v3-cloud-e2-1",
+ "frozen_on": null,
+ "issue": 26,
+ "preregistration": "docs/v3-cloud-preregistration.md",
+ "environment": {
+  "provider": "AWS us-east-1, one availability zone, one cluster placement group",
+  "broker_host": "c8i.xlarge (4 vCPU, 8 GiB)",
+  "client_host": "c8i.2xlarge (8 vCPU, 16 GiB)",
+  "os": "Ubuntu 24.04",
+  "image": "harbinger-bench built from the freeze commit",
+  "runner": "benchmarks/run_prodflow_split.sh"
+ },
+ "benchmark": "harbinger_prodflow",
+ "seconds": 1800,
+ "workers": 4,
+ "rate_scale": 1.8,
+ "drain_s": 600,
+ "seeds": [
+  101,
+  202
+ ],
+ "arms": [
+  "fifo",
+  "static_tuned",
+  "shadow",
+  "predictive"
+ ],
+ "primary_arm": "predictive",
+ "short_classes": [
+  "reserve_inventory",
+  "push_notification",
+  "reindex_product",
+  "generate_invoice"
+ ],
+ "long_class": "export_report",
+ "phase_metrics": true,
+ "bootstrap": {
+  "samples": 10000,
+  "seed": 2026,
+  "confidence": 0.95
+ },
+ "criteria": {
+  "C1_mean_vs_fifo": {
+   "arm": "predictive",
+   "metric": "mean_latency_ms",
+   "baseline": "fifo",
+   "every_seed": true,
+   "max_relative_delta": -0.15
+  },
+  "C2_short_p50_vs_fifo": {
+   "arm": "predictive",
+   "metric": "short_p50_ms",
+   "baseline": "fifo",
+   "every_seed": true,
+   "max_relative_delta": -0.3
+  },
+  "C3_p99_vs_fifo": {
+   "arm": "predictive",
+   "metric": "p99_latency_ms",
+   "baseline": "fifo",
+   "every_seed": true,
+   "max_relative_delta": 0.25
+  },
+  "C4_export_max_wait_vs_fifo": {
+   "arm": "predictive",
+   "metric": "long_max_wait_ms",
+   "baseline": "fifo",
+   "every_seed": true,
+   "max_relative_delta": 1.0
+  },
+  "C5_shifted_phase_mean_vs_fifo": {
+   "arm": "predictive",
+   "metric": "phase_mean_ms:shifted",
+   "baseline": "fifo",
+   "every_seed": true,
+   "max_relative_delta": -0.15
+  },
+  "C6_vs_static_tuned": {
+   "arm": "predictive",
+   "metric": "mean_latency_ms",
+   "baseline": "static_tuned",
+   "every_seed": true,
+   "max_relative_delta": 0.1
+  },
+  "C7_shadow_overhead": {
+   "arm": "shadow",
+   "metric": "mean_latency_ms",
+   "baseline": "fifo",
+   "every_seed": true,
+   "max_abs_relative_delta": 0.05
+  },
+  "C8_throughput_vs_fifo": {
+   "arm": "predictive",
+   "metric": "throughput_per_s",
+   "baseline": "fifo",
+   "every_seed": true,
+   "max_abs_relative_delta": 0.02
+  },
+  "G3_no_lost_work": {
+   "completed_equals_submitted": true,
+   "max_dlq": 0,
+   "max_submit_errors": 0
+  },
+  "G3b_no_lost_work_fifo": {
+   "arm": "fifo",
+   "completed_equals_submitted": true,
+   "max_dlq": 0,
+   "max_submit_errors": 0
+  },
+  "G3c_no_lost_work_static_tuned": {
+   "arm": "static_tuned",
+   "completed_equals_submitted": true,
+   "max_dlq": 0,
+   "max_submit_errors": 0
+  },
+  "G3d_no_lost_work_shadow": {
+   "arm": "shadow",
+   "completed_equals_submitted": true,
+   "max_dlq": 0,
+   "max_submit_errors": 0
+  }
+ },
+ "gate": []
+}

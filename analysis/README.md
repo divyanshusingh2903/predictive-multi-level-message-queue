@@ -11,11 +11,35 @@ the rename record that path.)
 |---|---|---|
 | Feature and feedback formats | `features.py`, `feedback.py` | **Live.** Python mirror of the broker's ingress-feature encoding and reader for its persistent feedback files; used by `benchmarks/export_feedback.py`. |
 | Real-trace predictability | `trace_analysis.py`, `feature_signal.py` | **Reproduces published results:** `benchmarks/results/azure2021/` (`trace_analysis.py`) and `feature-signal-v1/` (#24, `feature_signal.py`). |
+| Common trace format | `trace_format.py` | **Live.** Reader, writer and converters for `harbinger-trace-v1` (#47), the one format `harbinger_trace_sim` and `trace_analysis.py` read for every public trace. See [below](#common-trace-format-47). |
 | C++ predictor cross-check | `cpp_replay.py` | **Live.** Scores `harbinger_predictor_replay` (the broker's own predictor) on a temporal export. |
 | Online-model comparison (#5) | `dataset.py`, `models.py`, `policy.py`, `replay.py`, `metrics.py`, `compare.py`, `prepare.py`, `publish.py` | **Archived.** Compared learned models (River regressors and trees) with simple statistics (per-key means, EWMA). None of the eight candidates passed every gate (`benchmarks/results/issue5-v1/`). The broker uses the simplest option, per-key statistics. Kept to reproduce that result. |
 
 Core tools need only the Python 3.10+ standard library. `requirements-models.txt` (River) is needed only to rerun
 the archived comparison, and `requirements-analysis.txt` only for the #24 study.
+
+## Common trace format (#47)
+
+Every public trace is converted once to `harbinger-trace-v1`: a CSV with the header `arrival_ms,key,duration_ms` and an
+optional `size` column. Rows are sorted by arrival, and ties keep file order. `trace_format.py` has the full rules.
+
+```bash
+python -m analysis.trace_format convert azure2021 azure.txt azure.csv   # prints rows, keys, span, SHA-256
+python -m analysis.trace_format convert huawei2025 R5/ huawei2025-r5.csv   # a region's request-table part files
+python -m analysis.trace_format convert pwa LOG.swf.gz out.csv --key user,executable [--max-processors 1] [--completed-only]
+python -m analysis.trace_format check azure.csv
+harbinger_trace_sim azure.csv CONFIG.json OUT.json
+python -m analysis.trace_analysis harbinger azure.csv
+```
+
+Converters: `azure2021`, `pwa` (Parallel Workloads Archive logs in the Standard Workload Format; key fields, a processor cap and a completed-only filter are options a log's pre-registration fixes), and `huawei2025` (request tables; the timestamp and duration decisions are documented in
+[`benchmarks/results/huawei2025-r5/`](../benchmarks/results/huawei2025-r5/README.md)).
+
+`harbinger_trace_sim` still reads the original Azure 2021 file directly, so `v2-azure-sim` and `v3-aging` reproduce
+exactly. The converted Azure file gives the same results except for row order among ties. 39,766 rows (2%) share an
+arrival time. The original reader orders them with an unstable sort, and the converted file keeps file order. The
+weighted arms in `v3-aging` move by up to 2.5% between the two orders; the other arms do not move. With the same order,
+the two readers are identical (tested in `tests/test_trace_format.py`).
 
 ## Enable capture in an embedded broker
 

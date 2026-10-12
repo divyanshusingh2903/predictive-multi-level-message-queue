@@ -267,3 +267,137 @@ producers, nine job types doing real CPU work plus simulated network calls, four
 and analyse it with `python -m benchmarks.prodflow_report <config> <raw dir>`. Pre-registrations:
 [v2](../docs/v2-preregistration.md) (`v2-prodflow-1`) and [size bins](../docs/v3-sizebins-preregistration.md)
 (`v3-sizebins-1`).
+
+### Broker on a separate host (#47)
+
+By default the broker runs inside the benchmark process over loopback. To put it on its own host, start the arm's
+broker there, run the clients against it, stop the broker, and merge the two halves:
+
+```bash
+# broker host: serves until SIGINT/SIGTERM, then writes broker.json
+harbinger_prodflow --role broker --arm predictive --listen 0.0.0.0:50051 --out <dir>
+# client host: producers and workers; writes messages.tsv and client.json
+harbinger_prodflow --role client --broker <broker-ip>:50051 --arm predictive --seed 11 --out <run dir> [--seconds ...]
+# after stopping the broker, copy broker.json into <run dir>, then write run.json
+python -m benchmarks.merge_split_run <run dir>
+```
+
+- **Same arm on both sides.** The broker holds the arm's routing, predictor and level weights; the client needs the
+  arm for the oracle header. The merge refuses mismatched arms.
+- **Fresh broker per run.** Restart it for every arm and seed, as the embedded mode does.
+- **One clock.** Every latency timestamp is taken on the client host, so the hosts' clocks are never compared.
+- **DLQ during drain.** The client polls the broker's DLQ size once a second. The broker's final count in
+  `broker.json` is the one recorded in `run.json`.
+
+A 30-second local check (seed 11, `predictive`, both processes on one machine) matched the embedded run: same counts,
+no lost work, mean latency within 4% and P99 within 1%.
+
+### Production queues: RabbitMQ and Redis (#37)
+
+Four more arms send the same jobs, from the same producers to the same workers and handlers, through other brokers
+(`benchmarks/broker_adapters.cpp`):
+
+| Arm | Broker and setup |
+|---|---|
+| `rabbitmq_fifo` | One classic queue, transient messages, no publisher confirms, manual ack, prefetch 1 |
+| `rabbitmq_priority` | The same queue with `x-max-priority=3`; each job type's tier from the `static_tuned` map (tier *t* is priority 2 − *t*). No aging. |
+| `rabbitmq_predictive` | As `rabbitmq_priority`, but tiers come from a predictor sidecar in the client process |
+| `redis_fifo` | Reliable list queue: `LPUSH`, `BLMOVE` into a per-worker processing list, `LREM` on success |
+
+**Predictor sidecar.** `rabbitmq_predictive` runs the broker's own `PerKeyPredictor`, with its default settings and
+key rule (service + job type, like a producer-scoped `job_type`).
+- It predicts at publish time and learns only from successful attempts, in whole milliseconds, as the broker does.
+- RabbitMQ has no lease, so nothing is censored.
+
+**Retries.** A failed attempt is retried on every broker, but the requeue differs:
+- RabbitMQ requeues a nacked message near the head of the queue.
+- Redis moves it back to the tail.
+- Harbinger requeues it at its original priority.
+
+**How to run.** These arms need a build with `-DHARBINGER_BUILD_BROKER_ADAPTERS=ON` (rabbitmq-c and hiredis) and
+`--broker HOST:PORT`. They write `run.json` directly, recording the server and client library versions, and the
+sidecar's counters under `broker.routing`. Each run empties the queue first; restart the broker between runs, as for
+Harbinger.
+
+**Docker.** [`docker/Dockerfile`](docker/Dockerfile) builds one image on a pinned Ubuntu 24.04. It holds the benchmark
+and both brokers in the versions #37 freezes: RabbitMQ 3.12.1, Redis 7.0.15, rabbitmq-c 0.11.0, hiredis 1.2.0.
+
+```bash
+docker build -f benchmarks/docker/Dockerfile -t harbinger-bench .
+docker run -d --rm --name rabbit --network host harbinger-bench rabbitmq   # AMQP on 5672, non-persistent use
+docker run -d --rm --name redis --network host harbinger-bench redis      # no RDB/AOF
+docker run --rm --network host -v "$PWD/out":/out harbinger-bench \
+  harbinger_prodflow --arm rabbitmq_fifo --broker 127.0.0.1:5672 --seed 11 --out /out/rabbitmq_fifo
+docker run --rm harbinger-bench versions    # package versions inside the image
+```
+
+Host networking keeps Docker off the network path. The end-to-end tests in `tests/test_broker_adapters.py` run when
+`HARBINGER_RABBITMQ` and `HARBINGER_REDIS` name running servers.
+
+A 30-second local smoke run (seed 11, 4 workers, rate scale 1.8; not a registered result):
+- **FIFO:** Harbinger, RabbitMQ and Redis gave the same mean latency within 4% (2.98–3.11 s).
+- **Retries:** all three retried the same 12 failed webhook attempts.
+- **`rabbitmq_priority`:** short jobs at a 22 ms median, but the longest export wait grew to 14 s.
+- **Sidecar:** 9 µs per lookup.
+
+### Two-host matrix (#37, #47)
+
+`benchmarks/run_prodflow_split.sh CONFIG RESULTS_DIR [SEED...]` runs a production-flow config with the broker on its
+own host. Run it from the repository root.
+
+For every seed, every arm runs once (arm order rotated per seed, as in `run_prodflow.sh`) with a fresh broker
+container:
+- **Harbinger arms:** `harbinger_prodflow --role broker` on the broker host, the clients here, then a stop and
+  `merge_split_run.py`.
+- **RabbitMQ and Redis arms:** their server on the broker host; the client writes `run.json` directly.
+
+**Settings:**
+- `IMAGE` (default `harbinger-bench`).
+- `BROKER_SSH` (for example `ubuntu@10.0.0.5`; unset runs the brokers on this host) and `BROKER_HOST` (the address the
+  clients use).
+- `BROKER_WORKDIR`, where the broker host keeps Harbinger's `broker.json`.
+
+Both hosts' package versions are recorded. Results are laid out as `run_prodflow.sh`'s, so
+`python -m benchmarks.prodflow_report` reads them unchanged.
+
+### Broker cost microbenchmark (#37; E4 in #46)
+
+`harbinger_brokerbench` (`benchmarks/brokerbench.cpp`) measures the brokers alone: producers publish small messages,
+and consumers acknowledge each one at once, with no work in the handler. It runs against:
+- `harbinger_server`, the production server with default settings;
+- RabbitMQ and Redis, in the same non-persistent setup as the production-flow arms.
+
+Each broker is its own process. Producers and consumers share one process, so latency (publish start to delivery
+start) is measured on one clock, even with the broker on another host.
+
+- **`--rate R`** runs an open-loop schedule at R msg/s, shared round robin by the producers. A producer that falls
+  behind sends late rather than skipping, and the lateness is reported, so a broker that cannot accept the rate shows
+  it.
+- **`--rate 0`** sends as fast as possible. The delivery rate is then the peak sustained throughput; the latency there
+  only reflects the backlog.
+- A warm-up is excluded. Lost and duplicated deliveries are counted.
+
+```bash
+CONFIG=benchmarks/configs/<config>.json benchmarks/run_brokerbench.sh "$CONFIG" <results dir>
+python -m benchmarks.brokerbench_report "$CONFIG" <results dir>
+```
+
+**What the runner does:**
+- Starts a fresh broker container for every run, with the kind order rotated per repetition, and records the package
+  versions on both sides.
+- Takes its settings from the config: `kinds`, `rates`, `repetitions`, `seconds`, `warmup_s`, `drain_s`,
+  `producers`, `consumers` and `payload_bytes`.
+- With `BROKER_SSH=user@host` and `BROKER_HOST=<ip>`, starts the brokers on a second machine over SSH.
+- Overhead is reported, with no pass/fail (#37).
+
+A local smoke run (8 s per run; not a registered result) delivered all messages on every broker.
+
+| Broker | P50 / P99 at 1k msg/s | Peak delivered/s (4 consumers) |
+|---|---|---|
+| Harbinger | 0.25 / 0.35 ms | 5.3k |
+| RabbitMQ | 0.19 / 0.52 ms | 16.9k |
+| Redis | 0.07 / 0.19 ms | 22.0k |
+
+Harbinger's and Redis's consumers each make two blocking calls per message: Pull and Ack for Harbinger, `BLMOVE` and
+`LREM` for Redis. RabbitMQ pushes messages to its consumers. This benchmark does not measure where Harbinger's extra
+cost per call comes from.

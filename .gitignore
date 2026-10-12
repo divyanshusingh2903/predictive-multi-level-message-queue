@@ -71,11 +71,16 @@ benchmarks/results/*
 benchmarks/results/v2-prodflow/raw/
 !benchmarks/results/v2-azure-sim/
 !benchmarks/results/azure2021/
+!benchmarks/results/huawei2025-r5/
+!benchmarks/results/pwa-datacheck/
 !benchmarks/results/feature-signal-v1/
 benchmarks/results/feature-signal-v1/raw/
 !benchmarks/results/v3-sizebins/
 benchmarks/results/v3-sizebins/raw/
 !benchmarks/results/v3-aging/
+!benchmarks/results/v3-traces/
+!benchmarks/results/v3-traces-2/
+!benchmarks/results/rerun-2026-10-12/
 benchmarks/results/v3-aging/prodflow/raw/
 benchmarks/results/issue5-v1/raw/*.tar.gz
 !benchmarks/results/issue4-v1/raw/*.tar.gz

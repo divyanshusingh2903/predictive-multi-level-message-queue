@@ -1,5 +1,7 @@
 # v2 production-flow results (`v2-prodflow-1`)
 
+**Re-run (2026-10-12).** On a quiet machine with documented conditions, every criterion kept its verdict and the gate passed again. Effects were smaller (P1 −25.6%, P2 −57.7%, S4 −10.5%) because that run's CPU was about 1.6–1.8× slower (turbo off), so the load was heavier. See [rerun-2026-10-12](../rerun-2026-10-12/README.md).
+
 Pre-registered in [docs/v2-preregistration.md](../../../docs/v2-preregistration.md); summarized in
 [docs/phase2-report.md](../../../docs/phase2-report.md).
 

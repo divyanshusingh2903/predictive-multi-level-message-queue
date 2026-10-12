@@ -99,5 +99,18 @@ class SizeBinsReport(unittest.TestCase):
         self.assertNotIn("unsized_mean_ms", run_metrics({"dlq": 0, "submit_errors": 0}, rows, CONFIG))
 
 
+    def test_every_seed_checks_need_no_interval(self):
+        config = {"bootstrap": {"samples": 100, "seed": 1, "confidence": 0.95}, "primary_arm": "predictive", "gate": [],
+                  "criteria": {
+                      "faster": {"metric": "mean_latency_ms", "baseline": "fifo", "max_relative_delta": 0.0, "every_seed": True},
+                      "shadow_close": {"arm": "shadow", "metric": "mean_latency_ms", "baseline": "fifo",
+                                       "max_abs_relative_delta": 0.05, "every_seed": True}}}
+        t = table(seeds=(101, 202))
+        result = evaluate(config, t)["criteria"]
+        self.assertEqual((result["faster"]["status"], result["shadow_close"]["status"]), ("pass", "pass"))
+        self.assertEqual(len(result["faster"]["deltas"]), 2)
+        t["predictive"][202]["mean_latency_ms"] = t["fifo"][202]["mean_latency_ms"] * 1.01  # slower in one repeat
+        self.assertEqual(evaluate(config, t)["criteria"]["faster"]["status"], "fail")
+
 if __name__ == "__main__":
     unittest.main()
