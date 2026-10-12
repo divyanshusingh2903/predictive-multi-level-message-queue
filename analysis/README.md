@@ -26,12 +26,13 @@ optional `size` column. Rows are sorted by arrival, and ties keep file order. `t
 ```bash
 python -m analysis.trace_format convert azure2021 azure.txt azure.csv   # prints rows, keys, span, SHA-256
 python -m analysis.trace_format convert huawei2025 R5/ huawei2025-r5.csv   # a region's request-table part files
+python -m analysis.trace_format convert pwa LOG.swf.gz out.csv --key user,executable [--max-processors 1] [--completed-only]
 python -m analysis.trace_format check azure.csv
 harbinger_trace_sim azure.csv CONFIG.json OUT.json
 python -m analysis.trace_analysis harbinger azure.csv
 ```
 
-Converters: `azure2021`, and `huawei2025` (request tables; the timestamp and duration decisions are documented in
+Converters: `azure2021`, `pwa` (Parallel Workloads Archive logs in the Standard Workload Format; key fields, a processor cap and a completed-only filter are options a log's pre-registration fixes), and `huawei2025` (request tables; the timestamp and duration decisions are documented in
 [`benchmarks/results/huawei2025-r5/`](../benchmarks/results/huawei2025-r5/README.md)).
 
 `harbinger_trace_sim` still reads the original Azure 2021 file directly, so `v2-azure-sim` and `v3-aging` reproduce

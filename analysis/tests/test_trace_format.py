@@ -1,3 +1,4 @@
+import gzip
 import json
 import os
 from pathlib import Path
@@ -7,7 +8,7 @@ import subprocess
 import tempfile
 import unittest
 
-from analysis.trace_format import Row, from_azure2021, from_huawei2025, read, summary, write
+from analysis.trace_format import Row, from_azure2021, from_huawei2025, from_pwa, read, summary, write
 
 TRACE_SIM = os.environ.get("HARBINGER_TRACE_SIM")
 SIM_CONFIG = {
@@ -90,6 +91,35 @@ class TraceFormat(unittest.TestCase):
         self.assertEqual(notes, {"source_rows": 3, "dropped_incomplete": 1})
         self.assertEqual(rows[0], Row((100.5 - 2.5) * 1000.0, "411---301---pool22-300-128", 0.4 * 1000.0, 1024.0))
         self.assertEqual(rows[1], Row((99.001 - 0.001) * 1000.0, "34---83---pool9-1-2", 1.0e-3 * 1000.0, 0.0))
+    def test_pwa_conversion_and_drop_rules(self):
+        swf = """; Version: 2.2
+; Computer: test
+;  job submit wait run procs cpu mem req_procs req_time req_mem status user group exe queue part prev think
+1  100  5  60   1 -1 -1  1  120 -1 1  7 1  3 1 -1 -1 -1
+2   50  0  30   4 -1 -1  4   -1 -1 1  7 1  3 1 -1 -1 -1
+3  200  0   0   1 -1 -1  1   60 -1 5  8 1  4 1 -1 -1 -1
+4  300  0  45   1 -1 -1  1   60 -1 0  8 1 -1 1 -1 -1 -1
+5  400  0  20  64 -1 -1 64  600 -1 1  9 2  5 2 -1 -1 -1
+6  500  0  10   1 -1 -1  1   30 -1 0  9 2  5 2 -1 -1 -1
+"""
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "log.swf.gz"
+            with gzip.open(path, "wt") as stream:
+                stream.write(swf)
+            rows, notes = from_pwa(path)
+            self.assertEqual([row.key for row in rows], ["user=7/executable=3"] * 2 + ["user=9/executable=5"] * 2)
+            self.assertEqual(rows[0], Row(50_000.0, "user=7/executable=3", 30_000.0, None))  # sorted by submit
+            self.assertEqual(rows[1], Row(100_000.0, "user=7/executable=3", 60_000.0, 120_000.0))
+            self.assertEqual((notes["source_rows"], notes["dropped_no_run_time"], notes["dropped_missing_key"]), (6, 1, 1))
+            self.assertEqual(notes["status_counts"], {"0": 2, "1": 3, "5": 1})
+            self.assertEqual(notes["rows_with_requested_time"], 3)
+            rows, notes = from_pwa(path, max_processors=1, completed_only=True)
+            self.assertEqual([row.duration_ms for row in rows], [60_000.0])
+            self.assertEqual((notes["dropped_over_max_processors"], notes["dropped_not_completed"]), (2, 1))
+            rows, _ = from_pwa(path, key="user,queue")
+            self.assertEqual(rows[-1].key, "user=9/queue=2")
+            with self.assertRaises(ValueError):
+                from_pwa(path, key="user,colour")
 
 @unittest.skipUnless(TRACE_SIM, "HARBINGER_TRACE_SIM not set (build the harbinger_trace_sim target)")
 class SimulatorReadsBothFormats(unittest.TestCase):

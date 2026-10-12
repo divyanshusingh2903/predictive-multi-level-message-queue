@@ -16,13 +16,17 @@ Format: UTF-8 CSV, with the header `arrival_ms,key,duration_ms` or `arrival_ms,k
 Usage:
   python -m analysis.trace_format convert azure2021 AZURE.txt OUT.csv
   python -m analysis.trace_format convert huawei2025 R5/ OUT.csv     (directory of request-table part-*.csv files)
+  python -m analysis.trace_format convert pwa LOG.swf[.gz] OUT.csv [--key user,executable] [--max-processors N]
+                                                                     [--completed-only]
   python -m analysis.trace_format check TRACE.csv
 """
 from __future__ import annotations
 
 import argparse
+import collections
 import csv
 import glob
+import gzip
 import hashlib
 import json
 import math
@@ -138,9 +142,72 @@ def from_huawei2025(directory: Path) -> tuple[list[Row], dict]:
     return rows, {"source_rows": total, "dropped_incomplete": dropped}
 
 
+# Standard Workload Format fields (1-based in the format's definition), used by the Parallel Workloads Archive.
+SWF_FIELDS = {"submit": 2, "run_time": 4, "processors": 5, "requested_time": 9, "status": 11, "user": 12, "group": 13,
+              "executable": 14, "queue": 15, "partition": 16}
+SWF_KEY_FIELDS = ("user", "group", "executable", "queue", "partition")
+
+
+def from_pwa(path: Path, key: str = "user,executable", max_processors: int | None = None,
+             completed_only: bool = False) -> tuple[list[Row], dict]:
+    """A Parallel Workloads Archive log in the Standard Workload Format (plain or gzipped).
+
+    - Arrival is the submit time; duration is the run time; both in seconds in the log.
+    - Size is the user's requested run time (the user's own estimate), in milliseconds, or empty when not given.
+    - The key joins the chosen fields (default user and executable) as "user=12/executable=3".
+    - Dropped and counted: jobs with no positive run time, jobs missing any key field (-1), jobs using more than
+      max_processors processors (when set), and jobs whose status is not 1 (completed) when completed_only is set.
+    - Every job occupies one worker in the simulator, whatever its processor count. A log's pre-registration must say
+      how that is handled (for example with max_processors).
+    """
+    fields = [f.strip() for f in key.split(",") if f.strip()]
+    if not fields or any(f not in SWF_KEY_FIELDS for f in fields):
+        raise ValueError(f"key fields must come from {', '.join(SWF_KEY_FIELDS)}")
+    column = {name: index - 1 for name, index in SWF_FIELDS.items()}
+    rows, total = [], 0
+    dropped = collections.Counter()
+    statuses = collections.Counter()
+    opener = gzip.open if str(path).endswith(".gz") else open
+    with opener(path, "rt") as stream:
+        for line in stream:
+            text = line.strip()
+            if not text or text.startswith(";"):
+                continue
+            parts = text.split()
+            if len(parts) < 18:
+                raise ValueError(f"SWF line with {len(parts)} fields: {text[:60]}")
+            total += 1
+            value = lambda name: float(parts[column[name]])
+            status = int(value("status"))
+            statuses[status] += 1
+            if value("run_time") <= 0:
+                dropped["no_run_time"] += 1
+                continue
+            if any(value(f) < 0 for f in fields):
+                dropped["missing_key"] += 1
+                continue
+            if max_processors is not None and value("processors") > max_processors:
+                dropped["over_max_processors"] += 1
+                continue
+            if completed_only and status != 1:
+                dropped["not_completed"] += 1
+                continue
+            requested = value("requested_time")
+            rows.append(Row(value("submit") * 1000.0, "/".join(f"{f}={int(value(f))}" for f in fields),
+                            value("run_time") * 1000.0, requested * 1000.0 if requested > 0 else None))
+    if not total:
+        raise ValueError(f"no jobs in {path}")
+    rows.sort(key=lambda row: row.arrival_ms)  # stable: ties keep file order
+    return rows, {"source_rows": total, "key": ",".join(fields), "max_processors": max_processors,
+                  "completed_only": completed_only, **{f"dropped_{k}": v for k, v in sorted(dropped.items())},
+                  "status_counts": {str(k): v for k, v in sorted(statuses.items())},
+                  "rows_with_requested_time": sum(row.size is not None for row in rows)}
+
+
 CONVERTERS = {
     "azure2021": lambda path: (from_azure2021(path), {}),
     "huawei2025": from_huawei2025,
+    "pwa": from_pwa,
 }
 
 
@@ -162,13 +229,21 @@ def main() -> None:
     convert.add_argument("source", choices=sorted(CONVERTERS))
     convert.add_argument("input", type=Path)
     convert.add_argument("output", type=Path)
+    convert.add_argument("--key", help="pwa: comma-separated key fields (default user,executable)")
+    convert.add_argument("--max-processors", type=int, help="pwa: drop jobs using more processors")
+    convert.add_argument("--completed-only", action="store_true", help="pwa: keep only jobs with status 1")
     check = commands.add_parser("check")
     check.add_argument("trace", type=Path)
     args = parser.parse_args()
     if args.command == "convert":
         if args.output.exists():
             raise SystemExit(f"refusing to overwrite {args.output}")
-        rows, notes = CONVERTERS[args.source](args.input)
+        options = {k: v for k, v in (("key", args.key), ("max_processors", args.max_processors)) if v is not None}
+        if args.completed_only:
+            options["completed_only"] = True
+        if options and args.source != "pwa":
+            raise SystemExit("--key, --max-processors and --completed-only apply only to pwa")
+        rows, notes = CONVERTERS[args.source](args.input, **options)
         write(args.output, rows, with_size=any(row.size is not None for row in rows))
         print(json.dumps({**summary(args.output), "source": args.source, **notes}, indent=1))
     else:
