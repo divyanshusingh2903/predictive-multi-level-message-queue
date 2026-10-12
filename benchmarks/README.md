@@ -291,3 +291,51 @@ python -m benchmarks.merge_split_run <run dir>
 
 A 30-second local check (seed 11, `predictive`, both processes on one machine) matched the embedded run: same counts,
 no lost work, mean latency within 4% and P99 within 1%.
+
+### Production queues: RabbitMQ and Redis (#37)
+
+Four more arms send the same jobs, from the same producers to the same workers and handlers, through other brokers
+(`benchmarks/broker_adapters.cpp`):
+
+| Arm | Broker and setup |
+|---|---|
+| `rabbitmq_fifo` | One classic queue, transient messages, no publisher confirms, manual ack, prefetch 1 |
+| `rabbitmq_priority` | The same queue with `x-max-priority=3`; each job type's tier from the `static_tuned` map (tier *t* is priority 2 − *t*). No aging. |
+| `rabbitmq_predictive` | As `rabbitmq_priority`, but tiers come from a predictor sidecar in the client process |
+| `redis_fifo` | Reliable list queue: `LPUSH`, `BLMOVE` into a per-worker processing list, `LREM` on success |
+
+**Predictor sidecar.** `rabbitmq_predictive` runs the broker's own `PerKeyPredictor`, with its default settings and
+key rule (service + job type, like a producer-scoped `job_type`).
+- It predicts at publish time and learns only from successful attempts, in whole milliseconds, as the broker does.
+- RabbitMQ has no lease, so nothing is censored.
+
+**Retries.** A failed attempt is retried on every broker, but the requeue differs:
+- RabbitMQ requeues a nacked message near the head of the queue.
+- Redis moves it back to the tail.
+- Harbinger requeues it at its original priority.
+
+**How to run.** These arms need a build with `-DHARBINGER_BUILD_BROKER_ADAPTERS=ON` (rabbitmq-c and hiredis) and
+`--broker HOST:PORT`. They write `run.json` directly, recording the server and client library versions, and the
+sidecar's counters under `broker.routing`. Each run empties the queue first; restart the broker between runs, as for
+Harbinger.
+
+**Docker.** [`docker/Dockerfile`](docker/Dockerfile) builds one image on a pinned Ubuntu 24.04. It holds the benchmark
+and both brokers in the versions #37 freezes: RabbitMQ 3.12.1, Redis 7.0.15, rabbitmq-c 0.11.0, hiredis 1.2.0.
+
+```bash
+docker build -f benchmarks/docker/Dockerfile -t harbinger-bench .
+docker run -d --rm --name rabbit --network host harbinger-bench rabbitmq   # AMQP on 5672, non-persistent use
+docker run -d --rm --name redis --network host harbinger-bench redis      # no RDB/AOF
+docker run --rm --network host -v "$PWD/out":/out harbinger-bench \
+  harbinger_prodflow --arm rabbitmq_fifo --broker 127.0.0.1:5672 --seed 11 --out /out/rabbitmq_fifo
+docker run --rm harbinger-bench versions    # package versions inside the image
+```
+
+Host networking keeps Docker off the network path. The end-to-end tests in `tests/test_broker_adapters.py` run when
+`HARBINGER_RABBITMQ` and `HARBINGER_REDIS` name running servers.
+
+A 30-second local smoke run (seed 11, 4 workers, rate scale 1.8; not a registered result):
+- **FIFO:** Harbinger, RabbitMQ and Redis gave the same mean latency within 4% (2.98–3.11 s).
+- **Retries:** all three retried the same 12 failed webhook attempts.
+- **`rabbitmq_priority`:** short jobs at a 22 ms median, but the longest export wait grew to 14 s.
+- **Sidecar:** 9 µs per lookup.

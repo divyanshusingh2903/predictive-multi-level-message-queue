@@ -8,16 +8,26 @@
 // arm's broker until SIGINT/SIGTERM and then writes broker.json; `--role client --broker HOST:PORT` runs producers
 // and workers against it and writes client.json. benchmarks/merge_split_run.py joins the two into run.json. Every
 // latency timestamp is taken on the client host, so the hosts' clocks never mix.
+//
+// Production queues (#37): arms rabbitmq_fifo, rabbitmq_priority, rabbitmq_predictive and redis_fifo send the same
+// jobs through RabbitMQ or Redis (benchmarks/broker_adapters.hpp) with the same producers, workers and handlers.
+// They need --broker HOST:PORT and a build with HARBINGER_BUILD_BROKER_ADAPTERS; they write run.json directly.
 #include "harbinger_service.hpp"
 #include "benchmark/hooks.hpp"
 #include "consumer/consumer.hpp"
 #include "producer/producer.hpp"
 #include "config_file.hpp"
+#include "ml/duration_predictor.hpp"
+#include "ml/predictive_routing.hpp"
+#ifdef HARBINGER_BROKER_ADAPTERS
+#include "broker_adapters.hpp"
+#endif
 
 #include <grpcpp/grpcpp.h>
 #include <zlib.h>
 
 #include <algorithm>
+#include <array>
 #include <atomic>
 #include <cmath>
 #include <cstdio>
@@ -26,6 +36,7 @@
 #include <iostream>
 #include <map>
 #include <mutex>
+#include <optional>
 #include <csignal>
 #include <pthread.h>
 #include <random>
@@ -327,6 +338,72 @@ struct Record {
     std::atomic<bool> done{false};
 };
 
+/// Arms that send through RabbitMQ or Redis instead of Harbinger.
+const std::vector<std::string> kExternalArms{"rabbitmq_fifo", "rabbitmq_priority", "rabbitmq_predictive", "redis_fifo"};
+bool is_external(const std::string& arm) {
+    return std::find(kExternalArms.begin(), kExternalArms.end(), arm) != kExternalArms.end();
+}
+
+/// rabbitmq_predictive (#37): the broker's own predictor and key rule, run next to the producers and workers so the
+/// scheduling idea can be tried on another broker. The key is service + job type, as the broker scopes job_type by
+/// producer and each service is one producer here. It predicts at publish and learns only from successful attempts,
+/// with the duration in whole milliseconds as the Consumer reports it to the broker. RabbitMQ has no lease, so
+/// nothing is censored. Unpredicted messages get the broker's default tier.
+class PredictorSidecar {
+public:
+    PredictorSidecar() : predictor_(predictor_config()) {}
+
+    uint8_t tier(const Job& job) {
+        const auto start = Clock::now();
+        const auto key = key_for(job);
+        auto status = ml::PredictionStatus::InvalidKey;
+        uint8_t tier = kDefaultTier;
+        if (key) {
+            const auto p = predictor_.predict(*key);
+            status = p.status;
+            if (p.status == ml::PredictionStatus::Predicted) tier = p.bucket;
+        }
+        lookups_.fetch_add(1);
+        routed_.fetch_add(status == ml::PredictionStatus::Predicted);
+        outcomes_[static_cast<std::size_t>(status)].fetch_add(1);
+        lookup_ns_.fetch_add(static_cast<uint64_t>(std::chrono::duration_cast<std::chrono::nanoseconds>(Clock::now() - start).count()));
+        return tier;
+    }
+
+    void learn(const Job& job, int64_t processing_ms) {
+        if (const auto key = key_for(job)) learned_.fetch_add(predictor_.observe(*key, static_cast<double>(processing_ms)));
+    }
+
+    std::string stats_json() const {
+        std::ostringstream o;
+        const auto lookups = lookups_.load();
+        o << "{\"enabled\":true,\"sidecar\":true,\"lookups\":" << lookups << ",\"routed\":" << routed_.load()
+          << ",\"learned\":" << learned_.load() << ",\"keys\":" << predictor_.stats().keys
+          << ",\"lookup_mean_us\":" << (lookups ? static_cast<double>(lookup_ns_.load()) / static_cast<double>(lookups) / 1e3 : 0.0)
+          << ",\"outcomes\":{";
+        for (std::size_t s = 0; s < outcomes_.size(); ++s)
+            o << (s ? "," : "") << '"' << ml::to_string(static_cast<ml::PredictionStatus>(s)) << "\":" << outcomes_[s].load();
+        o << "}}";
+        return o.str();
+    }
+
+private:
+    static constexpr uint8_t kDefaultTier = 1;
+    static ml::PerKeyPredictorConfig predictor_config() {
+        ml::PerKeyPredictorConfig config;  // the broker's defaults, as in its predictive arm
+        config.num_levels = 3;
+        config.default_priority = kDefaultTier;
+        return config;
+    }
+    static std::optional<std::string> key_for(const Job& job) {
+        return ml::derive_predictor_key({{"__producer_id", job.service}, {"job_type", job.type}}, ml::PredictorKeyPolicy{});
+    }
+
+    ml::PerKeyPredictor predictor_;
+    std::atomic<uint64_t> lookups_{0}, routed_{0}, learned_{0}, lookup_ns_{0};
+    std::array<std::atomic<uint64_t>, ml::kPredictionStatusCount> outcomes_{};
+};
+
 /// The broker configuration of one arm; the same in the embedded and the broker-only role.
 HarbingerConfig arm_config(const std::string& arm) {
     HarbingerConfig config;
@@ -403,9 +480,16 @@ int main(int argc, char** argv) try {
     if (!usage_ok)
         throw std::invalid_argument("usage: harbinger_prodflow --arm fifo|static_tuned|static_misconfigured|shadow|"
             "predictive|predictive_p75|predictive_producer|predictive_sized|predictive_weighted|oracle --seed N --out NEW_DIR [--seconds 300] [--workers 4] [--rate-scale 1] [--drain-s 180]\n"
+            "       harbinger_prodflow --arm rabbitmq_fifo|rabbitmq_priority|rabbitmq_predictive|redis_fifo --broker HOST:PORT --seed N --out NEW_DIR [options above]\n"
             "       harbinger_prodflow --role broker --arm ARM --out NEW_DIR [--listen 0.0.0.0:50051]\n"
             "       harbinger_prodflow --role client --broker HOST:PORT --arm ARM --seed N --out NEW_DIR [options above]");
     const std::string arm = args["--arm"];
+    const bool external = is_external(arm);
+    if (external && (role == "broker" || !args.contains("--broker")))
+        throw std::invalid_argument(arm + " runs against a RabbitMQ or Redis server: use --broker HOST:PORT, not --role broker");
+#ifndef HARBINGER_BROKER_ADAPTERS
+    if (external) throw std::invalid_argument(arm + " needs a build with -DHARBINGER_BUILD_BROKER_ADAPTERS=ON");
+#endif
     if (role == "broker")
         return run_broker(arm, args.contains("--listen") ? args["--listen"] : "0.0.0.0:50051", fresh_dir(args["--out"]));
     const uint64_t seed = std::stoull(args["--seed"]);
@@ -413,7 +497,8 @@ int main(int argc, char** argv) try {
     const int workers = args.contains("--workers") ? std::stoi(args["--workers"]) : 4;
     const double rate_scale = args.contains("--rate-scale") ? std::stod(args["--rate-scale"]) : 1.0;
     const double drain_s = args.contains("--drain-s") ? std::stod(args["--drain-s"]) : 180;
-    const auto config = arm_config(arm);  // validates the arm before any work
+    std::optional<HarbingerConfig> config;
+    if (!external) config = arm_config(arm);  // validates the arm before any work
     const auto out = fresh_dir(args["--out"]);
 
     const auto cal = calibrate();
@@ -428,8 +513,10 @@ int main(int argc, char** argv) try {
     std::unique_ptr<grpc::Server> server;
     std::string address;
     std::unique_ptr<harbinger_rpc::Broker::Stub> remote;
-    if (role == "all") {
-        service = std::make_unique<HarbingerService>(config);
+    if (external) {
+        address = args["--broker"];
+    } else if (role == "all") {
+        service = std::make_unique<HarbingerService>(*config);
         int port = 0;
         grpc::ServerBuilder builder;
         builder.AddListeningPort("127.0.0.1:0", grpc::InsecureServerCredentials(), &port);
@@ -449,6 +536,7 @@ int main(int argc, char** argv) try {
     auto last_dlq_poll = Clock::now() - std::chrono::seconds{1};
     const auto dlq_size = [&]() -> uint64_t {
         if (service) return service->dlq_size();
+        if (!remote) return 0;  // RabbitMQ and Redis retry failures; nothing is dead-lettered
         if (Clock::now() - last_dlq_poll >= std::chrono::seconds{1}) {
             grpc::ClientContext context;
             context.set_deadline(std::chrono::system_clock::now() + std::chrono::seconds{5});
@@ -463,28 +551,45 @@ int main(int argc, char** argv) try {
 
     std::vector<Record> records(jobs.size());
     std::atomic<std::size_t> completed{0};
+    std::unique_ptr<PredictorSidecar> sidecar;
+    if (arm == "rabbitmq_predictive") sidecar = std::make_unique<PredictorSidecar>();
+    // One delivery of job seq, whichever broker carried it; true acknowledges it.
+    const auto handle = [&](uint64_t seq) -> bool {
+        auto& record = records[seq];
+        const int attempt = record.attempts.fetch_add(1) + 1;
+        const auto start = now_ns();
+        if (attempt == 1) record.first_start_ns = start;
+        record.start_ns = start;
+        const bool ok = execute(jobs[seq], attempt);
+        const auto end = now_ns();
+        record.handler_ms = static_cast<double>(end - start) / 1e6;
+        if (ok) {
+            record.end_ns = end;
+            if (!record.done.exchange(true)) completed.fetch_add(1);
+            if (sidecar) sidecar->learn(jobs[seq], (end - start) / 1'000'000);
+        }
+        return ok;
+    };
     std::vector<std::shared_ptr<Consumer>> consumers;
-    for (int w = 0; w < workers; ++w) {
-        consumers.push_back(Consumer::connect(address, [&](const ReceivedMessage& message) {
-            const auto found = message.headers.find("bench_seq");
-            const auto seq = std::stoull(found->second);
-            auto& record = records[seq];
-            const int attempt = record.attempts.fetch_add(1) + 1;
-            const auto start = now_ns();
-            if (attempt == 1) record.first_start_ns = start;
-            record.start_ns = start;
-            const bool ok = execute(jobs[seq], attempt);
-            const auto end = now_ns();
-            record.handler_ms = static_cast<double>(end - start) / 1e6;
-            if (ok) {
-                record.end_ns = end;
-                if (!record.done.exchange(true)) completed.fetch_add(1);
-                return AckResult::SUCCESS;
-            }
-            return AckResult::FAILURE;
-        }, std::chrono::milliseconds{200}));
+    if (!external) {
+        for (int w = 0; w < workers; ++w) {
+            consumers.push_back(Consumer::connect(address, [&](const ReceivedMessage& message) {
+                const auto found = message.headers.find("bench_seq");
+                return handle(std::stoull(found->second)) ? AckResult::SUCCESS : AckResult::FAILURE;
+            }, std::chrono::milliseconds{200}));
+        }
+        for (auto& c : consumers) c->start();
     }
-    for (auto& c : consumers) c->start();
+#ifdef HARBINGER_BROKER_ADAPTERS
+    const auto kind = arm.starts_with("redis_") ? bench::BrokerKind::Redis : bench::BrokerKind::RabbitMq;
+    std::string server_version;
+    std::unique_ptr<bench::Workers> external_workers;
+    if (external) {
+        const auto endpoint = bench::parse_endpoint(address);
+        server_version = bench::prepare_queue(kind, endpoint, arm != "rabbitmq_fifo" && arm != "redis_fifo");
+        external_workers = bench::start_workers(kind, endpoint, workers, handle);
+    }
+#endif
 
     // One producer connection per service, as separate deployments would have.
     std::map<std::string, std::vector<std::size_t>> by_service;
@@ -494,6 +599,25 @@ int main(int argc, char** argv) try {
     std::atomic<uint64_t> submit_errors{0};
     for (const auto& [name, sequence] : by_service) {
         producers.emplace_back([&, name, sequence] {
+#ifdef HARBINGER_BROKER_ADAPTERS
+            if (external) {
+                const auto publisher = bench::make_publisher(kind, bench::parse_endpoint(address));
+                for (const auto seq : sequence) {
+                    const auto& job = jobs[seq];
+                    std::this_thread::sleep_until(origin + std::chrono::microseconds(job.at_us));
+                    std::optional<uint8_t> tier;
+                    if (arm == "rabbitmq_priority") tier = kTunedTiers.at(job.type);
+                    else if (sidecar) tier = sidecar->tier(job);
+                    records[seq].submit_ns = now_ns();
+                    try {
+                        publisher->publish(seq, job.payload, tier);
+                    } catch (...) {
+                        submit_errors.fetch_add(1);
+                    }
+                }
+                return;
+            }
+#endif
             auto producer = Producer::connect(address);
             for (const auto seq : sequence) {
                 const auto& job = jobs[seq];
@@ -520,6 +644,13 @@ int main(int argc, char** argv) try {
         std::this_thread::sleep_for(std::chrono::milliseconds{50});
     const auto stats = service ? stats_json(*service) : std::string{};
     for (auto& c : consumers) c->stop();
+    std::string worker_error;
+#ifdef HARBINGER_BROKER_ADAPTERS
+    if (external_workers) {
+        external_workers->stop();
+        worker_error = external_workers->error();
+    }
+#endif
     if (server) server->Shutdown(std::chrono::system_clock::now() + std::chrono::seconds{2});
 
     std::ofstream tsv(out / "messages.tsv");
@@ -538,7 +669,7 @@ int main(int argc, char** argv) try {
     // from broker.json.
     last_dlq_poll = Clock::now() - std::chrono::seconds{1};
     const auto dlq = dlq_size();
-    std::ofstream run(out / (service ? "run.json" : "client.json"));
+    std::ofstream run(out / (service || external ? "run.json" : "client.json"));
     run << "{\"benchmark\":\"prodflow-v1\",\"arm\":\"" << arm << "\",\"seed\":" << seed << ",\"seconds\":" << seconds
         << ",\"workers\":" << workers << ",\"rate_scale\":" << rate_scale
         << ",\"size_hint_header\":\"" << kSizeHintHeader << "\"" << ",\"messages\":" << jobs.size()
@@ -548,12 +679,23 @@ int main(int argc, char** argv) try {
         << ",\"calibration_ms_per_unit\":{\"render_kb\":" << cal.render_kb << ",\"invoice_item\":" << cal.invoice_item
         << ",\"resize_mp\":" << cal.resize_mp << ",\"reindex_word\":" << cal.reindex_word
         << ",\"export_chunk\":" << cal.export_chunk << "}";
-    if (service) run << ",\"broker\":" << stats;
-    else run << ",\"role\":\"client\",\"broker_address\":\"" << address << "\"";
+    if (service) {
+        run << ",\"broker\":" << stats;
+    } else if (external) {
+#ifdef HARBINGER_BROKER_ADAPTERS
+        run << ",\"broker_address\":\"" << address << "\",\"broker\":{\"kind\":\""
+            << (kind == bench::BrokerKind::Redis ? "redis" : "rabbitmq") << "\",\"server_version\":\"" << server_version
+            << "\",\"client_library\":\"" << bench::client_library(kind) << "\",\"routing\":"
+            << (sidecar ? sidecar->stats_json() : std::string{"{\"enabled\":false}"}) << "}";
+#endif
+        if (!worker_error.empty()) run << ",\"worker_error\":\"" << worker_error << "\"";
+    } else {
+        run << ",\"role\":\"client\",\"broker_address\":\"" << address << "\"";
+    }
     run << "}\n";
     std::cout << "[prodflow] arm=" << arm << " seed=" << seed << " messages=" << jobs.size()
               << " completed=" << completed.load() << " dlq=" << dlq << '\n';
-    return completed.load() == jobs.size() ? 0 : 3;
+    return completed.load() == jobs.size() && worker_error.empty() ? 0 : 3;
 } catch (const std::exception& error) {
     std::cerr << "[prodflow] " << error.what() << '\n';
     return 2;

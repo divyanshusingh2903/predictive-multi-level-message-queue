@@ -6,6 +6,7 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON CACHE BOOL "Export compiler commands for ed
 set(HARBINGER_SANITIZER "" CACHE STRING "Sanitizer to enable: address, undefined, or thread")
 option(HARBINGER_BUILD_BENCHMARKS "Build cleanup and synthetic scheduling benchmarks" OFF)
 option(HARBINGER_WARNINGS_AS_ERRORS "Treat first-party compiler warnings as errors" OFF)
+option(HARBINGER_BUILD_BROKER_ADAPTERS "Build the production-flow benchmark with RabbitMQ and Redis adapters (needs rabbitmq-c and hiredis; see benchmarks/docker)" OFF)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
