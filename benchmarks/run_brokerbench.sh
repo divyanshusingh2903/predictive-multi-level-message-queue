@@ -4,6 +4,7 @@
 #   IMAGE        benchmark image (default harbinger-bench; see benchmarks/docker)
 #   BROKER_SSH   run the broker containers on another host over ssh (e.g. ubuntu@10.0.0.5); default: this host
 #   BROKER_HOST  address the clients use for the broker (default 127.0.0.1)
+#   SSH          ssh command (default ssh)
 # Results: RESULTS_DIR/rep-<r>/<kind>/rate-<rate>.json; analyse with python -m benchmarks.brokerbench_report.
 set -euo pipefail
 config=$1; results=$2
@@ -13,7 +14,7 @@ field() { python3 -c "import json,sys;v=json.load(open('$config'))['$1'];print('
 read -r -a kinds <<< "$(field kinds)"; read -r -a rates <<< "$(field rates)"
 reps=$(field repetitions); seconds=$(field seconds); warmup=$(field warmup_s); drain=$(field drain_s)
 producers=$(field producers); consumers=$(field consumers); payload=$(field payload_bytes)
-broker() { if [ -n "${BROKER_SSH:-}" ]; then ssh "$BROKER_SSH" "$@"; else "$@"; fi; }
+broker() { if [ -n "${BROKER_SSH:-}" ]; then ${SSH:-ssh} "$BROKER_SSH" "$*"; else "$@"; fi; }
 port_of() { case $1 in harbinger) echo 50051;; rabbitmq) echo 5672;; redis) echo 6379;; esac; }
 start_broker() {
   local kind=$1 port; port=$(port_of "$kind")

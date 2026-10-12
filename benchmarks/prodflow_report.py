@@ -7,7 +7,12 @@ values exactly as frozen in CONFIG; nothing here is tuned after seeing predictiv
 
 A criterion's metric is any key of the per-run metrics, including the per-class keys "class_mean_ms:<job_type>" and
 "shifted_class_mean_ms:<job_type>" (mean latency in the shifted phase) and, when CONFIG lists "sized_classes",
-"unsized_mean_ms" (mean latency of every other job type).
+"unsized_mean_ms" (mean latency of every other job type) and, when CONFIG sets "phase_metrics", "phase_mean_ms:<phase>"
+(steady, ramp, flash_sale, recovery, shifted).
+
+A criterion with "every_seed": true needs no interval: it passes when the relative delta meets its limit in every seed
+(at or under "max_relative_delta", or within ±"max_abs_relative_delta"). It is meant for runs with too few repetitions
+for a bootstrap. A config with an empty "gate" is descriptive and reports no gate.
 """
 from __future__ import annotations
 
@@ -71,6 +76,9 @@ def metrics(run: dict, rows: list[dict], config: dict) -> dict:
     if "sized_classes" in config:
         unsized = [latency[int(r["seq"])] for r in done if r["job_type"] not in config["sized_classes"]]
         per_class_keys["unsized_mean_ms"] = statistics.mean(unsized) if unsized else None
+    if config.get("phase_metrics"):  # "phase_mean_ms:<phase>" for criteria on one phase, e.g. after the shift
+        for name, cohort in cohorts.items():
+            per_class_keys[f"phase_mean_ms:{name}"] = cohort["mean_ms"]
     return {
         **per_class_keys,
         "messages": len(rows), "completed": len(done), "dlq": run["dlq"], "submit_errors": run["submit_errors"],
@@ -117,6 +125,15 @@ def evaluate(config: dict, table: dict) -> dict:
         pairs = [(table[arm][s][metric], table[baseline][s][metric]) for s in seeds]
         if any(a is None or c is None or c == 0 for a, c in pairs):
             results[name] = {"status": "unevaluable"}
+            continue
+        if rule.get("every_seed"):
+            deltas = [(a - c) / c for a, c in pairs]
+            if "max_abs_relative_delta" in rule:
+                ok = all(abs(d) <= rule["max_abs_relative_delta"] for d in deltas)
+            else:
+                ok = all(d <= rule["max_relative_delta"] for d in deltas)
+            results[name] = {"status": "pass" if ok else "fail", "kind": "every_seed", "deltas": deltas,
+                             "seeds": len(seeds)}
             continue
         if "max_ratio" in rule or "min_ratio" in rule:
             point, ci = bootstrap([a / c for a, c in pairs], b["samples"], b["seed"], b["confidence"])
@@ -177,8 +194,13 @@ def report(config: dict, table: dict, evaluation: dict) -> str:
         shown = (f"{point:+.1%}" if result.get("kind") == "relative_delta" else f"{point:.2f}{suffix}") if point is not None else "–"
         interval = (f"[{ci[0]:+.1%}, {ci[1]:+.1%}]" if result.get("kind") == "relative_delta" else
                     f"[{ci[0]:.2f}, {ci[1]:.2f}]") if ci else "–"
+        if result.get("kind") == "every_seed":
+            shown, interval = ", ".join(f"{d:+.1%}" for d in result["deltas"]), "each seed"
         lines.append(f"| {name} | {who} | {shown} | {interval} | **{result['status']}** |")
-    lines += ["", f"**Gate ({', '.join(config['gate'])}): {'PASSED' if evaluation['gate_passed'] else 'NOT PASSED'}.**", ""]
+    if config["gate"]:
+        lines += ["", f"**Gate ({', '.join(config['gate'])}): {'PASSED' if evaluation['gate_passed'] else 'NOT PASSED'}.**", ""]
+    else:
+        lines += ["", "**No gate: this configuration is descriptive.**", ""]
     classes = sorted(next(iter(table[arms[0]].values()))["per_class"])
     lines += ["## Per-class P50 / P99 latency (ms, median across seeds)", "",
               "| Class | " + " | ".join(arms) + " |", "|---|" + "---|" * len(arms)]
