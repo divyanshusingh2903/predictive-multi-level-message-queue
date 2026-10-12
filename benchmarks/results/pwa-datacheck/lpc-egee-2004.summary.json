@@ -1,0 +1,21 @@
+{
+ "format": "harbinger-trace-v1",
+ "sha256": "f360ce215dab244989e62bcf1adc2f5d473e21ad21eef8155b70ce5a19f755a1",
+ "rows": 214322,
+ "keys": 219,
+ "span_ms": 20618941000.0,
+ "work_ms": 705375722000.0,
+ "rows_with_size": 214322,
+ "source": "pwa",
+ "source_rows": 234889,
+ "key": "user,queue",
+ "max_processors": 1,
+ "completed_only": false,
+ "dropped_no_run_time": 20567,
+ "status_counts": {
+  "0": 10490,
+  "1": 207825,
+  "5": 16574
+ },
+ "rows_with_requested_time": 214322
+}

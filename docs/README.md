@@ -21,6 +21,7 @@ The operational guides below describe the core broker and implemented Phase 2 fe
 | [Online predictors](online-predictor.md) | Literature, incremental regressors, delayed evaluation, readiness/fallback and selection evidence |
 | [v2 pre-registration](v2-preregistration.md) | Frozen hypotheses, workloads, arms and pass/fail criteria for the production-flow benchmark and the Azure trace simulation |
 | [v3-traces pre-registration](v3-traces-preregistration.md) | Frozen rules, arms and gates for simulating real traces (Huawei 2025, Azure 2021) under common rules (#46) |
+| [v3-traces-2 pre-registration](v3-traces-2-preregistration.md) | Frozen arms and gates for two Parallel Workloads Archive logs whose keys predict poorly (the limits experiment, #46) |
 | [v3-brokers pre-registration](v3-brokers-preregistration.md) (draft) | Harbinger vs RabbitMQ and Redis on the production flow (E3) and broker cost (E4), run on AWS (#37) |
 | [v3-cloud pre-registration](v3-cloud-preregistration.md) (draft) | v2 replication on AWS (E1) and the 30-minute two-host run with a mid-run change (E2) (#26) |
 | [AWS runbook](../benchmarks/cloud/README.md) | Launch, debug pass, freeze, registered runs and teardown for E1–E4 |
