@@ -1,0 +1,18 @@
+started 2026-10-12T06:45:33Z
+commit 45977b02987e5f4600c16f9d48aae6596a67975b (binary sources identical to HEAD; working tree: 8 uncommitted paths)
+fbad3d67fb6e76b346ab8ffd82ed82252cc185bb49aaf7d071ed358439828cb0  /home/divyanshu-singh/data/rerun-2026-10-12/harbinger_prodflow
+b272b6d4e939cbc63bfcb304a1b6181e0cbd6bf01a9ef8a152e5c9ed665a09d5  /home/divyanshu-singh/data/rerun-2026-10-12/harbinger_trace_sim
+build CMAKE_BUILD_TYPE:STRING=Release
+CPU(s):                                  16
+Model name:                              11th Gen Intel(R) Core(TM) i7-11800H @ 2.30GHz
+Thread(s) per core:                      2
+Core(s) per socket:                      8
+CPU(s) scaling MHz:                      75%
+CPU max MHz:                             2300.0000
+governor powersave epp performance no_turbo 1 profile performance
+ac_online 1
+Mem:            14Gi       5.0Gi       7.6Gi       1.3Gi       3.9Gi       9.8Gi
+7.0.0-38-generic
+Ubuntu 26.04.1 LTS
+load 0.91 0.57 0.58 1/1243 53045
+finished 2026-10-12T13:01:13Z

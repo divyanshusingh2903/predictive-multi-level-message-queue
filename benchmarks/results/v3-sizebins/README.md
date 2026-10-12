@@ -1,5 +1,7 @@
 # Size-binned keys under load (`v3-sizebins-1`, issue #39)
 
+**Re-run (2026-10-12).** On a quiet machine every criterion kept its verdict, with much narrower intervals (P1 +0.7% [+0.5, +0.9]). See [rerun-2026-10-12](../rerun-2026-10-12/README.md).
+
 Pre-registered in [docs/v3-sizebins-preregistration.md](../../../docs/v3-sizebins-preregistration.md) (frozen in commit
 `3c4762c` before any registered run).
 
