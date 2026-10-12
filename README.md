@@ -38,7 +38,7 @@ Evidence so far, and the resulting Phase 2 plan:
 - **Shortest-job-first trade-off.** With a non-preemptive scheduler, prioritizing short jobs lowers median latency (about 40–60% in the bimodal cells) and leaves P95 flat or makes P99 worse when long jobs are a large fraction of messages. Reordering cannot reduce a long job's own service time. Primary metrics are therefore per-class percentiles, slowdown, mean latency, and long-job starvation, with all-message P99 as a guardrail.
 - **Predictor: per-key duration statistics, in C++.** Each message has a *key*: the broker-assigned producer id, optionally joined to a producer-supplied `job_type` header (there is no queue/topic name; the broker is one logical queue). The broker keeps a decaying duration histogram per key plus a global histogram, estimates a message's duration from its key at ingress inside `route_message()`, and maps it to a tier using boundaries derived from global quantiles. Cold or high-variance keys use the middle tier; aging is unchanged. Only successful, non-replayed handler durations are learned. Per-key state is bounded in memory.
 - **Statistics, not machine learning.** In an offline comparison (issue #5), none of eight candidates passed every frozen quality gate. The candidates were learned models (River regressors and trees) and simple statistics (per-key means, EWMA). The broker therefore uses the simplest option, per-key statistics, which then passed the v2 production-flow gate. It serves no learned model. Python code lives in [`analysis/`](analysis/README.md) as offline tooling and never runs with the broker. Learned models would be reconsidered only if real workloads show the per-key statistics losing.
-- **Not yet shown.** Generalization beyond one real trace and one synthetic production workload, and comparison with production queues (RabbitMQ, Redis). Predictive routing stays opt-in.
+- **Not yet shown.** Generalization beyond one real trace and one synthetic production workload, and comparison with production queues (RabbitMQ, Redis). Both are planned in Phase 3 ([evaluation plan](https://github.com/divyanshusingh2903/predictive-multi-level-message-queue/issues/46)). Predictive routing stays opt-in.
 
 ---
 
@@ -73,7 +73,7 @@ Producer::send()
 - **Consumers are tier-blind** — the broker picks which message each `Pull()` receives; consumers never see queue levels.
 - **Proxy is narrowly scoped** — stamps ID and `arrival_time`, stores `producer_id` in headers, then hands off to `route_message()`.
 - **In-flight tracking** — messages are held in an `unordered_map` between `Pull` and `Ack/Nack`; on `Nack` they are re-queued or DLQ'd.
-- **Phase 2 hook** — `route_message()` in `harbinger_service.cpp` is the single injection point for the planned per-key duration predictor; opt-in feedback persists accepted `processing_time_ms` observations and actual outcomes without changing delivery semantics. Offline learners consume validated temporal exports; the C++ [per-key predictor](docs/duration-predictor.md) exists but is not connected to the broker yet.
+- **Phase 2 hook** — `route_message()` in `harbinger_service.cpp` is the single injection point for the per-key duration predictor; opt-in feedback persists accepted `processing_time_ms` observations and actual outcomes without changing delivery semantics. The C++ [per-key predictor](docs/duration-predictor.md) runs there in shadow or opt-in predictive mode; offline tooling consumes validated temporal exports.
 - **`harbinger_rpc` proto package** — kept distinct from the `harbinger` C++ namespace to avoid symbol collisions.
 
 ---
@@ -361,11 +361,33 @@ The [Phase 2 tracker](https://github.com/divyanshusingh2903/predictive-multi-lev
 - [x] v2 activation gate: passed on the production-flow benchmark; not passed on the Azure trace simulation ([Phase 2 report](docs/phase2-report.md))
 - [x] Opt-in worker-time level weights with pausing aging for sustained overload ([v3-aging-1](benchmarks/results/v3-aging/README.md), #40)
 
-### Phase 3 — Benchmarking & validation
-- [ ] Expand synthetic workload coverage beyond the Phase 2 activation gate
-- [ ] Real-world data: public traces (e.g. Azure Functions invocation trace, BurstGPT) and self-generated cloud runs with real handlers
-- [ ] Extend FIFO/static-priority/round-robin comparisons to real trace workloads
-- [ ] Comparison against Kafka, RabbitMQ, Pulsar
+### Phase 3 — Benchmarking & validation (in progress)
+
+The [evaluation plan](https://github.com/divyanshusingh2903/predictive-multi-level-message-queue/issues/46) lists every experiment, and the [pre-AWS build](https://github.com/divyanshusingh2903/predictive-multi-level-message-queue/issues/47) lists the work they need first. Each experiment is pre-registered before its first run. The Azure Functions 2021 trace simulation and the production-flow benchmark from Phase 2 are the baseline.
+
+**Build (#47)**
+- [x] Split-broker benchmark mode, so the broker and the clients run on separate hosts
+- [ ] RabbitMQ and Redis adapters, and a predictor sidecar for RabbitMQ
+- [ ] A common trace format and converters for the new datasets (format, Azure and Huawei converters done)
+- [ ] Pre-registrations: `v3-cloud`, `v3-brokers`, `v3-traces` ([`v3-traces-1`](docs/v3-traces-preregistration.md) frozen for Huawei 2025 and Azure 2021)
+- [ ] AWS runbook and scripts, with spend caps
+
+**Cloud runs on AWS** (`c8i.xlarge` broker host, `c8i.2xlarge` client host)
+- [ ] E1: the v2 production-flow matrix replicated on cloud hardware
+- [ ] E2 ([#26](https://github.com/divyanshusingh2903/predictive-multi-level-message-queue/issues/26)): a 30-minute run with the broker on its own host over a real network, including the mid-run job-mix shift
+- [ ] E3 ([#37](https://github.com/divyanshusingh2903/predictive-multi-level-message-queue/issues/37)): scheduling outcome on the same workload against RabbitMQ (FIFO, static priority, predictive via a sidecar) and Redis (FIFO)
+- [ ] E4 ([#37](https://github.com/divyanshusingh2903/predictive-multi-level-message-queue/issues/37)): broker cost — throughput and latency with empty handlers for Harbinger, RabbitMQ and Redis
+
+**Trace simulations on new public datasets**
+- [ ] Huawei Cloud 2025 serverless request traces: a second serverless provider
+- [ ] Parallel Workloads Archive (HPC): learned per-key estimates against users' own runtime estimates
+- [ ] Alibaba GPU 2020 (PAI): recurring jobs lasting minutes to hours
+
+**Out of scope:**
+- Kafka: it is a log, with no per-message priority.
+- Pulsar.
+- Managed cloud queues such as SQS.
+- Durable broker modes.
 
 ### Phase 4 — Enhancements (optional)
 - [ ] Streaming mode (persistent events, multi-consumer replay)
@@ -389,7 +411,7 @@ The [Phase 2 tracker](https://github.com/divyanshusingh2903/predictive-multi-lev
 
 - **Core:** C++20 — concepts, `std::atomic`, lock-free where possible, header-only libraries preferred
 - **IPC:** gRPC + Protocol Buffers
-- **Predictor:** C++ per-key duration statistics inside the broker (planned)
+- **Predictor:** C++ per-key duration statistics inside the broker
 - **Offline evaluation:** Python — delayed-feedback replay and metrics; pinned River 0.22.0 candidates and dependency-free baselines (implemented)
 - **Tests:** GoogleTest (fetched via CMake `FetchContent`)
 - **Metrics (planned):** Prometheus / StatsD

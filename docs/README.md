@@ -20,6 +20,7 @@ The operational guides below describe the core broker and implemented Phase 2 fe
 | [Per-key duration predictor](duration-predictor.md) | The in-process C++ predictor, bounds, fallbacks, replay CLI and what is not yet wired into the broker |
 | [Online predictors](online-predictor.md) | Literature, incremental regressors, delayed evaluation, readiness/fallback and selection evidence |
 | [v2 pre-registration](v2-preregistration.md) | Frozen hypotheses, workloads, arms and pass/fail criteria for the production-flow benchmark and the Azure trace simulation |
+| [v3-traces pre-registration](v3-traces-preregistration.md) | Frozen rules, arms and gates for simulating real traces (Huawei 2025, Azure 2021) under common rules (#46) |
 | [Phase 2 report](phase2-report.md) | Results, gate verdicts, limitations, operating and rollback guidance |
 | [Validation plan](phase2-validation.md) | Baselines, workloads, metrics, proposed gates, and activation/rollback criteria |
 
