@@ -50,7 +50,7 @@ if(Python3_Interpreter_FOUND)
         -m unittest discover -s analysis/tests -v)
     set_tests_properties(ml_feature_python_tests PROPERTIES
         WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}" TIMEOUT 60
-        ENVIRONMENT "HARBINGER_PREDICTOR_REPLAY=$<TARGET_FILE:harbinger_predictor_replay>")
+        ENVIRONMENT "HARBINGER_PREDICTOR_REPLAY=$<TARGET_FILE:harbinger_predictor_replay>;HARBINGER_TRACE_SIM=$<TARGET_FILE:harbinger_trace_sim>")
 endif()
 
 if(UNIX)

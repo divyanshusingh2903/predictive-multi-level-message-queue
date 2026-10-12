@@ -1,7 +1,11 @@
 import random
 import unittest
 
-from analysis.trace_analysis import analyse
+from pathlib import Path
+import tempfile
+
+from analysis.trace_analysis import analyse, harbinger
+from analysis.trace_format import Row, write
 
 
 def rows(seed=1, n=6000):
@@ -33,6 +37,11 @@ class TraceAnalysis(unittest.TestCase):
         with self.assertRaises(ValueError):
             analyse(rows(n=50))
 
+    def test_reads_the_common_trace_format(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "t.csv"
+            write(path, [Row(1500.0, "a", 20.0), Row(2500.0, "b", 3.5)])
+            self.assertEqual(list(harbinger(path)), [(1.5, "a", 20.0), (2.5, "b", 3.5)])
 
 if __name__ == "__main__":
     unittest.main()

@@ -71,6 +71,7 @@ benchmarks/results/*
 benchmarks/results/v2-prodflow/raw/
 !benchmarks/results/v2-azure-sim/
 !benchmarks/results/azure2021/
+!benchmarks/results/huawei2025-r5/
 !benchmarks/results/feature-signal-v1/
 benchmarks/results/feature-signal-v1/raw/
 !benchmarks/results/v3-sizebins/
