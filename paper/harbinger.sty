@@ -1,0 +1,56 @@
+% Light Harbinger theme for the preprint: logo in the title block, brand ink/slate colours.
+% Brand values from assets/brand/README.md. Signal orange is reserved for the logo dot.
+\ProvidesPackage{harbinger}[2026/10/13 Harbinger preprint theme]
+\RequirePackage[table]{xcolor}
+\RequirePackage{graphicx}
+\RequirePackage{titlesec}
+\RequirePackage{fancyhdr}
+\RequirePackage{etoolbox}
+\RequirePackage{array}
+\RequirePackage{tabularx}
+\RequirePackage{booktabs}
+\RequirePackage{caption}
+
+\definecolor{hbink}{HTML}{15171C}
+\definecolor{hbslate}{HTML}{5B616E}
+\definecolor{hbsignal}{HTML}{E4572E}
+
+\titleformat{\section}{\normalfont\Large\bfseries\color{hbink}}{\thesection}{0.8em}{}
+\titleformat{\subsection}{\normalfont\large\bfseries\color{hbink}}{\thesubsection}{0.8em}{}
+
+% Tables: slate rules, a tinted bold header row, light zebra body rows, tinted captions, one look everywhere.
+\AtBeginEnvironment{tabular}{\arrayrulecolor{hbslate}}
+\AtBeginEnvironment{tabularx}{\arrayrulecolor{hbslate}}
+\setlength{\heavyrulewidth}{0.09em}
+\setlength{\lightrulewidth}{0.04em}
+\setlength{\cmidrulewidth}{0.04em}
+\newcolumntype{L}{>{\raggedright\arraybackslash}X}
+\AtBeginEnvironment{table}{\small\renewcommand{\arraystretch}{1.25}\rowcolors{2}{white}{hbslate!6}}
+\captionsetup{font=small,labelfont={bf,color=hbink},labelsep=period,justification=raggedright,singlelinecheck=false,skip=6pt}
+\newcommand{\hbpass}{\textcolor{hbslate}{pass}}
+\newcommand{\hbfail}{\textbf{fail}}
+\newcommand{\hbyes}{\textbf{yes}}
+\newcommand{\hbno}{\textcolor{hbslate}{no}}
+
+% Running header: wordmark-free, just the short title and page number in slate.
+\pagestyle{fancy}
+\fancyhf{}
+\renewcommand{\headrulewidth}{0pt}
+\fancyfoot[C]{\color{hbslate}\small\thepage}
+\fancypagestyle{plain}{\fancyhf{}\renewcommand{\headrulewidth}{0pt}\fancyfoot[C]{\color{hbslate}\small\thepage}}
+
+% Title block: lockup, title, author, project line, and a slate rule.
+\newcommand{\harbingertitle}[4]{% title, author, date, project url
+  \begin{center}
+    \includegraphics[height=2.4em]{figures/harbinger-lockup.pdf}\par\vspace{1.4em}
+    {\LARGE\bfseries\color{hbink}#1\par}\vspace{1em}
+    {\large\color{hbink}#2\par}\vspace{0.3em}
+    {\small\color{hbslate}#3 \quad $\cdot$ \quad #4\par}\vspace{0.6em}
+    {\color{hbslate}\rule{\linewidth}{0.4pt}}
+  \end{center}\vspace{0.4em}}
+
+% Space between paragraphs, no first-line indent.
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{0.8em plus 0.2em minus 0.1em}
+\RequirePackage{tikz}
+\usetikzlibrary{positioning,arrows.meta,calc,shapes.geometric,fit}

@@ -1,0 +1,21 @@
+\resizebox{0.95\textwidth}{!}{%
+\begin{tikzpicture}[
+    font=\small,
+    st/.style={draw=hbslate, rounded corners=4pt, minimum height=1.3cm, text width=3.0cm, minimum width=3.2cm, align=center, fill=white},
+    dead/.style={draw=hbslate, dashed, rounded corners=4pt, minimum height=1.3cm, text width=3.0cm, minimum width=3.2cm, align=center, fill=white},
+    tr/.style={-{Stealth[length=5pt]}, color=hbink, line width=0.6pt},
+    trl/.style={-{Stealth[length=5pt]}, color=hbsignal, line width=0.8pt},
+    lab/.style={font=\footnotesize, align=center, fill=white, inner sep=1.5pt}
+  ]
+  \node[st] (queued) at (0,0) {\textbf{Queued}\\{\footnotesize in a level (aging may promote)}};
+  \node[st] (flight) at (8.2,0) {\textbf{In flight}\\{\footnotesize leased, attempt token issued}};
+  \node[st] (done) at (16.4,0) {\textbf{Done}};
+  \node[dead] (dlq) at (8.2,-3.6) {\textbf{Dead-letter queue}};
+  \node[font=\footnotesize] (in) at (-3.9,0) {\texttt{Submit}};
+  \draw[tr] (in) -- (queued);
+  \draw[tr] (queued) -- node[lab, above=2pt] {\texttt{Pull}: select level,\\check TTL, start lease} (flight);
+  \draw[tr] (flight) -- node[lab, above=2pt] {\texttt{Ack} within\\lease, TTL live} (done);
+  \draw[trl] ([xshift=-0.7cm]flight.north) .. controls +(0,2.6) and +(0,2.6) .. node[lab, above=3pt, text=hbsignal, pos=0.5] {\texttt{Nack} or lease expiry with retries left:\\requeue at original level} ([xshift=0.7cm]queued.north);
+  \draw[tr] (queued.south) |- node[lab, pos=0.75, above=2pt] {TTL expired while queued} (dlq.west);
+  \draw[tr] (flight.south) -- node[lab, right=2pt] {retries exhausted,\\or TTL expired} (dlq.north);
+\end{tikzpicture}}

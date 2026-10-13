@@ -1,0 +1,249 @@
+\section{Design}\label{sec:design}
+
+\subsection{Overview}\label{sec:overview}
+
+\sys{} is a message broker built around one multi-level queue. Producers \texttt{Submit} messages over gRPC, consumers \texttt{Pull} them and
+then \texttt{Ack} or \texttt{Nack} the outcome, and between the two the broker holds each message in one of a small number
+of priority levels (three in all our experiments). Figure~\ref{fig:architecture} shows the path a message takes. On arrival
+a thin proxy stamps an identifier, the arrival time and the producer's identity, and hands the message to a single routing
+function, \texttt{route\_message()}, which decides the level. Consumers never see the levels: a consumer asks for work and
+the broker chooses which message to give it, so no client has to know that priorities exist. When the consumer
+acknowledges a message it reports how long its handler took, and that duration flows back to the predictor that decides
+where the next message of the same kind goes. The loop between the acknowledgement and the routing function is the whole
+idea of the paper; everything else in this section is either the machinery around it or an optional change we made after
+an experiment showed a weakness.
+
+\begin{figure}[t]
+  \centering
+  \input{figures/architecture}
+  \caption{Overview of \sys{}. Messages flow left to right. The orange path is the learning loop: the routing function
+  looks up a message's key in the per-key predictor, and each acknowledgement reports the handler's duration back to it.
+  An illustration of the design, not a measurement.}
+  \label{fig:architecture}
+\end{figure}
+
+Figure~\ref{fig:sequence} follows one message through every exchange, in order. A producer's \texttt{Submit} reaches the proxy, which
+adds the identifier, the arrival time and the producer's identity and passes the message to the routing function. The routing
+function asks the predictor for the key's level and receives either that level or, when the history is not trustworthy, the
+default. It then places the message in the queue. Nothing about the level is visible from there on: a consumer's \texttt{Pull}
+returns the message with an attempt token, and the lease that bounds the delivery starts at that moment. The consumer runs
+its handler, measures how long it took, and reports that duration with its \texttt{Ack}. The broker checks the token, the lease and the
+message's time to live, settles the delivery, and only then tells the predictor the duration, which is why a late or replayed
+acknowledgement teaches nothing. The failure paths are summarised under the figure: a \texttt{Nack}, or a lease that expires first, puts the
+message back at the tail of its original level until its retries run out, and an expired lease leaves a censored observation in place of a duration.
+
+\begin{figure}[t]
+  \centering
+  \input{figures/sequence}
+  \caption{The exchanges for one message, in order. Black arrows are the ordinary delivery path, dashed arrows are returns, and the orange
+  arrows are the two calls that connect the broker to the predictor: a lookup when the message arrives and an update when its
+  acknowledgement is accepted.}
+  \label{fig:sequence}
+\end{figure}
+
+The remaining subsections take the pieces in turn: the delivery core that exists with or without prediction, the choice of statistics over a
+learned model, the predictor and the checks that decide when to trust it, and then the optional features, each of which was added in response to a specific
+weakness that an experiment exposed. Each subsection says what the feature is, how it is built and what we saw when we measured it, and
+Table~\ref{tab:optin} at the end collects the results.
+
+\subsection{The delivery core}\label{sec:core}
+
+The first stage was an ordinary broker with no prediction at all. It has a fixed number of priority levels, an optional aging thread that promotes messages that
+have waited too long, retries on \texttt{Nack}, a dead-letter queue for messages that exhaust their retries or expire, and per-delivery attempt tokens and leases, so that a
+crashed consumer's message is recovered while a stale acknowledgement cannot settle a newer delivery. Delivery is at-least-once for as long as the process
+runs, and all state is in memory. Static routing, in which every message gets the same default level, is what this stage gives and what the broker still does by
+default. It is also the baseline against which every later feature is measured.
+
+Figure~\ref{fig:states} shows the delivery states that this stage defines. A message is queued until a \texttt{Pull} selects it, and it is then in
+flight, owned by one consumer under one attempt token. An acknowledgement within the lease completes it; a \texttt{Nack} or an expired lease
+returns it to the tail of its original level while retries remain; and exhausting its retries, or the expiry of its time to live, sends it to the dead-letter
+queue. The state machine is the same with or without prediction, which is what lets the predictor be added without changing delivery semantics.
+
+\begin{figure}[t]
+  \centering
+  \input{figures/states}
+  \caption{Delivery states of a message. The orange arrow is the retry path; its destination is the message's original level, which under
+  predictive routing is the level the predictor chose.}
+  \label{fig:states}
+\end{figure}
+
+\subsection{Statistics instead of a model}\label{sec:statistics}
+
+The second stage was meant to add a learned classifier. We first planned a separate service fed with features captured at ingress and with durations persisted by the
+broker, and we built that plumbing: a bounded, versioned capture of ingress features and a bounded on-disk feedback log, both optional and neither able to change
+delivery. We then used it to compare eight online learners, including River regressors and trees \citep{montiel2021}, against simple statistics, replaying the recorded workloads with the
+delay that real feedback has. None of the eight passed every frozen quality criterion. The rule was strict, requiring a model to be no worse than both arithmetic
+baselines on both metrics in every cell with no tolerance for noise, and the workload offered little for a richer model to exploit, because its only feature was a
+three-valued category and a per-key average is then close to the best possible predictor. We read the result narrowly. It did not show that learning cannot help, but it
+removed any reason to prefer a model, so we chose the simplest option. The predictor is an ordinary lookup, compiled into the broker, with no model to train or serve,
+and the Python tooling that produced the comparison stays offline.
+
+\subsection{Per-key duration prediction}\label{sec:predict}
+
+A message's key is the identifier the broker assigned to its producer, optionally joined to a job-type header that the producer chooses to send. Scoping the header by
+producer means that a producer can only mislabel its own work and cannot borrow another producer's fast history to jump the queue. The broker keeps, for every
+key, a histogram of handler durations whose older observations decay, and one histogram over every key. Write $x_{k,1},\dots,x_{k,n_k}$ for the successful handler
+durations observed so far for key $k$, in the order they were acknowledged, and $H_k$ for the key's histogram over a fixed set of geometric duration bins $b$. With a
+decay factor $d<1$, each observation's weight shrinks by $d$ every time a newer one arrives,
+\begin{equation}
+  H_k(b) \;=\; \sum_{i=1}^{n_k} d^{\,n_k-i}\,\mathbf{1}\!\left[x_{k,i}\in b\right],
+  \qquad
+  \hat{x}_k \;=\; Q_{1/2}(H_k),
+  \label{eq:histogram}
+\end{equation}
+where $Q_q(\cdot)$ is the $q$-quantile of a histogram and the median $\hat{x}_k$ is the key's expected duration. After $h=\ln(1/2)/\ln d$ new observations an old regime
+carries half the weight, which is how quickly the predictor forgets (about 138 observations for $d=0.995$). A successful, first-time duration reported on an acknowledgement is
+added to the message's key; failures, replays and late settlements are not.
+
+At ingress the broker maps the expected duration to a level using boundaries that come from the pooled histogram $G$. With $L$ levels, its quantiles supply the
+boundaries, and the level is the number of boundaries that the estimate has reached,
+\begin{equation}
+  \beta_j \;=\; Q_{j/L}(G),\quad j=1,\dots,L-1,
+  \qquad
+  \ell(k) \;=\; \bigl|\{\,j : \beta_j \le \hat{x}_k\,\}\bigr|,
+  \label{eq:level}
+\end{equation}
+so that level $0$, the highest priority, holds the shortest expected jobs and the levels adapt to the workload instead of being set by hand. The lookup costs about a hundred
+nanoseconds in isolation and about two microseconds inside the running broker.
+
+Figure~\ref{fig:histogram} shows how the pieces fit on a concrete example. The top panel is the pooled histogram of every key, and its tertiles, shown by the dashed lines, are the two
+boundaries that divide three levels. Below it are four keys. A key whose handlers take a few milliseconds has its median to the left of the first boundary and is routed to the
+highest-priority level, one whose handlers take tens to hundreds of milliseconds falls in the middle, and one that takes seconds goes to the lowest. The last key is the case the next
+subsection is about.
+
+\begin{figure}[t]
+  \centering
+  \input{figures/histogram}
+  \caption{An illustration of how a key's history becomes a level. Bars are decayed duration histograms on a logarithmic axis; the orange
+  triangle marks each key's median and the short bar its ninety-ninth percentile. The key shapes are made up, and the boundaries and levels are
+  computed from them by Equations~\eqref{eq:histogram} and~\eqref{eq:level}.}
+  \label{fig:histogram}
+\end{figure}
+
+Figure~\ref{fig:predictor} lays out the two paths through the predictor. The learning path, at the left, accepts only a settled delivery: the key's histogram and the global histogram both
+grow, and the boundaries are recomputed periodically and move only when they have shifted by more than a small margin, so that a single unusual job cannot reshuffle the levels. The
+routing path, at the right, is a short sequence of questions, each of which can send the message to the default level, and only a message that passes all of them is routed by its estimate.
+
+\begin{figure}[t]
+  \centering
+  \input{figures/predictor}
+  \caption{Inside the predictor. Left: what happens when a delivery settles. Right: how a level is chosen when a message arrives. Orange boxes
+  touch learned state, and the dashed box is where every failed check lands.}
+  \label{fig:predictor}
+\end{figure}
+
+The predictor can run in two modes. In \emph{shadow} mode it records what it would have done but routes statically, which isolates the cost of prediction from its effect; in
+\emph{predictive} mode it routes by its estimate. The first experiments (Section~\ref{sec:results}) passed on a production-style job queue but not on the Azure trace simulation, where no
+load passed its gate, so predictive routing stayed an opt-in.
+
+\subsection{Deciding when to trust an estimate}\label{sec:trust}
+
+A predictor that routes on its own estimate has to know when not to trust it, and the routing path in Figure~\ref{fig:predictor} is mostly this. Four conditions must hold, besides the technical
+ones that the boundaries have been published and that the key is valid. The key must have at least $n_{\min}$ observations; it must have been active within the last $\tau$, which is thirty minutes;
+its tail must be close to its median; and the decayed share $c_k$ of its deliveries that overran their lease must be small,
+\begin{equation}
+  n_k \ge n_{\min},
+  \qquad
+  t - t_k \le \tau,
+  \qquad
+  Q_{0.99}(H_k) \le \kappa\,Q_{1/2}(H_k),
+  \qquad
+  c_k \le \gamma,
+  \label{eq:trust}
+\end{equation}
+with $\kappa=16$ and $\gamma=5\%$. A message that fails any of them takes the default (middle) level $\ell_0$, and only one that passes all of them is routed by Equation~\eqref{eq:level}.
+Time-based decay, eviction and the hysteresis that stops boundaries from jittering are omitted from the equations for clarity.
+
+The tail check looks at the ninety-ninth percentile rather than the ninetieth, and the reason is the last key in Figure~\ref{fig:histogram}. Ninety-two percent of its jobs are fast, so its median would
+put it in the top level, but eight percent take thousands of times longer, and routing it by its median would let those jobs delay everything behind them. A test showed that a key like this looks unremarkable at
+the ninetieth percentile and was routed to a fast level, which is exactly the costly mistake the literature warns about \citep{dellamico2014}. Its ninety-ninth percentile is far above sixteen times its
+median, so it takes the default level instead. A delivery that overran its lease yields no duration, so it is recorded as censored, and a key with many censored deliveries also falls back; dropping them
+would have made a key whose handlers hang look fast. Memory is bounded, with a fixed number of keys spread over sharded locks.
+
+The trace simulation also exposed a defect in the staleness check, which we fixed. Staleness was measured from a key's last \emph{completed} job, so during a backlog lasting hours a key whose jobs were stuck in the queue completed
+none, and its new messages were judged stale and sent to the default level. The predictor switched itself off for exactly the keys caught in the backlog, and in an exploratory run a third to a half of the
+predictions made during backlogs were stale verdicts, against well under one percent otherwise. Activity now includes a prediction made while the key was still fresh, so keys that are waiting in a backlog stay
+predicted, though a stale key is revived only by new evidence.
+
+\subsection{Aging}\label{sec:aging}
+
+Reordering by expected duration invites starvation, since a long job can be passed over indefinitely by a stream of short ones, so the broker has an aging mechanism. A background thread runs at a fixed interval
+(half a second), visits the levels from the lowest upward, and moves any message that has waited longer than a threshold (five seconds by default) to the back of the next level up, resetting its wait. A message that keeps waiting is promoted
+again after another threshold, so a message reaches the top level after at most the threshold times the number of levels it must climb, and no message can be left at a low level indefinitely.
+
+This works well when backlogs last seconds, and it is the right behaviour for a queue in which waiting is the exception. It does not work when they last minutes or hours. Then almost every waiting message has waited longer than the threshold, so
+promotion carries each one upward as soon as it is eligible, and the top level fills with work that the predictor had placed lower. The ordering the predictor produced is erased, because all levels converge on one first-in-first-out queue.
+This was the reason the Azure simulation did not pass, and the oracle, which has perfect predictions, did no better. It is also why the opt-in described next exists. Figure~\ref{fig:aging} in the next subsection shows the effect in a small model.
+
+\subsection{Weights and pausing aging}\label{sec:weights}
+
+For that regime we added, as an option, a scheme in which the levels share worker time by weights instead of strict priority. Each level $\ell$ has a weight $w_\ell$ and a virtual clock $v_\ell$ that starts at zero. A pull serves the non-empty level with the smallest clock and
+charges that level the message's expected cost $\hat{c}$ divided by its weight,
+\begin{equation}
+  \ell^{\star} \;=\; \arg\min_{\ell\,:\,\text{level }\ell\text{ non-empty}} v_\ell,
+  \qquad
+  v_{\ell^{\star}} \;\leftarrow\; v_{\ell^{\star}} + \frac{\hat{c}}{w_{\ell^{\star}}},
+  \label{eq:clock}
+\end{equation}
+so that, while every level has work, level $\ell$ receives a fraction $w_\ell/\sum_{j} w_j$ of worker time: two thirds, a quarter and a twelfth for the weights $(8,3,1)$ that we use. An empty level cannot save credit for later. Figure~\ref{fig:weights} applies the rule to
+a backlog in which every level always has work.
+
+\begin{figure}[t]
+  \centering
+  \input{figures/weights}
+  \caption{The weighted-share rule applied to a backlog in which all three levels always have work and every message costs the same. The
+  top strip shows the first 48 pulls in the order the rule serves them; the bars show each level's share of pulls against its ideal share $w_\ell/\sum_j w_j$ (orange mark).
+  A computed illustration of the rule, not a measurement.}
+  \label{fig:weights}
+\end{figure}
+
+Weights alone do not fix the collapse, because plain aging would still refill the top level. Pausing aging therefore skips the promotion of a message from level $\ell$ to $\ell-1$ for as long as level $\ell-1$ is \emph{behind}, meaning that it still holds promoted messages and its
+oldest message has waited at least the aging threshold, and a pass promotes at most one message per level. The first implementation of this rule was wrong, and we corrected it before pre-registering the experiment. Figure~\ref{fig:aging} shows what the two promotion rules do under sustained overload in a toy model that
+applies the rules as described. Under strict priority with plain aging, about half of the top level is soon promoted work, and the wait of jobs the predictor put in the top level climbs steadily. Under weights with pausing aging, promoted work stays a small fraction and their wait levels off, but the lowest
+level's backlog grows much larger, and that is the price: the longer jobs wait longer, which is the same trade that the production-flow results show.
+
+\begin{figure}[t]
+  \centering
+  \input{figures/aging}
+  \caption{A toy model of the two promotion rules under sustained overload: arrivals at 120\% of capacity for 150 seconds, with half of the jobs predicted short, three tenths medium and two tenths long, a five-second aging threshold, and equal service times. (a) The share of the top level that is promoted work.
+  (b) The mean wait of jobs predicted short. (c) The number of messages in the lowest level. A computed illustration of the rules, not a measurement; the weighted design wins on (a) and (b) and pays on (c).}
+  \label{fig:aging}
+\end{figure}
+
+The measured effect was as the toy suggests but with a cost. On the Azure trace the weighted design cut mean latency against FIFO by \AgingSimHalfAbs{}, \AgingSimEightAbs{} and \AgingSimNinetyFiveAbs{} at loads of 0.5, 0.8 and 0.95, and by \AgingSimVsTodayHalfAbs{} to \AgingSimVsTodayNinetyFiveAbs{} against the default aging, but its gate passed only at load 0.8. On the production flow it cut mean latency by \AgingProdMeanVsPredAbs{}
+against predictive routing with default aging, but raised all-message P99 by \AgingProdPNinetyNine{}, over its ten-percent guardrail, so that gate failed too. The weights and the pausing rule therefore stay opt-in. Later experiments on other traces and on RabbitMQ (Section~\ref{sec:results}) are the stronger evidence for them.
+
+\subsection{Size-binned keys}\label{sec:sizebins}
+
+A per-key median ignores the fact that some jobs cost what their input costs. We measured how much that matters on self-generated data with real handlers, and asked whether a richer model was needed to capture it. It was not. A per-key median was off by a typical factor of \FSPerKeyFactor{} and placed jobs in the correct level \FSPerKeyTier{} of the time, while appending the logarithm of the input size to the key
+brought the factor down to \FSBinnedFactor{} and the accuracy up to \FSBinnedTier{}, and a gradient-boosted model over every feature did no better at \FSBoostTier{}. So we added the bin to the key, not a model.
+
+The bin is an optional $\log_2$ size, read from the payload length or from a numeric header and appended to the key. A bin that has not yet seen enough jobs borrows its un-binned parent's estimate, never another key's, and each job teaches both the bin and its parent, so a new bin is not cold for long. Under load the result was weaker than the
+measurement suggested. The bins improved the predictor's accuracy, but mean latency changed by only \SizeBinsMeanCI{} against job-type keys, short of the pre-registered bar, and one job type whose cost does not follow its size did \SizeBinsInvoiceAbs{} worse. They remain an opt-in.
+
+\subsection{Operating the predictor}\label{sec:ops}
+
+Alongside these features we built the operational pieces that make the predictor safe to run. Predictor state is saved to atomic, versioned snapshots with a rollback copy, so that a restart does not start cold and a corrupt file is refused instead of trusted. Counters record why each message fell back, and drift signals, namely
+rolling agreement between predicted and actual level and a running average of the log error, are informational and never change the routing. A standalone configuration file selects the mode and has a one-line switch back to static routing. None of these changes the order in which messages are delivered. They are what let an operator turn
+prediction on in shadow mode, look at what it would have done, and turn it off again.
+
+\subsection{Summary of the opt-in features}\label{sec:optin}
+
+Table~\ref{tab:optin} collects the optional features, why each was added, and what the experiments showed. The pattern is worth stating plainly. Each feature was added in response to a specific weakness, each was tested against a criterion set before the run, and none of them passed every gate it faced, which is why the broker's
+defaults are still static priority with no prediction.
+
+\begin{table}[t]
+\centering
+\caption{Opt-in features, why each was added and what the experiments showed. The default for every row is off.}
+\label{tab:optin}
+\begin{tabularx}{\textwidth}{>{\raggedright\arraybackslash}p{3.1cm}>{\raggedright\arraybackslash}p{4.0cm}L}
+\toprule
+\rowcolor{hbslate!14} \textbf{Feature} & \textbf{Added because} & \textbf{What the experiments showed} \\
+\midrule
+Predictive routing & static priorities need a person who knows each job's cost & passed on the production flow and on AWS; no gate passed on the Azure trace with default aging \\
+Size-binned keys & per-key medians ignore input size & more accurate predictions, but no reliable latency gain under load; one job type got worse \\
+Weights and pausing aging & default aging collapses the levels in long backlogs & large mean-latency gains on both serverless traces and on RabbitMQ; all-message P99 rose in the production flow \\
+Ingress features and persistent feedback & to compare candidate learners offline & enabled the comparison; no learner beat per-key statistics \\
+\bottomrule
+\end{tabularx}
+\end{table}

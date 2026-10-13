@@ -1,0 +1,46 @@
+\resizebox{\textwidth}{!}{%
+\begin{tikzpicture}[
+    font=\small,
+    box/.style={draw=hbslate, rounded corners=3pt, minimum height=0.95cm, text width=5.3cm, align=center, fill=white},
+    gate/.style={draw=hbslate, rounded corners=3pt, minimum height=0.8cm, text width=4.6cm, align=center, fill=white},
+    lrnbox/.style={draw=hbsignal, rounded corners=3pt, minimum height=0.95cm, text width=5.3cm, align=center, fill=hbsignal!6},
+    deflt/.style={draw=hbslate, dashed, rounded corners=3pt, text width=2.6cm, align=center, fill=hbslate!8},
+    flow/.style={-{Stealth[length=5pt]}, color=hbink, line width=0.6pt},
+    lrn/.style={-{Stealth[length=5pt]}, color=hbsignal, line width=0.8pt},
+    no/.style={-{Stealth[length=5pt]}, color=hbslate, line width=0.5pt},
+    lab/.style={font=\footnotesize, fill=white, inner sep=1.5pt},
+    head/.style={font=\small\bfseries}
+  ]
+  % ---------- left: learning on settlement ----------
+  \node[head] at (0,0.9) {Learning (when a delivery settles)};
+  \node[box] (ack) at (0,-0.4) {\texttt{Ack}(token, $t$) arrives};
+  \node[box] (acc) at (0,-2.0) {accepted? valid token, lease and TTL live, first settlement};
+  \node[lrnbox] (obs) at (0,-3.9) {\texttt{observe}(key, $t$)};
+  \node[lrnbox] (hist) at (0,-5.6) {key histogram: multiply old weights by $d$, add $t$\\global histogram $G$: add $t$};
+  \node[lrnbox] (bound) at (0,-7.5) {every $N$ observations: recompute $\beta_j=Q_{j/L}(G)$;\\move a boundary only if it shifted by more than the hysteresis};
+  \node[box] (cens) at (0,-9.7) {lease expiry: \texttt{observe\_censored}(key)\\\footnotesize raises the key's censored share};
+  \node[box, text width=5.3cm, draw=hbslate!60] (none) at (0,-11.4) {\texttt{Nack}, late or replayed settlement:\\teach nothing};
+  \draw[flow] (ack) -- (acc);
+  \draw[lrn] (acc) -- node[lab, right=1pt] {yes} (obs);
+  \draw[lrn] (obs) -- (hist);
+  \draw[lrn] (hist) -- (bound);
+
+  % ---------- right: routing on ingress ----------
+  \node[head] at (9.4,0.9) {Routing (when a message arrives)};
+  \node[box] (key) at (9.4,-0.4) {derive key: producer id\\{\footnotesize joined to job-type header, if sent}};
+  \node[gate] (g1) at (9.4,-2.0) {boundaries published?};
+  \node[gate] (g2) at (9.4,-3.2) {key valid?};
+  \node[gate] (g3) at (9.4,-4.4) {at least $n_{\min}$ observations?};
+  \node[gate] (g4) at (9.4,-5.6) {active within the last $\tau$?};
+  \node[gate] (g5) at (9.4,-6.8) {censored share $\le\gamma$?};
+  \node[gate] (g6) at (9.4,-8.0) {$Q_{0.99}(H_k)\le\kappa\,Q_{1/2}(H_k)$?};
+  \node[box] (est) at (9.4,-9.7) {$\hat{x}_k=Q_{1/2}(H_k)$\\level $=|\{j:\beta_j\le\hat{x}_k\}|$};
+  \node[deflt] (def) at (14.4,-5.2) {default level\\{\footnotesize (middle)}};
+  \draw[flow] (key) -- (g1);
+  \foreach \a/\b in {g1/g2, g2/g3, g3/g4, g4/g5, g5/g6} {\draw[flow] (\a) -- node[lab, right=0pt, font=\scriptsize] {yes} (\b);}
+  \draw[flow] (g6) -- node[lab, right=0pt, font=\scriptsize] {yes} (est);
+  \foreach \g in {g1, g2, g3, g4, g5, g6} {\draw[no] (\g.east) -- ++(0.55,0) |- ([yshift=0pt]def.west) ;}
+  \node[font=\scriptsize, text=hbslate, anchor=west] at (11.85,-1.55) {no};
+  % link learning to routing
+  \draw[lrn] (bound.east) -- ++(1.25,0) |- node[lab, pos=0.25, above, text=hbsignal, align=center, font=\scriptsize] {shared state} (est.west);
+\end{tikzpicture}}
