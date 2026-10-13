@@ -6,10 +6,10 @@ by \VTwoMeanVsFifoAbs{} and the median latency of short jobs by \VTwoShortPFifty
 \VTwoPNinetyNine{} of FIFO's and no work was lost. It also did better than what an operator would have done. Compared with a
 hand-tuned static map it was \VTwoVsTunedAbs{} lower in mean latency, and compared with the plausible but misconfigured map it
 was \VTwoVsMisconfAbs{} lower, a map that was itself slower than FIFO. Even without job-type labels, with one key per producer, it
-reduced mean latency by \VTwoZeroConfigAbs{}, about half the benefit of labelling. The replication on separate AWS hardware
+reduced mean latency by \VTwoZeroConfigAbs{}, about two fifths of the benefit of labelling. The replication on separate AWS hardware
 reproduced every verdict, with a mean reduction of \EOneMeanVsFifoAbs{} and a short-job median reduction of
-\EOneShortPFiftyVsFifoAbs{}. The predictor also sat close to its ceiling: the oracle and the predictive arm were statistically
-indistinguishable.
+\EOneShortPFiftyVsFifoAbs{}. The predictor also sat close to its ceiling: locally the oracle arm was no faster than the predictive arm, and on AWS the oracle's median mean
+latency was 32\% below FIFO's against 29\% for the predictor.
 
 \input{generated/tab_prodflow}
 
@@ -25,8 +25,8 @@ consistent with this, \sys{} with weights and pausing aging cut mean latency by 
 so this is an explanation and not a measurement. It also shows the price of aging's absence: static priorities without
 aging made the longest wait of a long job \EThreeStaticLongWait{} that of FIFO. In a separate cost measurement with
 empty handlers, \sys{} delivered about \EFourHarbingerPeak{} messages per second at its limit against \EFourRabbitPeak{} for RabbitMQ and
-\EFourRedisPeak{} for Redis, so it is the slowest of the three, which matters little against handlers that take milliseconds to
-seconds but does show up in the FIFO gap above.
+\EFourRedisPeak{} for Redis, so it is the slowest of the three. At 5{,}000 messages per second offered it was already at its limit, and at 20{,}000 it fell behind in all five repetitions while RabbitMQ kept up in all five and Redis in three. This matters little against handlers that take milliseconds to
+seconds, but it does show up in the FIFO gap above.
 
 \input{generated/tab_brokers}
 
@@ -57,7 +57,7 @@ class loses by a factor of only $1/(1-\rho_s)$, which stays modest when long job
 the share of jobs that are short, the mean wait relative to FIFO is $(1-p\rho)/(1-\rho_s)$, which is below one exactly when $p\rho>\rho_s$, that is, when the short class's
 share of the jobs exceeds its share of the work. That holds whenever the short class is shorter than average, so the mean always falls, and it falls more the more skewed the sizes are
 (Table~\ref{tab:cobham}). The same equations also say why P99 does not improve. When more than one job in a hundred is long, the all-message
-99th percentile is set by long jobs, and conservation guarantees that their wait cannot fall: it rises by $1/(1-\rho_s)$. This is the shape of the production-flow results
+99th percentile is set by long jobs, and Equation~\eqref{eq:ratios} shows that their wait cannot fall: it rises by a factor of $1/(1-\rho_s)$. This is the shape of the production-flow results
 above, a large gain in mean and short-job median with all-message P99 within a few percent of FIFO's.
 
 \input{generated/tab_cobham}
@@ -70,8 +70,8 @@ work, an ideal order would have cost them only about a tenth more waiting at loa
 the likelier source is the predictor's mistakes, which Equation~\eqref{eq:ratios} does not include.
 
 The benefit shrinks when backlogs last longer. In the thirty-minute run, with the broker on its own host, the reduction in
-mean latency fell to \ETwoMeanAAbs{} and \ETwoMeanBAbs{} in the two repetitions, short of the pre-registered bar, although P99 and
-the longest wait of a long job stayed level with FIFO and the predictor still beat the hand-tuned map. Outside overload the
+mean latency fell to \ETwoMeanAAbs{} and \ETwoMeanBAbs{} in the two repetitions, short of the pre-registered bar. Three of the eight checks failed in all: the short-job median fell by \ETwoShortAAbs{} and \ETwoShortBAbs{}, so the first repetition missed its bar, and the mean after the mid-run cost shift fell by \ETwoShiftAAbs{} and \ETwoShiftBAbs{}, so the first repetition missed that bar by 0.3 points. P99 and
+the longest wait of a long job stayed level with FIFO, and the predictor still beat the hand-tuned map, by \ETwoTunedAAbs{} and \ETwoTunedBAbs{}. Outside overload the
 predictor still cut latency substantially; it was the six-minute flash sale, which pushed FIFO's mean latency above a minute,
 and the long recovery after it, that dominated the overall mean. At those waits the default aging promotes nearly every message to the
 top level, so the order barely changes. This is the pattern the traces make explicit.
@@ -87,7 +87,7 @@ median short job waited milliseconds instead of seconds, while long jobs waited 
 stayed within \HuaweiBPNinetyNineEight{} of FIFO. The only failure, at Huawei with load 0.5, is a regime without queueing, in
 which every policy is already at the service time. That the same weighted design works on two serverless providers, and
 that the improvement from adding it over today's aging is a further \HuaweiBVsAEightAbs{} reduction on Huawei and \AzureBVsAEightAbs{} on Azure at load 0.8,
-suggests the aging mechanism, and not the particular predictor, is the lever under sustained overload.
+suggests the aging mechanism, and not the particular predictor, is the lever under sustained overload. Two caveats apply. On Huawei a static map built from the history half's per-key medians matched or beat the predictor at loads 0.8 and 0.95, because Huawei's keys are stable within a day, so the predictor's case there is that it needs no map, not that it out-predicts one. And the Azure figures here differ slightly from those in Section~\ref{sec:weights}, because the common-rules run reads the trace through its converted file and splits history and evaluation windows by time instead of by row count, which moves the load-0.5 reduction from \AgingSimHalfAbs{} to \AzureBHalfAbs{} and across the pre-registered bar.
 
 \input{generated/tab_traces}
 
@@ -99,12 +99,11 @@ of the \LPCJobs{} evaluated jobs got a prediction at load 0.8: \LPCColdShare{} b
 \LPCStaleShare{} to keys whose history had expired. Of those stale-key jobs, \LPCStaleBacklogShare{} had themselves waited
 more than a minute, which suggests that many keys were not idle so much as stuck behind a backlog that delivered no fresh
 completions. Most jobs therefore took the default level, and the weighted design stayed close to FIFO, with mean latency
-\LPCBHalfAbs{} to \LPCBNinetyFiveAbs{} above FIFO's and intervals that included zero. On DAS2-fs2 the keys were predictable enough to act on, and acting on them hurt. At load 0.8 the design with
+\LPCBHalfAbs{} to \LPCBNinetyFiveAbs{} above FIFO's and intervals that included zero. On DAS2-fs2 most jobs did get a prediction, but the predictions were about as good as a global median, and acting on them hurt. At load 0.8 the design with
 weights and pausing aging raised mean latency by \DASBEightAbs{}: short jobs gained several-fold, but long jobs carry most of
 the work, and they waited several times longer, so that the guardrails failed with the all-message P99 at
 \DASBPNinetyNineEight{} FIFO's and an upper bound of \DASBPNinetyNineUpperEight{}. The oracle with the same scheduler improved every
-window there, with a mean reduction of \DASOracleBEightAbs{}. The scheduler is therefore not the problem. The more likely culprit is the predictor's mistakes
-on a heavy-tailed log, where a long job misjudged as short does great damage, though we have not isolated this.
+window there, with a mean reduction of \DASOracleBEightAbs{}. The scheduler is therefore not the problem. An exploratory diagnosis, run afterwards and not pre-registered, points at the predictor and at the aging time scale. With the predictor's levels and no aging, short jobs gained but medium jobs slowed by 44\% and long jobs waited about twice as long, whereas with the oracle's levels medium jobs became faster. And a pausing rule with a five-second threshold moves thousands of jobs, large mispredicted ones included, upward during waits of hours: with weights and no aging the predictor was 7\% better than FIFO, and with pausing aging 44\% worse. Scaling the aging threshold to the workload was not tested.
 
 \input{generated/tab_predictability}
 
@@ -115,3 +114,5 @@ against job-type keys, which missed the pre-registered bar, and for one job type
 against per-key statistics and simple baselines offline. None of them passed both quality criteria on every workload, with
 the strict rule that a model be no worse than both baselines everywhere and no tolerance for noise. As Section~\ref{sec:limits}
 says, the workload gave a model little to find, so this is evidence that statistics suffice here, not that learning cannot help.
+
+The local production-flow figures in this paper, and those for the aging guardrails and the size bins, come from a quiet-machine re-run: the three wall-clock matrices were repeated on a laptop with turbo disabled and the clock capped at 2.3\,GHz, with the same frozen configurations and analysis, and the simulations were re-run too. We use the re-run because its conditions are documented and it was much less noisy. No pre-registered verdict differs from the original runs, and all four simulations reproduced byte for byte. Effect sizes do depend on CPU speed, because job sizes and arrival rates are fixed and a slower CPU is a heavier load. The original local run's kernels were 1.6 to 1.8 times faster than the re-run's, and there the mean fell by 27.9\% against FIFO, the short-job median by 88.4\% and producer-only keys by 15.4\%, against 25.6\%, 57.7\% and 10.5\% here; the longer backlog gives the default aging more to promote, which hurts the short-job median most. Load relative to CPU speed therefore matters as much as the policy, and the AWS replication, whose CPU was about twice as fast as the re-run's, is the independent check.

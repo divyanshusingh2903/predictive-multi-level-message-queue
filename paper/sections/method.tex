@@ -28,12 +28,12 @@ The main workload is a synthetic production flow that we designed to look like t
 services produce nine job types, from cheap jobs such as stock reservation to long report exports, and
 the handlers do real CPU work through the real producer and consumer clients. Load follows a steady phase at about
 sixty percent utilisation, a flash-sale overload at about one hundred twenty-five percent, a recovery, and a mid-run change
-in job costs, with about thirty-five thousand messages per run and five seeds. We ran it locally, then on AWS with the
+in job costs, with about thirty-five thousand messages per run and five seeds. We ran it locally, on a laptop with turbo disabled (Section~\ref{sec:results} gives the conditions), then on AWS with the
 broker and the clients on separate hosts (\texttt{c8i.xlarge} and \texttt{c8i.2xlarge} instances in one placement group),
 and replicated the original single-host run on a second instance of the larger type. The same workload then ran against
 RabbitMQ with FIFO, with static priorities, and with \sys{}'s predictor acting as a sidecar that sets the priorities, and
 against Redis with FIFO, with the same producers, handlers, workers, arrivals and seeds so that only the broker and its
-policy change. A thirty-minute run, in two repetitions, tests whether the benefit survives long backlogs.
+policy change. A thirty-minute run, in two repetitions, tests whether the benefit survives long backlogs. Two further frozen production-flow experiments test the design's optional features: one compares weights and pausing aging with predictive routing under the default aging, and one tests keys split by input size. An offline comparison of eight online learners against per-key statistics, on recorded workloads, decided whether a model was needed at all.
 
 Real traces test what a synthetic workload cannot: whether keys recur and how heavy the tails are in practice. A
 discrete-event simulator replays the Azure Functions 2021 trace \citep{zhang2021harvest} (its earlier characterisation is \citet{shahrad2020}), the Huawei Cloud 2025 request traces \citep{joosen2024} and two Parallel

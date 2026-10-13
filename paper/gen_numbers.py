@@ -53,7 +53,7 @@ def macro(name, value):
 
 
 # ---- production flow (v2 local, E1 AWS, E3 brokers) -------------------------------------------
-v2 = load("v2-prodflow/summary.json")["evaluation"]["criteria"]
+v2 = load("rerun-2026-10-12/v2-prodflow/summary.json")["evaluation"]["criteria"]
 e1 = load("v3-aws/e1/summary.json")["evaluation"]["criteria"]
 e3 = load("v3-aws/e3/summary.json")["evaluation"]["criteria"]
 for tag, c in (("VTwo", v2), ("EOne", e1)):
@@ -111,7 +111,7 @@ for key, name, fn, bar in [
     ("S4_zero_config_vs_fifo", "S4 producer-only keys vs FIFO", pct, "$\\le -5\\%$"),
 ]:
     rows.append([name, bar, fn(v2[key]), verdict(v2[key]), fn(e1[key]), verdict(e1[key])])
-table("Production-flow benchmark: local run (\\texttt{v2-prodflow-1}) and its replication on AWS "
+table("Production-flow benchmark: local quiet-machine re-run (\\texttt{v2-prodflow-1}) and its replication on AWS "
       "(\\texttt{v3-cloud-e1-1}). Point estimates with 95\\% bootstrap intervals, paired over five seeds.",
       "tab:prodflow", [["Criterion", "Bar", "\\multicolumn{2}{c}{\\textbf{Local run}}", "\\multicolumn{2}{c}{\\textbf{AWS replication}}"]],
       rows, "Llrcrc", rules=("\\cmidrule(lr){3-4}", "\\cmidrule(lr){5-6}"), size="footnotesize")
@@ -207,7 +207,7 @@ e4 = load("v3-aws/e4/summary.json")["brokers"]
 for b, tag in (("harbinger", "Harbinger"), ("rabbitmq", "Rabbit"), ("redis", "Redis")):
     macro(f"EFour{tag}Peak", f"{round(e4[b]['0.0']['delivery_rate_per_s'], -2):,.0f}".replace(",", "{,}"))
 
-sb = load("v3-sizebins/summary.json")["evaluation"]["criteria"]
+sb = load("rerun-2026-10-12/v3-sizebins/summary.json")["evaluation"]["criteria"]
 macro("SizeBinsMean", pct(sb["P1_mean_latency_vs_predictive"], ci=False))
 macro("SizeBinsMeanCI", pct(sb["P1_mean_latency_vs_predictive"]))
 macro("SizeBinsInvoice", pct(sb["S3_invoice_mean_vs_predictive"], ci=False))
@@ -218,7 +218,7 @@ ag = load("v3-aging/sim/summary.json")["evaluation"]
 for ld, word in LOADS.items():
     macro(f"AgingSim{word}", pct(ag[ld]["criteria"]["P1_mean_latency_vs_fifo"], ci=False))
     macro(f"AgingSimVsToday{word}", pct(ag[ld]["criteria"]["S2_vs_todays_aging"], ci=False))
-agp = load("v3-aging/prodflow/summary.json")["evaluation"]["criteria"]
+agp = load("rerun-2026-10-12/v3-aging-prodflow/summary.json")["evaluation"]["criteria"]
 macro("AgingProdMeanVsPred", pct(agp["S1_mean_vs_predictive"], ci=False))
 macro("AgingProdPNinetyNine", f"{(agp['G2_all_p99_vs_predictive']['point'] - 1) * 100:.0f}\\%")
 macro("AgingProdLongWait", f"{agp['G1_long_class_max_wait_vs_fifo']['point']:.2f}$\\times$")

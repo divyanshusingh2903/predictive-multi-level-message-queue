@@ -2,7 +2,7 @@
 
 \subsection{Overview}\label{sec:overview}
 
-\sys{} is a single-queue message broker. Producers \texttt{Submit} messages over gRPC, consumers \texttt{Pull} them and
+\sys{} is a message broker built around one multi-level queue. Producers \texttt{Submit} messages over gRPC, consumers \texttt{Pull} them and
 then \texttt{Ack} or \texttt{Nack} the outcome, and between the two the broker holds each message in one of a small number
 of priority levels (three in all our experiments). Figure~\ref{fig:architecture} shows the path a message takes. On arrival
 a thin proxy stamps an identifier, the arrival time and the producer's identity, and hands the message to a single routing
