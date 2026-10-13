@@ -47,6 +47,40 @@ A section that is **absent** keeps the current value; a section set to **`null`*
 | `routing.predictor.*` | | Every `PerKeyPredictorConfig` field: `summary`, `min_samples`, `spread_quantile`, `max_spread_ratio`, `max_censored_fraction`, `decay`, `global_decay`, `time_half_life_ms`, `stale_after_ms`, `histogram_bins`, `min_ms`, `max_ms`, `max_keys`, `shards`, `idle_eviction_ms`, `cold_eviction_grace_ms`, `boundary_refresh_every`, `global_min_samples`, `hysteresis`. `num_levels`/`default_priority` always come from `broker`. |
 | `routing.snapshot.path`, `interval_ms` | string, integer | Predictor state file, rewritten atomically every interval and at shutdown. |
 
+## Recovery options
+
+Embedded brokers set these fields in `HarbingerConfig` before constructing `HarbingerService`. The standalone server
+accepts the matching options:
+
+| Option | Default |
+|---|---:|
+| `--delivery-lease-ms` | 30000 |
+| `--lease-sweep-interval-ms` | 100 |
+| `--completion-retention-ms` | 60000 |
+| `--completion-cache-max-entries` | 10000 |
+| `--maintenance-batch-size` | 256 |
+| `--ttl-sweep-interval-ms` | 100 |
+
+```bash
+./build/harbinger_server 0.0.0.0:50051 \
+  --delivery-lease-ms 120000 \
+  --completion-retention-ms 300000 \
+  --completion-cache-max-entries 100000
+./build/harbinger_server --help
+```
+
+Omitted options keep their defaults. Values are unsigned decimal integers; durations are milliseconds. All six must be
+positive except `--ttl-sweep-interval-ms`, which accepts `0` to disable background queued-TTL cleanup. Invalid,
+missing, out-of-range or unknown options exit nonzero before listening. Options use `--name value` syntax, may appear
+before or after the optional address, and the last repeated value wins. Settings apply at startup, and the effective
+values are printed before the readiness message.
+
+The example is illustrative, not a recommended production profile. Size both retention and capacity for peak
+attempt-completion volume and expected settlement delays; increasing retention alone cannot prevent capacity eviction.
+See the [consumer system boundary](consumers.md#system-boundary-delivery-safety-and-consumer-recovery).
+
+The standalone POSIX server handles SIGINT and SIGTERM with `sigwait` and shuts down with a five-second grace deadline.
+
 ## Level weights and pausing aging (issue #40)
 
 Opt-in. With `level_weights`, levels share **worker time** rather than strict priority. Each level has a virtual clock.
