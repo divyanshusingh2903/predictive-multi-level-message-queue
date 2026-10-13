@@ -146,3 +146,22 @@ A failed check will be published as such.
 2. **E2 drain:** 600 s. The debug pass drained in 0.6 s.
 3. **C1 bar:** −15% in every repetition, the same bar as v2.
 4. **Running order:** all four experiments run sequentially on one pair (E4, E3, E2, then E1), about 15 h.
+
+## Amendment 1 (2026-10-13, 03:30 UTC): E1 on its own host
+
+Decided and written after E4 and E3 had finished and E2 had started, before the first E1 run. Committed at about
+05:30 UTC, while E2 and E1 were running. Up to the commit, no result of any experiment had been read except message
+counts: every E3, E2 and E1 run so far had completed every message, with no DLQ and no submit errors.
+
+- **Why:** the account's vCPU quota rose from 16 to 32 during the runs. E1 needs no broker, so it can run alongside E2.
+  This ends the registered set about 4.5 h sooner.
+- **Change to decision 4:** E4, E3 and E2 run sequentially on the registered pair. E1 runs on a third host, started
+  at 03:37:59 UTC from the same frozen commit `2da0e3a` with `EXPERIMENTS=e1`, into `registered-2da0e3a-e1`.
+- **The E1 host** (`i-0e19834bb6489c1a0`) matches the pair's client host: `c8i.2xlarge`, Xeon 6975P-C, 8 vCPU,
+  kernel 7.0.0-1014-aws, the same AMI and Docker version, us-east-1a, the same placement group.
+- **Image:** rebuilt on the E1 host from `2da0e3a` (`sha256:2b02939e…`), not copied from the pair
+  (`sha256:8952ed0d…`), because copying would load the pair's hosts during E2. Same Dockerfile, pinned base image and
+  package versions.
+- **The pair does not run E1.** Before E2 ends, its E1 config is made unreadable on the client host, so `run_all.sh`
+  stops at the E1 step before running anything. Its results are then archived by hand.
+- **Unchanged:** every config, criterion, seed and analysis.
