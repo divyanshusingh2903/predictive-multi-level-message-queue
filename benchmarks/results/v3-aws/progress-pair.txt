@@ -1,0 +1,4 @@
+2026-10-12T23:06:27Z E4 broker cost: benchmarks/configs/v3-brokers-cost.json
+2026-10-12T23:56:23Z E3 production queues: benchmarks/configs/v3-brokers-prodflow.json
+2026-10-13T03:20:40Z E2 long run: benchmarks/configs/v3-cloud-e2.json
+2026-10-13T07:21:24Z E1 single-host replication: benchmarks/configs/v3-cloud-e1.json (broker host idle)

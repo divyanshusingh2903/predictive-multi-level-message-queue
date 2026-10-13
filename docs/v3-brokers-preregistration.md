@@ -1,8 +1,7 @@
-# Production queues: pre-registration (issue #37, `v3-brokers`) — DRAFT
+# Production queues: pre-registration (issue #37, `v3-brokers`)
 
-**DRAFT, not frozen; ready to freeze.** The decisions at the end are settled, and the split runner is smoke-tested.
-It is frozen by the commit that removes this notice and sets `frozen_on` in both configs, before any registered run on
-AWS.
+**Frozen 2026-10-12, together with [`v3-cloud`](v3-cloud-preregistration.md), after the AWS debug pass and before any
+registered run.**
 
 | | |
 |---|---|
@@ -116,7 +115,7 @@ producers' send lateness stayed at or under 10 ms at P99.
 
 **No pass/fail (#37).** Reported: medians across repetitions, with ranges and the kept-up count.
 
-## What was seen before drafting
+## What was seen before freezing
 
 All local, on one 16-core laptop, and none of it registered:
 
@@ -129,6 +128,17 @@ All local, on one 16-core laptop, and none of it registered:
     consumers.
   - RabbitMQ delivered about 17,000/s at most, and Redis about 22,000/s.
   - At 20,000 msg/s RabbitMQ and Redis kept up; Harbinger did not.
+- **AWS debug pass** (2026-10-12, 22:25–23:00 UTC; the registered hosts; seed 7, debug durations; commit
+  `f42f21d`):
+  - **Hosts and image:** client `c8i.2xlarge`, broker `c8i.xlarge`, both Xeon 6975P-C, kernel 7.0.0-1014-aws, us-east-1a,
+    one placement group. Identical image `sha256:65821c67…` and package versions on both.
+  - **Completeness:** all 12 production-flow runs (E1 2, E2 2, E3 8) completed every message, with no worker errors
+    and every Harbinger run merged. All 12 E4 runs lost nothing.
+  - **CPU speed:** the client's kernel calibration (resize 6.6 ms/megapixel, export 17.5 ms/chunk) is about 2× faster
+    than the local quiet re-run and about 20% faster than the original v2 run, so the same workload is a lighter load
+    here.
+  - **Seen while watching the debug log:** E4 RabbitMQ lines at 5,000 and 20,000 msg/s (P50 0.1–0.2 ms, P99 0.3–0.8 ms,
+    all delivered). No E3 latency was examined.
 
 ## Expectations, stated before running
 

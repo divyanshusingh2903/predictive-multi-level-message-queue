@@ -1,0 +1,6231 @@
+{
+ "arms": {
+  "fifo": {
+   "11": {
+    "class_mean_ms:deliver_webhook": 7104.980443190285,
+    "class_mean_ms:export_report": 6722.469584425532,
+    "class_mean_ms:generate_invoice": 7765.527877266093,
+    "class_mean_ms:push_notification": 7392.46026128898,
+    "class_mean_ms:reindex_product": 5736.255363328349,
+    "class_mean_ms:reserve_inventory": 7849.022047384925,
+    "class_mean_ms:resize_image": 6036.792863038712,
+    "class_mean_ms:send_order_email": 7794.220093449541,
+    "class_mean_ms:send_sms": 7334.444421867986,
+    "cohorts": {
+     "flash_sale": {
+      "count": 11911,
+      "mean_ms": 12900.729429138275,
+      "p50_ms": 14062.188556,
+      "p99_ms": 21639.021128
+     },
+     "ramp": {
+      "count": 3812,
+      "mean_ms": 239.01133597219308,
+      "p50_ms": 103.027396,
+      "p99_ms": 988.374022
+     },
+     "recovery": {
+      "count": 6511,
+      "mean_ms": 14200.888926605898,
+      "p50_ms": 14651.883321,
+      "p99_ms": 21514.797327
+     },
+     "shifted": {
+      "count": 7629,
+      "mean_ms": 1109.5412165893301,
+      "p50_ms": 178.101567,
+      "p99_ms": 6122.859022
+     },
+     "steady": {
+      "count": 5093,
+      "mean_ms": 67.9191920237581,
+      "p50_ms": 20.037276,
+      "p99_ms": 566.775691
+     }
+    },
+    "completed": 34956,
+    "dlq": 0,
+    "long_max_wait_ms": 19661.033737,
+    "lookup_mean_us": null,
+    "mean_latency_ms": 7319.037922836137,
+    "messages": 34956,
+    "p50_latency_ms": 4148.293734,
+    "p95_latency_ms": 20327.432859,
+    "p99_latency_ms": 21395.376606,
+    "per_class": {
+     "deliver_webhook": {
+      "count": 3479,
+      "max_wait_ms": 21664.537892,
+      "mean_ms": 7104.980443190285,
+      "median_service_ms": 44.8388,
+      "p50_ms": 3414.481456,
+      "p95_ms": 20466.907234,
+      "p99_ms": 21661.164432
+     },
+     "export_report": {
+      "count": 47,
+      "max_wait_ms": 19661.033737,
+      "mean_ms": 6722.469584425532,
+      "median_service_ms": 1355.56,
+      "p50_ms": 3529.198754,
+      "p95_ms": 19150.350419,
+      "p99_ms": 20517.874511
+     },
+     "generate_invoice": {
+      "count": 5111,
+      "max_wait_ms": 21671.561768,
+      "mean_ms": 7765.527877266093,
+      "median_service_ms": 4.5496,
+      "p50_ms": 5567.515008,
+      "p95_ms": 20427.594052,
+      "p99_ms": 21356.825854
+     },
+     "push_notification": {
+      "count": 7568,
+      "max_wait_ms": 21678.246837,
+      "mean_ms": 7392.46026128898,
+      "median_service_ms": 9.1587,
+      "p50_ms": 4404.557666,
+      "p95_ms": 20384.706092,
+      "p99_ms": 21401.773472
+     },
+     "reindex_product": {
+      "count": 3210,
+      "max_wait_ms": 21669.987302,
+      "mean_ms": 5736.255363328349,
+      "median_service_ms": 2.49983,
+      "p50_ms": 709.337639,
+      "p95_ms": 19618.209994,
+      "p99_ms": 21086.07436
+     },
+     "reserve_inventory": {
+      "count": 6713,
+      "max_wait_ms": 21667.84822,
+      "mean_ms": 7849.022047384925,
+      "median_service_ms": 6.13324,
+      "p50_ms": 6235.084989,
+      "p95_ms": 20357.561257,
+      "p99_ms": 21396.334948
+     },
+     "resize_image": {
+      "count": 2299,
+      "max_wait_ms": 21661.656748,
+      "mean_ms": 6036.792863038712,
+      "median_service_ms": 15.3246,
+      "p50_ms": 889.595389,
+      "p95_ms": 19901.980221,
+      "p99_ms": 21309.700426
+     },
+     "send_order_email": {
+      "count": 5014,
+      "max_wait_ms": 21667.771255,
+      "mean_ms": 7794.220093449541,
+      "median_service_ms": 35.1705,
+      "p50_ms": 5924.118951,
+      "p95_ms": 20453.638655,
+      "p99_ms": 21422.330578
+     },
+     "send_sms": {
+      "count": 1515,
+      "max_wait_ms": 21661.956403,
+      "mean_ms": 7334.444421867986,
+      "median_service_ms": 80.0344,
+      "p50_ms": 4565.019151,
+      "p95_ms": 20106.038087,
+      "p99_ms": 21514.499858
+     }
+    },
+    "shifted_class_mean_ms:deliver_webhook": 1185.828770861145,
+    "shifted_class_mean_ms:export_report": 2818.995372642857,
+    "shifted_class_mean_ms:generate_invoice": 1024.8995970223805,
+    "shifted_class_mean_ms:push_notification": 1079.71381329559,
+    "shifted_class_mean_ms:reindex_product": 1059.8688215268241,
+    "shifted_class_mean_ms:reserve_inventory": 1059.806991298176,
+    "shifted_class_mean_ms:resize_image": 1141.6840578009553,
+    "shifted_class_mean_ms:send_order_email": 1239.0980867588653,
+    "shifted_class_mean_ms:send_sms": 1133.0484463476923,
+    "short_mean_ms": 7377.206307340987,
+    "short_p50_ms": 4309.327732,
+    "slowdown_p50": 233.11701813389925,
+    "slowdown_p95": 4455.361740224187,
+    "slowdown_p99": 7373.669519402362,
+    "submit_errors": 0,
+    "throughput_per_s": 116.23822316640295
+   },
+   "22": {
+    "class_mean_ms:deliver_webhook": 9037.371316629504,
+    "class_mean_ms:export_report": 11883.778481553572,
+    "class_mean_ms:generate_invoice": 9338.782193103109,
+    "class_mean_ms:push_notification": 9118.996551276101,
+    "class_mean_ms:reindex_product": 8041.033481501622,
+    "class_mean_ms:reserve_inventory": 9389.96591738812,
+    "class_mean_ms:resize_image": 8284.301326486062,
+    "class_mean_ms:send_order_email": 9428.740585485215,
+    "class_mean_ms:send_sms": 9333.517955748206,
+    "cohorts": {
+     "flash_sale": {
+      "count": 12013,
+      "mean_ms": 13074.606252482477,
+      "p50_ms": 13974.889009,
+      "p99_ms": 24746.244063
+     },
+     "ramp": {
+      "count": 3868,
+      "mean_ms": 257.9130775847984,
+      "p50_ms": 144.187654,
+      "p99_ms": 930.528133
+     },
+     "recovery": {
+      "count": 6380,
+      "mean_ms": 19342.303579660344,
+      "p50_ms": 19714.772284,
+      "p99_ms": 25434.038812
+     },
+     "shifted": {
+      "count": 7717,
+      "mean_ms": 4816.612109235454,
+      "p50_ms": 4705.779686,
+      "p99_ms": 11786.3877
+     },
+     "steady": {
+      "count": 5078,
+      "mean_ms": 42.9127438434423,
+      "p50_ms": 14.513654,
+      "p99_ms": 328.818971
+     }
+    },
+    "completed": 35056,
+    "dlq": 0,
+    "long_max_wait_ms": 25155.328436,
+    "lookup_mean_us": null,
+    "mean_latency_ms": 9095.574397923609,
+    "messages": 35056,
+    "p50_latency_ms": 7374.156633,
+    "p95_latency_ms": 24032.036168,
+    "p99_latency_ms": 25131.878975,
+    "per_class": {
+     "deliver_webhook": {
+      "count": 3525,
+      "max_wait_ms": 25525.224905,
+      "mean_ms": 9037.371316629504,
+      "median_service_ms": 45.0843,
+      "p50_ms": 6954.541083,
+      "p95_ms": 24185.083697,
+      "p99_ms": 25317.014028
+     },
+     "export_report": {
+      "count": 56,
+      "max_wait_ms": 25155.328436,
+      "mean_ms": 11883.778481553572,
+      "median_service_ms": 1464.48,
+      "p50_ms": 9334.705962,
+      "p95_ms": 26770.553374,
+      "p99_ms": 27251.162831
+     },
+     "generate_invoice": {
+      "count": 4985,
+      "max_wait_ms": 25547.165031,
+      "mean_ms": 9338.782193103109,
+      "median_service_ms": 4.52942,
+      "p50_ms": 7716.370148,
+      "p95_ms": 24139.197499,
+      "p99_ms": 25097.482061
+     },
+     "push_notification": {
+      "count": 7519,
+      "max_wait_ms": 25529.312746,
+      "mean_ms": 9118.996551276101,
+      "median_service_ms": 9.13142,
+      "p50_ms": 7507.008075,
+      "p95_ms": 23844.013832,
+      "p99_ms": 25095.223595
+     },
+     "reindex_product": {
+      "count": 3391,
+      "max_wait_ms": 25529.833688,
+      "mean_ms": 8041.033481501622,
+      "median_service_ms": 2.52371,
+      "p50_ms": 5785.472647,
+      "p95_ms": 23885.114736,
+      "p99_ms": 25117.325818
+     },
+     "reserve_inventory": {
+      "count": 6784,
+      "max_wait_ms": 25542.761528,
+      "mean_ms": 9389.96591738812,
+      "median_service_ms": 6.087045,
+      "p50_ms": 8298.921189,
+      "p95_ms": 24038.30002,
+      "p99_ms": 25104.323738
+     },
+     "resize_image": {
+      "count": 2224,
+      "max_wait_ms": 25525.124128,
+      "mean_ms": 8284.301326486062,
+      "median_service_ms": 15.29885,
+      "p50_ms": 5921.59216,
+      "p95_ms": 24522.533907,
+      "p99_ms": 25179.921304
+     },
+     "send_order_email": {
+      "count": 5039,
+      "max_wait_ms": 25522.223753,
+      "mean_ms": 9428.740585485215,
+      "median_service_ms": 35.3226,
+      "p50_ms": 8071.354652,
+      "p95_ms": 23871.224236,
+      "p99_ms": 25129.493384
+     },
+     "send_sms": {
+      "count": 1533,
+      "max_wait_ms": 25522.667756,
+      "mean_ms": 9333.517955748206,
+      "median_service_ms": 80.8242,
+      "p50_ms": 8123.912738,
+      "p95_ms": 24190.698833,
+      "p99_ms": 25160.471389
+     }
+    },
+    "shifted_class_mean_ms:deliver_webhook": 4909.232402575155,
+    "shifted_class_mean_ms:export_report": 6704.33005575,
+    "shifted_class_mean_ms:generate_invoice": 4747.374307135189,
+    "shifted_class_mean_ms:push_notification": 4838.971464002569,
+    "shifted_class_mean_ms:reindex_product": 4644.4483776449415,
+    "shifted_class_mean_ms:reserve_inventory": 4858.337441721753,
+    "shifted_class_mean_ms:resize_image": 4877.369169570313,
+    "shifted_class_mean_ms:send_order_email": 4732.2353638107315,
+    "shifted_class_mean_ms:send_sms": 5112.712977123894,
+    "short_mean_ms": 9087.183633361126,
+    "short_p50_ms": 7389.157409,
+    "slowdown_p50": 411.8838733556489,
+    "slowdown_p95": 5196.271311818789,
+    "slowdown_p99": 8888.40997605405,
+    "submit_errors": 0,
+    "throughput_per_s": 116.68223593955481
+   },
+   "33": {
+    "class_mean_ms:deliver_webhook": 5704.219722053322,
+    "class_mean_ms:export_report": 6118.24169962,
+    "class_mean_ms:generate_invoice": 6002.438587728999,
+    "class_mean_ms:push_notification": 6024.807874029585,
+    "class_mean_ms:reindex_product": 4806.5738435891235,
+    "class_mean_ms:reserve_inventory": 6229.751042667593,
+    "class_mean_ms:resize_image": 4529.310563526268,
+    "class_mean_ms:send_order_email": 6420.103132090818,
+    "class_mean_ms:send_sms": 6171.891442472858,
+    "cohorts": {
+     "flash_sale": {
+      "count": 11859,
+      "mean_ms": 10109.24953975681,
+      "p50_ms": 9878.849853,
+      "p99_ms": 19427.730534
+     },
+     "ramp": {
+      "count": 3863,
+      "mean_ms": 151.88452021097592,
+      "p50_ms": 74.84444,
+      "p99_ms": 632.687234
+     },
+     "recovery": {
+      "count": 6393,
+      "mean_ms": 12205.065763249335,
+      "p50_ms": 12215.733571,
+      "p99_ms": 19517.566861
+     },
+     "shifted": {
+      "count": 7517,
+      "mean_ms": 766.5858782841559,
+      "p50_ms": 196.883397,
+      "p99_ms": 4863.362297
+     },
+     "steady": {
+      "count": 5134,
+      "mean_ms": 48.62549507226334,
+      "p50_ms": 14.245112,
+      "p99_ms": 374.43732
+     }
+    },
+    "completed": 34766,
+    "dlq": 0,
+    "long_max_wait_ms": 18393.506013,
+    "lookup_mean_us": null,
+    "mean_latency_ms": 5882.510928975637,
+    "messages": 34766,
+    "p50_latency_ms": 3041.302612,
+    "p95_latency_ms": 18044.619292,
+    "p99_latency_ms": 19174.846575,
+    "per_class": {
+     "deliver_webhook": {
+      "count": 3432,
+      "max_wait_ms": 19745.695242,
+      "mean_ms": 5704.219722053322,
+      "median_service_ms": 45.2328,
+      "p50_ms": 2314.520682,
+      "p95_ms": 18126.848601,
+      "p99_ms": 19545.971634
+     },
+     "export_report": {
+      "count": 50,
+      "max_wait_ms": 18393.506013,
+      "mean_ms": 6118.24169962,
+      "median_service_ms": 1276.98,
+      "p50_ms": 2010.054433,
+      "p95_ms": 17152.535802,
+      "p99_ms": 20032.731438
+     },
+     "generate_invoice": {
+      "count": 4952,
+      "max_wait_ms": 19764.005418,
+      "mean_ms": 6002.438587728999,
+      "median_service_ms": 4.57288,
+      "p50_ms": 3481.591588,
+      "p95_ms": 17803.076814,
+      "p99_ms": 18995.133071
+     },
+     "push_notification": {
+      "count": 7470,
+      "max_wait_ms": 19759.279625,
+      "mean_ms": 6024.807874029585,
+      "median_service_ms": 9.027185,
+      "p50_ms": 3288.2552,
+      "p95_ms": 18118.97131,
+      "p99_ms": 19145.774876
+     },
+     "reindex_product": {
+      "count": 3310,
+      "max_wait_ms": 19739.75477,
+      "mean_ms": 4806.5738435891235,
+      "median_service_ms": 2.510085,
+      "p50_ms": 458.156635,
+      "p95_ms": 17767.560044,
+      "p99_ms": 19237.376115
+     },
+     "reserve_inventory": {
+      "count": 6838,
+      "max_wait_ms": 19746.407358,
+      "mean_ms": 6229.751042667593,
+      "median_service_ms": 6.11157,
+      "p50_ms": 3791.028806,
+      "p95_ms": 18125.702418,
+      "p99_ms": 19108.075317
+     },
+     "resize_image": {
+      "count": 2208,
+      "max_wait_ms": 19752.329144,
+      "mean_ms": 4529.310563526268,
+      "median_service_ms": 15.247,
+      "p50_ms": 470.890455,
+      "p95_ms": 17250.752069,
+      "p99_ms": 18973.148774
+     },
+     "send_order_email": {
+      "count": 4977,
+      "max_wait_ms": 19764.543752,
+      "mean_ms": 6420.103132090818,
+      "median_service_ms": 35.4021,
+      "p50_ms": 4262.995156,
+      "p95_ms": 18161.392078,
+      "p99_ms": 19192.760899
+     },
+     "send_sms": {
+      "count": 1529,
+      "max_wait_ms": 19744.760469,
+      "mean_ms": 6171.891442472858,
+      "median_service_ms": 83.8524,
+      "p50_ms": 3562.253058,
+      "p95_ms": 17967.396745,
+      "p99_ms": 19394.750765
+     }
+    },
+    "shifted_class_mean_ms:deliver_webhook": 867.6628574975729,
+    "shifted_class_mean_ms:export_report": 1500.8641196153847,
+    "shifted_class_mean_ms:generate_invoice": 745.7369647460484,
+    "shifted_class_mean_ms:push_notification": 740.7372532265475,
+    "shifted_class_mean_ms:reindex_product": 716.146978362423,
+    "shifted_class_mean_ms:reserve_inventory": 699.2408676490015,
+    "shifted_class_mean_ms:resize_image": 769.3387555414781,
+    "shifted_class_mean_ms:send_order_email": 842.9096059617117,
+    "shifted_class_mean_ms:send_sms": 869.4565933442136,
+    "short_mean_ms": 5903.331314021976,
+    "short_p50_ms": 3049.11525,
+    "slowdown_p50": 153.28449381369168,
+    "slowdown_p95": 3649.7805282325935,
+    "slowdown_p99": 6504.534013651853,
+    "submit_errors": 0,
+    "throughput_per_s": 115.85910787125484
+   },
+   "44": {
+    "class_mean_ms:deliver_webhook": 10438.714049648974,
+    "class_mean_ms:export_report": 11409.861173780822,
+    "class_mean_ms:generate_invoice": 10623.8478184481,
+    "class_mean_ms:push_notification": 10385.489514868934,
+    "class_mean_ms:reindex_product": 9313.91838092303,
+    "class_mean_ms:reserve_inventory": 10637.983221730194,
+    "class_mean_ms:resize_image": 9332.719477274863,
+    "class_mean_ms:send_order_email": 10408.692524014312,
+    "class_mean_ms:send_sms": 10499.94538797905,
+    "cohorts": {
+     "flash_sale": {
+      "count": 12133,
+      "mean_ms": 13398.757989363306,
+      "p50_ms": 13819.384139,
+      "p99_ms": 25343.176895
+     },
+     "ramp": {
+      "count": 3922,
+      "mean_ms": 812.0445697738398,
+      "p50_ms": 560.373205,
+      "p99_ms": 2463.739635
+     },
+     "recovery": {
+      "count": 6474,
+      "mean_ms": 20959.042463673464,
+      "p50_ms": 20977.010972,
+      "p99_ms": 25145.912638
+     },
+     "shifted": {
+      "count": 7606,
+      "mean_ms": 8075.510113685248,
+      "p50_ms": 7299.679293,
+      "p99_ms": 15185.99363
+     },
+     "steady": {
+      "count": 5067,
+      "mean_ms": 73.7966463595816,
+      "p50_ms": 18.926964,
+      "p99_ms": 637.268651
+     }
+    },
+    "completed": 35202,
+    "dlq": 0,
+    "long_max_wait_ms": 24885.464463,
+    "lookup_mean_us": null,
+    "mean_latency_ms": 10318.64859750054,
+    "messages": 35202,
+    "p50_latency_ms": 9130.151091,
+    "p95_latency_ms": 23761.594594,
+    "p99_latency_ms": 25150.676231,
+    "per_class": {
+     "deliver_webhook": {
+      "count": 3655,
+      "max_wait_ms": 25424.932992,
+      "mean_ms": 10438.714049648974,
+      "median_service_ms": 45.3315,
+      "p50_ms": 8837.016014,
+      "p95_ms": 23874.956583,
+      "p99_ms": 25426.107032
+     },
+     "export_report": {
+      "count": 73,
+      "max_wait_ms": 24885.464463,
+      "mean_ms": 11409.861173780822,
+      "median_service_ms": 1322.16,
+      "p50_ms": 7967.048617,
+      "p95_ms": 24339.149829,
+      "p99_ms": 26920.235749
+     },
+     "generate_invoice": {
+      "count": 5077,
+      "max_wait_ms": 25451.053242,
+      "mean_ms": 10623.8478184481,
+      "median_service_ms": 4.53001,
+      "p50_ms": 10038.750783,
+      "p95_ms": 23726.569253,
+      "p99_ms": 25154.324645
+     },
+     "push_notification": {
+      "count": 7645,
+      "max_wait_ms": 25450.014765,
+      "mean_ms": 10385.489514868934,
+      "median_service_ms": 9.09218,
+      "p50_ms": 9667.982741,
+      "p95_ms": 23796.462566,
+      "p99_ms": 25139.531744
+     },
+     "reindex_product": {
+      "count": 3313,
+      "max_wait_ms": 25325.91751,
+      "mean_ms": 9313.91838092303,
+      "median_service_ms": 2.51803,
+      "p50_ms": 6901.890782,
+      "p95_ms": 23328.164776,
+      "p99_ms": 25009.077403
+     },
+     "reserve_inventory": {
+      "count": 6753,
+      "max_wait_ms": 25440.008107,
+      "mean_ms": 10637.983221730194,
+      "median_service_ms": 6.07707,
+      "p50_ms": 10146.335359,
+      "p95_ms": 23828.481345,
+      "p99_ms": 25134.883248
+     },
+     "resize_image": {
+      "count": 2172,
+      "max_wait_ms": 25388.934704,
+      "mean_ms": 9332.719477274863,
+      "median_service_ms": 15.4983,
+      "p50_ms": 6782.110891,
+      "p95_ms": 23491.500013,
+      "p99_ms": 25011.985059
+     },
+     "send_order_email": {
+      "count": 4891,
+      "max_wait_ms": 25432.267318,
+      "mean_ms": 10408.692524014312,
+      "median_service_ms": 35.24,
+      "p50_ms": 9000.407484,
+      "p95_ms": 23764.601027,
+      "p99_ms": 25133.064997
+     },
+     "send_sms": {
+      "count": 1623,
+      "max_wait_ms": 25404.804938,
+      "mean_ms": 10499.94538797905,
+      "median_service_ms": 79.1411,
+      "p50_ms": 9488.480603,
+      "p95_ms": 24274.709464,
+      "p99_ms": 25207.413752
+     }
+    },
+    "shifted_class_mean_ms:deliver_webhook": 8228.019567183674,
+    "shifted_class_mean_ms:export_report": 8404.51346812,
+    "shifted_class_mean_ms:generate_invoice": 7954.567621224766,
+    "shifted_class_mean_ms:push_notification": 8222.75570057511,
+    "shifted_class_mean_ms:reindex_product": 8026.0434124452195,
+    "shifted_class_mean_ms:reserve_inventory": 8074.210842275862,
+    "shifted_class_mean_ms:resize_image": 7791.5350223415435,
+    "shifted_class_mean_ms:send_order_email": 7957.857048854664,
+    "shifted_class_mean_ms:send_sms": 8289.673742946428,
+    "short_mean_ms": 10357.629235026154,
+    "short_p50_ms": 9440.217473,
+    "slowdown_p50": 585.5928529569633,
+    "slowdown_p95": 5603.69534149641,
+    "slowdown_p99": 8996.60037698845,
+    "submit_errors": 0,
+    "throughput_per_s": 114.95270734716271
+   },
+   "55": {
+    "class_mean_ms:deliver_webhook": 5402.758209667147,
+    "class_mean_ms:export_report": 6324.261455847826,
+    "class_mean_ms:generate_invoice": 5794.999253097653,
+    "class_mean_ms:push_notification": 5634.909037509103,
+    "class_mean_ms:reindex_product": 4482.108919051113,
+    "class_mean_ms:reserve_inventory": 5737.737417182826,
+    "class_mean_ms:resize_image": 4728.534508854675,
+    "class_mean_ms:send_order_email": 5816.977949368241,
+    "class_mean_ms:send_sms": 5892.197187401178,
+    "cohorts": {
+     "flash_sale": {
+      "count": 11762,
+      "mean_ms": 9073.40590478388,
+      "p50_ms": 9665.190742,
+      "p99_ms": 18310.699286
+     },
+     "ramp": {
+      "count": 3796,
+      "mean_ms": 283.0560245479452,
+      "p50_ms": 192.654904,
+      "p99_ms": 1095.913392
+     },
+     "recovery": {
+      "count": 6409,
+      "mean_ms": 11894.375025378218,
+      "p50_ms": 12438.113234,
+      "p99_ms": 18520.517632
+     },
+     "shifted": {
+      "count": 7586,
+      "mean_ms": 976.2957802934353,
+      "p50_ms": 235.443904,
+      "p99_ms": 4024.09768
+     },
+     "steady": {
+      "count": 5119,
+      "mean_ms": 45.16762097206485,
+      "p50_ms": 15.117122,
+      "p99_ms": 377.414904
+     }
+    },
+    "completed": 34672,
+    "dlq": 0,
+    "long_max_wait_ms": 18038.545759,
+    "lookup_mean_us": null,
+    "mean_latency_ms": 5527.928106251817,
+    "messages": 34672,
+    "p50_latency_ms": 2865.686203,
+    "p95_latency_ms": 16852.93123,
+    "p99_latency_ms": 18242.14073,
+    "per_class": {
+     "deliver_webhook": {
+      "count": 3470,
+      "max_wait_ms": 18729.493328,
+      "mean_ms": 5402.758209667147,
+      "median_service_ms": 44.64815,
+      "p50_ms": 2321.103726,
+      "p95_ms": 17116.620139,
+      "p99_ms": 18538.184166
+     },
+     "export_report": {
+      "count": 46,
+      "max_wait_ms": 18038.545759,
+      "mean_ms": 6324.261455847826,
+      "median_service_ms": 1358.175,
+      "p50_ms": 2106.647324,
+      "p95_ms": 18542.370607,
+      "p99_ms": 19824.140832
+     },
+     "generate_invoice": {
+      "count": 5028,
+      "max_wait_ms": 18761.564767,
+      "mean_ms": 5794.999253097653,
+      "median_service_ms": 4.546765000000001,
+      "p50_ms": 3295.131632,
+      "p95_ms": 16850.107138,
+      "p99_ms": 18244.281392
+     },
+     "push_notification": {
+      "count": 7525,
+      "max_wait_ms": 18773.855774,
+      "mean_ms": 5634.909037509103,
+      "median_service_ms": 9.13027,
+      "p50_ms": 3012.969076,
+      "p95_ms": 16903.33867,
+      "p99_ms": 18222.298552
+     },
+     "reindex_product": {
+      "count": 3189,
+      "max_wait_ms": 18764.303228,
+      "mean_ms": 4482.108919051113,
+      "median_service_ms": 2.5206,
+      "p50_ms": 647.459059,
+      "p95_ms": 16570.387164,
+      "p99_ms": 18169.129009
+     },
+     "reserve_inventory": {
+      "count": 6673,
+      "max_wait_ms": 18746.150135,
+      "mean_ms": 5737.737417182826,
+      "median_service_ms": 6.11402,
+      "p50_ms": 3185.006032,
+      "p95_ms": 16875.468693,
+      "p99_ms": 18198.886488
+     },
+     "resize_image": {
+      "count": 2257,
+      "max_wait_ms": 18759.495501,
+      "mean_ms": 4728.534508854675,
+      "median_service_ms": 15.5474,
+      "p50_ms": 1227.460766,
+      "p95_ms": 16705.26906,
+      "p99_ms": 18192.40885
+     },
+     "send_order_email": {
+      "count": 4956,
+      "max_wait_ms": 18714.491149,
+      "mean_ms": 5816.977949368241,
+      "median_service_ms": 35.26515,
+      "p50_ms": 3354.27229,
+      "p95_ms": 16792.8503,
+      "p99_ms": 18255.948909
+     },
+     "send_sms": {
+      "count": 1528,
+      "max_wait_ms": 18749.253494,
+      "mean_ms": 5892.197187401178,
+      "median_service_ms": 81.18485000000001,
+      "p50_ms": 3514.507108,
+      "p95_ms": 17066.771149,
+      "p99_ms": 18248.360243
+     }
+    },
+    "shifted_class_mean_ms:deliver_webhook": 1176.6319929734177,
+    "shifted_class_mean_ms:export_report": 2592.902379875,
+    "shifted_class_mean_ms:generate_invoice": 914.6160523210257,
+    "shifted_class_mean_ms:push_notification": 984.2240114002486,
+    "shifted_class_mean_ms:reindex_product": 876.967733295168,
+    "shifted_class_mean_ms:reserve_inventory": 915.4345310551416,
+    "shifted_class_mean_ms:resize_image": 1053.6177997068964,
+    "shifted_class_mean_ms:send_order_email": 929.1395084864865,
+    "shifted_class_mean_ms:send_sms": 1093.9079644801325,
+    "short_mean_ms": 5537.4219888265,
+    "short_p50_ms": 2903.41218,
+    "slowdown_p50": 156.6328071284317,
+    "slowdown_p95": 3460.72807939304,
+    "slowdown_p99": 6089.4405191232445,
+    "submit_errors": 0,
+    "throughput_per_s": 115.39851511113116
+   }
+  },
+  "predictive": {
+   "11": {
+    "class_mean_ms:deliver_webhook": 7788.067772838746,
+    "class_mean_ms:export_report": 6403.449207978723,
+    "class_mean_ms:generate_invoice": 2591.077058854236,
+    "class_mean_ms:push_notification": 4883.173481305101,
+    "class_mean_ms:reindex_product": 2058.7482540404985,
+    "class_mean_ms:reserve_inventory": 5175.351801978102,
+    "class_mean_ms:resize_image": 4727.098946889517,
+    "class_mean_ms:send_order_email": 8582.397736145791,
+    "class_mean_ms:send_sms": 8101.802349588779,
+    "cohorts": {
+     "flash_sale": {
+      "count": 11911,
+      "mean_ms": 9020.59488205071,
+      "p50_ms": 8986.77919,
+      "p99_ms": 22508.883392
+     },
+     "ramp": {
+      "count": 3812,
+      "mean_ms": 119.92269098347325,
+      "p50_ms": 22.462225,
+      "p99_ms": 1160.937438
+     },
+     "recovery": {
+      "count": 6511,
+      "mean_ms": 11232.668838933498,
+      "p50_ms": 11090.961678,
+      "p99_ms": 21838.302399
+     },
+     "shifted": {
+      "count": 7629,
+      "mean_ms": 502.0149144083104,
+      "p50_ms": 29.750157,
+      "p99_ms": 5916.767367
+     },
+     "steady": {
+      "count": 5093,
+      "mean_ms": 49.47259926565875,
+      "p50_ms": 14.492286,
+      "p99_ms": 582.576857
+     }
+    },
+    "completed": 34956,
+    "dlq": 0,
+    "long_max_wait_ms": 20453.07487,
+    "lookup_mean_us": 1.51795,
+    "mean_latency_ms": 5295.777362355876,
+    "messages": 34956,
+    "p50_latency_ms": 555.279626,
+    "p95_latency_ms": 18690.539725,
+    "p99_latency_ms": 22322.932808,
+    "per_class": {
+     "deliver_webhook": {
+      "count": 3479,
+      "max_wait_ms": 22680.285907,
+      "mean_ms": 7788.067772838746,
+      "median_service_ms": 44.8453,
+      "p50_ms": 4329.418947,
+      "p95_ms": 21990.154614,
+      "p99_ms": 22650.783044
+     },
+     "export_report": {
+      "count": 47,
+      "max_wait_ms": 20453.07487,
+      "mean_ms": 6403.449207978723,
+      "median_service_ms": 1358.43,
+      "p50_ms": 2086.931503,
+      "p95_ms": 19777.015098,
+      "p99_ms": 21312.57939
+     },
+     "generate_invoice": {
+      "count": 5111,
+      "max_wait_ms": 12559.141667,
+      "mean_ms": 2591.077058854236,
+      "median_service_ms": 4.54408,
+      "p50_ms": 20.770421,
+      "p95_ms": 10650.047274,
+      "p99_ms": 12082.274254
+     },
+     "push_notification": {
+      "count": 7568,
+      "max_wait_ms": 17601.410454,
+      "mean_ms": 4883.173481305101,
+      "median_service_ms": 9.152215,
+      "p50_ms": 119.732233,
+      "p95_ms": 16132.750781,
+      "p99_ms": 17191.369803
+     },
+     "reindex_product": {
+      "count": 3210,
+      "max_wait_ms": 12532.95431,
+      "mean_ms": 2058.7482540404985,
+      "median_service_ms": 2.49895,
+      "p50_ms": 12.386669,
+      "p95_ms": 10518.346595,
+      "p99_ms": 12076.294708
+     },
+     "reserve_inventory": {
+      "count": 6713,
+      "max_wait_ms": 17622.193724,
+      "mean_ms": 5175.351801978102,
+      "median_service_ms": 6.13793,
+      "p50_ms": 1172.176529,
+      "p95_ms": 16139.584764,
+      "p99_ms": 17190.715667
+     },
+     "resize_image": {
+      "count": 2299,
+      "max_wait_ms": 18092.090273,
+      "mean_ms": 4727.098946889517,
+      "median_service_ms": 15.3176,
+      "p50_ms": 254.333215,
+      "p95_ms": 16419.571337,
+      "p99_ms": 17325.448478
+     },
+     "send_order_email": {
+      "count": 5014,
+      "max_wait_ms": 22690.613835,
+      "mean_ms": 8582.397736145791,
+      "median_service_ms": 35.17005,
+      "p50_ms": 7018.164749,
+      "p95_ms": 22033.601215,
+      "p99_ms": 22525.507072
+     },
+     "send_sms": {
+      "count": 1515,
+      "max_wait_ms": 22679.218776,
+      "mean_ms": 8101.802349588779,
+      "median_service_ms": 80.0252,
+      "p50_ms": 6348.172259,
+      "p95_ms": 21743.814295,
+      "p99_ms": 22607.222758
+     }
+    },
+    "shifted_class_mean_ms:deliver_webhook": 1163.3629048514008,
+    "shifted_class_mean_ms:export_report": 2774.0068705714284,
+    "shifted_class_mean_ms:generate_invoice": 16.316822230925737,
+    "shifted_class_mean_ms:push_notification": 183.8738760125149,
+    "shifted_class_mean_ms:reindex_product": 15.54281613304721,
+    "shifted_class_mean_ms:reserve_inventory": 168.2077648295004,
+    "shifted_class_mean_ms:resize_image": 1129.502575960191,
+    "shifted_class_mean_ms:send_order_email": 1227.6857087011144,
+    "shifted_class_mean_ms:send_sms": 1119.0327152953846,
+    "short_mean_ms": 4050.5074903313866,
+    "short_p50_ms": 44.924914,
+    "slowdown_p50": 20.83738324757564,
+    "slowdown_p95": 2561.1583083649566,
+    "slowdown_p99": 4208.428629540967,
+    "submit_errors": 0,
+    "throughput_per_s": 116.23946046802344
+   },
+   "22": {
+    "class_mean_ms:deliver_webhook": 9655.26368312766,
+    "class_mean_ms:export_report": 11113.441258375,
+    "class_mean_ms:generate_invoice": 3410.0913855125377,
+    "class_mean_ms:push_notification": 6020.849211953451,
+    "class_mean_ms:reindex_product": 3082.7618351692718,
+    "class_mean_ms:reserve_inventory": 6209.030498616008,
+    "class_mean_ms:resize_image": 8493.045100833633,
+    "class_mean_ms:send_order_email": 10126.694568962492,
+    "class_mean_ms:send_sms": 9998.466040488585,
+    "cohorts": {
+     "flash_sale": {
+      "count": 12013,
+      "mean_ms": 9288.82119523691,
+      "p50_ms": 8821.525859,
+      "p99_ms": 24761.515596
+     },
+     "ramp": {
+      "count": 3868,
+      "mean_ms": 134.71675297440538,
+      "p50_ms": 25.162225,
+      "p99_ms": 1307.288358
+     },
+     "recovery": {
+      "count": 6380,
+      "mean_ms": 15983.212877195454,
+      "p50_ms": 15389.071677,
+      "p99_ms": 25806.341791
+     },
+     "shifted": {
+      "count": 7717,
+      "mean_ms": 2653.568129913956,
+      "p50_ms": 789.730367,
+      "p99_ms": 11826.926439
+     },
+     "steady": {
+      "count": 5078,
+      "mean_ms": 37.289110675068926,
+      "p50_ms": 12.911476,
+      "p99_ms": 351.352503
+     }
+    },
+    "completed": 35056,
+    "dlq": 0,
+    "long_max_wait_ms": 25758.688054,
+    "lookup_mean_us": 1.49649,
+    "mean_latency_ms": 6696.358139489588,
+    "messages": 35056,
+    "p50_latency_ms": 3342.530446,
+    "p95_latency_ms": 21582.474701,
+    "p99_latency_ms": 25447.816722,
+    "per_class": {
+     "deliver_webhook": {
+      "count": 3525,
+      "max_wait_ms": 25952.439915,
+      "mean_ms": 9655.26368312766,
+      "median_service_ms": 45.0757,
+      "p50_ms": 7393.370575,
+      "p95_ms": 24686.72353,
+      "p99_ms": 25796.934889
+     },
+     "export_report": {
+      "count": 56,
+      "max_wait_ms": 25758.688054,
+      "mean_ms": 11113.441258375,
+      "median_service_ms": 1469.06,
+      "p50_ms": 8037.560453,
+      "p95_ms": 27334.818636,
+      "p99_ms": 27843.885373
+     },
+     "generate_invoice": {
+      "count": 4985,
+      "max_wait_ms": 15852.032656,
+      "mean_ms": 3410.0913855125377,
+      "median_service_ms": 4.53172,
+      "p50_ms": 27.909322,
+      "p95_ms": 14149.900607,
+      "p99_ms": 15411.558362
+     },
+     "push_notification": {
+      "count": 7519,
+      "max_wait_ms": 20930.477174,
+      "mean_ms": 6020.849211953451,
+      "median_service_ms": 9.13719,
+      "p50_ms": 2055.069847,
+      "p95_ms": 19084.023963,
+      "p99_ms": 20437.239461
+     },
+     "reindex_product": {
+      "count": 3391,
+      "max_wait_ms": 15909.256356,
+      "mean_ms": 3082.7618351692718,
+      "median_service_ms": 2.52514,
+      "p50_ms": 19.61753,
+      "p95_ms": 14156.946711,
+      "p99_ms": 15368.532086
+     },
+     "reserve_inventory": {
+      "count": 6784,
+      "max_wait_ms": 20824.399932,
+      "mean_ms": 6209.030498616008,
+      "median_service_ms": 6.08738,
+      "p50_ms": 3361.726148,
+      "p95_ms": 19159.267895,
+      "p99_ms": 20411.962087
+     },
+     "resize_image": {
+      "count": 2224,
+      "max_wait_ms": 26009.920172,
+      "mean_ms": 8493.045100833633,
+      "median_service_ms": 15.2924,
+      "p50_ms": 5597.323843,
+      "p95_ms": 25007.717933,
+      "p99_ms": 25665.891351
+     },
+     "send_order_email": {
+      "count": 5039,
+      "max_wait_ms": 25996.620403,
+      "mean_ms": 10126.694568962492,
+      "median_service_ms": 35.3179,
+      "p50_ms": 9240.329136,
+      "p95_ms": 24435.514091,
+      "p99_ms": 25656.021627
+     },
+     "send_sms": {
+      "count": 1533,
+      "max_wait_ms": 25953.365868,
+      "mean_ms": 9998.466040488585,
+      "median_service_ms": 80.8834,
+      "p50_ms": 9022.160821,
+      "p95_ms": 24660.329106,
+      "p99_ms": 25707.712343
+     }
+    },
+    "shifted_class_mean_ms:deliver_webhook": 4911.072333223602,
+    "shifted_class_mean_ms:export_report": 6746.342686625,
+    "shifted_class_mean_ms:generate_invoice": 528.5375382534792,
+    "shifted_class_mean_ms:push_notification": 1970.868569283237,
+    "shifted_class_mean_ms:reindex_product": 542.29326217607,
+    "shifted_class_mean_ms:reserve_inventory": 1961.655304844735,
+    "shifted_class_mean_ms:resize_image": 4883.644078809375,
+    "shifted_class_mean_ms:send_order_email": 4727.924170985366,
+    "shifted_class_mean_ms:send_sms": 5116.914190678466,
+    "short_mean_ms": 5063.970151555536,
+    "short_p50_ms": 765.905871,
+    "slowdown_p50": 134.76315507170523,
+    "slowdown_p95": 3105.115658269809,
+    "slowdown_p99": 5343.638045836243,
+    "submit_errors": 0,
+    "throughput_per_s": 116.67903172161705
+   },
+   "33": {
+    "class_mean_ms:deliver_webhook": 6522.289366772728,
+    "class_mean_ms:export_report": 6060.14389338,
+    "class_mean_ms:generate_invoice": 1592.6898664787964,
+    "class_mean_ms:push_notification": 3798.417690508568,
+    "class_mean_ms:reindex_product": 1475.5623563574018,
+    "class_mean_ms:reserve_inventory": 1649.6962588695526,
+    "class_mean_ms:resize_image": 2907.9401524628624,
+    "class_mean_ms:send_order_email": 7401.039563064697,
+    "class_mean_ms:send_sms": 7056.515709293002,
+    "cohorts": {
+     "flash_sale": {
+      "count": 11859,
+      "mean_ms": 6015.521541632515,
+      "p50_ms": 4451.173433,
+      "p99_ms": 20143.99627
+     },
+     "ramp": {
+      "count": 3863,
+      "mean_ms": 87.18761419181983,
+      "p50_ms": 20.068936,
+      "p99_ms": 956.971414
+     },
+     "recovery": {
+      "count": 6393,
+      "mean_ms": 8589.897628999062,
+      "p50_ms": 8559.052241,
+      "p99_ms": 20332.682799
+     },
+     "shifted": {
+      "count": 7517,
+      "mean_ms": 313.7438880033258,
+      "p50_ms": 27.37544,
+      "p99_ms": 5043.917971
+     },
+     "steady": {
+      "count": 5134,
+      "mean_ms": 40.910265561550446,
+      "p50_ms": 12.585295,
+      "p99_ms": 470.305124
+     }
+    },
+    "completed": 34766,
+    "dlq": 0,
+    "long_max_wait_ms": 19537.717311,
+    "lookup_mean_us": 1.52488,
+    "mean_latency_ms": 3715.0819009246966,
+    "messages": 34766,
+    "p50_latency_ms": 88.961784,
+    "p95_latency_ms": 16135.936796,
+    "p99_latency_ms": 19824.011871,
+    "per_class": {
+     "deliver_webhook": {
+      "count": 3432,
+      "max_wait_ms": 20887.867082,
+      "mean_ms": 6522.289366772728,
+      "median_service_ms": 45.20385,
+      "p50_ms": 3051.533004,
+      "p95_ms": 19591.554731,
+      "p99_ms": 20693.672768
+     },
+     "export_report": {
+      "count": 50,
+      "max_wait_ms": 19537.717311,
+      "mean_ms": 6060.14389338,
+      "median_service_ms": 1278.3000000000002,
+      "p50_ms": 1831.709895,
+      "p95_ms": 18254.986959,
+      "p99_ms": 21174.937165
+     },
+     "generate_invoice": {
+      "count": 4952,
+      "max_wait_ms": 10605.413426,
+      "mean_ms": 1592.6898664787964,
+      "median_service_ms": 4.580195,
+      "p50_ms": 17.286409,
+      "p95_ms": 8601.169172,
+      "p99_ms": 10002.239439
+     },
+     "push_notification": {
+      "count": 7470,
+      "max_wait_ms": 15819.34352,
+      "mean_ms": 3798.417690508568,
+      "median_service_ms": 9.031735000000001,
+      "p50_ms": 71.984218,
+      "p95_ms": 13978.974278,
+      "p99_ms": 15146.840972
+     },
+     "reindex_product": {
+      "count": 3310,
+      "max_wait_ms": 10749.419593,
+      "mean_ms": 1475.5623563574018,
+      "median_service_ms": 2.5062100000000003,
+      "p50_ms": 12.168688,
+      "p95_ms": 9038.044162,
+      "p99_ms": 10128.745007
+     },
+     "reserve_inventory": {
+      "count": 6838,
+      "max_wait_ms": 10764.765348,
+      "mean_ms": 1649.6962588695526,
+      "median_service_ms": 6.104975,
+      "p50_ms": 20.104412,
+      "p95_ms": 8297.972083,
+      "p99_ms": 9820.022859
+     },
+     "resize_image": {
+      "count": 2208,
+      "max_wait_ms": 15721.706674,
+      "mean_ms": 2907.9401524628624,
+      "median_service_ms": 15.296949999999999,
+      "p50_ms": 99.444592,
+      "p95_ms": 13763.539898,
+      "p99_ms": 14850.228565
+     },
+     "send_order_email": {
+      "count": 4977,
+      "max_wait_ms": 20962.665464,
+      "mean_ms": 7401.039563064697,
+      "median_service_ms": 35.4404,
+      "p50_ms": 5996.493103,
+      "p95_ms": 19662.727177,
+      "p99_ms": 20398.196661
+     },
+     "send_sms": {
+      "count": 1529,
+      "max_wait_ms": 20919.322007,
+      "mean_ms": 7056.515709293002,
+      "median_service_ms": 83.8779,
+      "p50_ms": 4787.734537,
+      "p95_ms": 19593.368338,
+      "p99_ms": 20549.939572
+     }
+    },
+    "shifted_class_mean_ms:deliver_webhook": 950.3227734308252,
+    "shifted_class_mean_ms:export_report": 1501.8290197692309,
+    "shifted_class_mean_ms:generate_invoice": 17.6161628682824,
+    "shifted_class_mean_ms:push_notification": 100.16257789087429,
+    "shifted_class_mean_ms:reindex_product": 15.835565809034907,
+    "shifted_class_mean_ms:reserve_inventory": 20.50936137327189,
+    "shifted_class_mean_ms:resize_image": 259.4367500075415,
+    "shifted_class_mean_ms:send_order_email": 949.636675152027,
+    "shifted_class_mean_ms:send_sms": 963.6190001305638,
+    "short_mean_ms": 2322.8141242620736,
+    "short_p50_ms": 24.464827,
+    "slowdown_p50": 6.498807403421278,
+    "slowdown_p95": 1616.4734456150609,
+    "slowdown_p99": 2995.015825572069,
+    "submit_errors": 0,
+    "throughput_per_s": 115.85057055681126
+   },
+   "44": {
+    "class_mean_ms:deliver_webhook": 11191.448271211764,
+    "class_mean_ms:export_report": 11269.763218589042,
+    "class_mean_ms:generate_invoice": 3948.0828991932244,
+    "class_mean_ms:push_notification": 6939.61301326828,
+    "class_mean_ms:reindex_product": 3658.694361344401,
+    "class_mean_ms:reserve_inventory": 7123.9282348890865,
+    "class_mean_ms:resize_image": 8950.063607756445,
+    "class_mean_ms:send_order_email": 11288.23106819812,
+    "class_mean_ms:send_sms": 11303.753034099815,
+    "cohorts": {
+     "flash_sale": {
+      "count": 12133,
+      "mean_ms": 9390.589880533174,
+      "p50_ms": 8719.962142,
+      "p99_ms": 25957.386887
+     },
+     "ramp": {
+      "count": 3922,
+      "mean_ms": 377.53409574783274,
+      "p50_ms": 28.518513,
+      "p99_ms": 3134.717871
+     },
+     "recovery": {
+      "count": 6474,
+      "mean_ms": 17649.033047356195,
+      "p50_ms": 17536.502416,
+      "p99_ms": 25717.413892
+     },
+     "shifted": {
+      "count": 7606,
+      "mean_ms": 5009.357270267815,
+      "p50_ms": 4529.198265,
+      "p99_ms": 14641.558743
+     },
+     "steady": {
+      "count": 5067,
+      "mean_ms": 53.85369960351293,
+      "p50_ms": 14.307859,
+      "p99_ms": 689.784146
+     }
+    },
+    "completed": 35202,
+    "dlq": 0,
+    "long_max_wait_ms": 25539.928863,
+    "lookup_mean_us": 1.47392,
+    "mean_latency_ms": 7614.641321122777,
+    "messages": 35202,
+    "p50_latency_ms": 5081.806627,
+    "p95_latency_ms": 22106.782711,
+    "p99_latency_ms": 25539.913178,
+    "per_class": {
+     "deliver_webhook": {
+      "count": 3655,
+      "max_wait_ms": 26171.613384,
+      "mean_ms": 11191.448271211764,
+      "median_service_ms": 45.3092,
+      "p50_ms": 10043.168065,
+      "p95_ms": 25038.658549,
+      "p99_ms": 26207.28818
+     },
+     "export_report": {
+      "count": 73,
+      "max_wait_ms": 25539.928863,
+      "mean_ms": 11269.763218589042,
+      "median_service_ms": 1317.6,
+      "p50_ms": 8062.815817,
+      "p95_ms": 25010.744676,
+      "p99_ms": 27577.530371
+     },
+     "generate_invoice": {
+      "count": 5077,
+      "max_wait_ms": 16006.744678,
+      "mean_ms": 3948.0828991932244,
+      "median_service_ms": 4.52023,
+      "p50_ms": 45.751931,
+      "p95_ms": 14171.364179,
+      "p99_ms": 15489.421789
+     },
+     "push_notification": {
+      "count": 7645,
+      "max_wait_ms": 21069.486673,
+      "mean_ms": 6939.61301326828,
+      "median_service_ms": 9.09543,
+      "p50_ms": 4665.622258,
+      "p95_ms": 19394.662783,
+      "p99_ms": 20520.009385
+     },
+     "reindex_product": {
+      "count": 3313,
+      "max_wait_ms": 15940.435983,
+      "mean_ms": 3658.694361344401,
+      "median_service_ms": 2.51826,
+      "p50_ms": 34.259146,
+      "p95_ms": 14167.15051,
+      "p99_ms": 15384.72431
+     },
+     "reserve_inventory": {
+      "count": 6753,
+      "max_wait_ms": 21045.471437,
+      "mean_ms": 7123.9282348890865,
+      "median_service_ms": 6.08619,
+      "p50_ms": 5055.915625,
+      "p95_ms": 19504.772394,
+      "p99_ms": 20600.00143
+     },
+     "resize_image": {
+      "count": 2172,
+      "max_wait_ms": 26132.58337,
+      "mean_ms": 8950.063607756445,
+      "median_service_ms": 15.5214,
+      "p50_ms": 5179.213881,
+      "p95_ms": 24496.580875,
+      "p99_ms": 25674.977124
+     },
+     "send_order_email": {
+      "count": 4891,
+      "max_wait_ms": 26155.213935,
+      "mean_ms": 11288.23106819812,
+      "median_service_ms": 35.2311,
+      "p50_ms": 10378.909605,
+      "p95_ms": 24984.474547,
+      "p99_ms": 25905.880141
+     },
+     "send_sms": {
+      "count": 1623,
+      "max_wait_ms": 26134.843138,
+      "mean_ms": 11303.753034099815,
+      "median_service_ms": 79.1549,
+      "p50_ms": 10378.587976,
+      "p95_ms": 25216.643589,
+      "p99_ms": 26005.252244
+     }
+    },
+    "shifted_class_mean_ms:deliver_webhook": 8483.028405786848,
+    "shifted_class_mean_ms:export_report": 8593.62923096,
+    "shifted_class_mean_ms:generate_invoice": 1638.0749482372528,
+    "shifted_class_mean_ms:push_notification": 4206.404043434318,
+    "shifted_class_mean_ms:reindex_product": 1616.2969210288845,
+    "shifted_class_mean_ms:reserve_inventory": 4062.3753698393416,
+    "shifted_class_mean_ms:resize_image": 8031.5545261444995,
+    "shifted_class_mean_ms:send_order_email": 8208.996491682212,
+    "shifted_class_mean_ms:send_sms": 8546.00060189881,
+    "short_mean_ms": 5850.750401745656,
+    "short_p50_ms": 2822.795651,
+    "slowdown_p50": 238.36057998344342,
+    "slowdown_p95": 3395.9803796049077,
+    "slowdown_p99": 5411.865445513646,
+    "submit_errors": 0,
+    "throughput_per_s": 115.05857138511712
+   },
+   "55": {
+    "class_mean_ms:deliver_webhook": 6078.183837463401,
+    "class_mean_ms:export_report": 5631.973677934782,
+    "class_mean_ms:generate_invoice": 1313.193480743039,
+    "class_mean_ms:push_notification": 3297.1847230244516,
+    "class_mean_ms:reindex_product": 1205.5180086553778,
+    "class_mean_ms:reserve_inventory": 3362.463730765473,
+    "class_mean_ms:resize_image": 5291.878756599911,
+    "class_mean_ms:send_order_email": 6602.619175744148,
+    "class_mean_ms:send_sms": 6641.4041949090315,
+    "cohorts": {
+     "flash_sale": {
+      "count": 11762,
+      "mean_ms": 6005.452450705237,
+      "p50_ms": 4895.058593,
+      "p99_ms": 19726.076044
+     },
+     "ramp": {
+      "count": 3796,
+      "mean_ms": 164.36050094257112,
+      "p50_ms": 23.491096,
+      "p99_ms": 1291.999254
+     },
+     "recovery": {
+      "count": 6409,
+      "mean_ms": 9208.218756524262,
+      "p50_ms": 9039.944095,
+      "p99_ms": 19654.650662
+     },
+     "shifted": {
+      "count": 7586,
+      "mean_ms": 446.7822075210915,
+      "p50_ms": 30.217678,
+      "p99_ms": 4425.690698
+     },
+     "steady": {
+      "count": 5119,
+      "mean_ms": 38.31735631588201,
+      "p50_ms": 13.126845,
+      "p99_ms": 409.464709
+     }
+    },
+    "completed": 34672,
+    "dlq": 0,
+    "long_max_wait_ms": 14881.197415,
+    "lookup_mean_us": 1.47239,
+    "mean_latency_ms": 3860.7797234244636,
+    "messages": 34672,
+    "p50_latency_ms": 175.238405,
+    "p95_latency_ms": 15377.194976,
+    "p99_latency_ms": 19471.304555,
+    "per_class": {
+     "deliver_webhook": {
+      "count": 3470,
+      "max_wait_ms": 19854.161708,
+      "mean_ms": 6078.183837463401,
+      "median_service_ms": 44.630700000000004,
+      "p50_ms": 2847.036972,
+      "p95_ms": 18996.793943,
+      "p99_ms": 19807.590205
+     },
+     "export_report": {
+      "count": 46,
+      "max_wait_ms": 14881.197415,
+      "mean_ms": 5631.973677934782,
+      "median_service_ms": 1355.6599999999999,
+      "p50_ms": 1997.589242,
+      "p95_ms": 15617.488719,
+      "p99_ms": 16090.104343
+     },
+     "generate_invoice": {
+      "count": 5028,
+      "max_wait_ms": 9737.044657,
+      "mean_ms": 1313.193480743039,
+      "median_service_ms": 4.543934999999999,
+      "p50_ms": 15.273709,
+      "p95_ms": 7616.164054,
+      "p99_ms": 9388.327783
+     },
+     "push_notification": {
+      "count": 7525,
+      "max_wait_ms": 14760.368129,
+      "mean_ms": 3297.1847230244516,
+      "median_service_ms": 9.11944,
+      "p50_ms": 43.346286,
+      "p95_ms": 12979.437147,
+      "p99_ms": 14412.307725
+     },
+     "reindex_product": {
+      "count": 3189,
+      "max_wait_ms": 9720.028521,
+      "mean_ms": 1205.5180086553778,
+      "median_service_ms": 2.52375,
+      "p50_ms": 10.969301,
+      "p95_ms": 7731.147008,
+      "p99_ms": 9345.677723
+     },
+     "reserve_inventory": {
+      "count": 6673,
+      "max_wait_ms": 14759.229326,
+      "mean_ms": 3362.463730765473,
+      "median_service_ms": 6.11812,
+      "p50_ms": 39.222163,
+      "p95_ms": 12960.671552,
+      "p99_ms": 14367.906934
+     },
+     "resize_image": {
+      "count": 2257,
+      "max_wait_ms": 19838.682393,
+      "mean_ms": 5291.878756599911,
+      "median_service_ms": 15.5966,
+      "p50_ms": 1524.987013,
+      "p95_ms": 18342.996797,
+      "p99_ms": 19641.55233
+     },
+     "send_order_email": {
+      "count": 4956,
+      "max_wait_ms": 19850.075496,
+      "mean_ms": 6602.619175744148,
+      "median_service_ms": 35.24935,
+      "p50_ms": 4149.791955,
+      "p95_ms": 18941.797525,
+      "p99_ms": 19747.509754
+     },
+     "send_sms": {
+      "count": 1528,
+      "max_wait_ms": 19831.868899,
+      "mean_ms": 6641.4041949090315,
+      "median_service_ms": 81.24215000000001,
+      "p50_ms": 4196.985795,
+      "p95_ms": 18952.687196,
+      "p99_ms": 19767.049883
+     }
+    },
+    "shifted_class_mean_ms:deliver_webhook": 1297.9954294278482,
+    "shifted_class_mean_ms:export_report": 2741.7685070625,
+    "shifted_class_mean_ms:generate_invoice": 20.398419412307693,
+    "shifted_class_mean_ms:push_notification": 56.74327826662523,
+    "shifted_class_mean_ms:reindex_product": 18.856656741596638,
+    "shifted_class_mean_ms:reserve_inventory": 51.84594211400894,
+    "shifted_class_mean_ms:resize_image": 1176.9160714498432,
+    "shifted_class_mean_ms:send_order_email": 1040.8762476829522,
+    "shifted_class_mean_ms:send_sms": 1222.1607676986755,
+    "short_mean_ms": 2573.998182776489,
+    "short_p50_ms": 27.122845,
+    "slowdown_p50": 9.124409334633636,
+    "slowdown_p95": 1779.0121408753562,
+    "slowdown_p99": 3132.683901518939,
+    "submit_errors": 0,
+    "throughput_per_s": 115.37878409746335
+   }
+  },
+  "predictive_weighted": {
+   "11": {
+    "class_mean_ms:deliver_webhook": 8755.642395695028,
+    "class_mean_ms:export_report": 6313.567203978723,
+    "class_mean_ms:generate_invoice": 15.060465173547252,
+    "class_mean_ms:push_notification": 30.641426901294928,
+    "class_mean_ms:reindex_product": 13.953078680062305,
+    "class_mean_ms:reserve_inventory": 27.138554552510055,
+    "class_mean_ms:resize_image": 6957.671655085689,
+    "class_mean_ms:send_order_email": 9698.634664189869,
+    "class_mean_ms:send_sms": 9154.855304157756,
+    "cohorts": {
+     "flash_sale": {
+      "count": 11911,
+      "mean_ms": 5732.275570327681,
+      "p50_ms": 33.03122,
+      "p99_ms": 24634.888044
+     },
+     "ramp": {
+      "count": 3812,
+      "mean_ms": 120.55283239874082,
+      "p50_ms": 22.985275,
+      "p99_ms": 1159.008116
+     },
+     "recovery": {
+      "count": 6511,
+      "mean_ms": 5737.695232622946,
+      "p50_ms": 29.488356,
+      "p99_ms": 24239.021291
+     },
+     "shifted": {
+      "count": 7629,
+      "mean_ms": 451.00649028391666,
+      "p50_ms": 27.471171,
+      "p99_ms": 6200.727327
+     },
+     "steady": {
+      "count": 5093,
+      "mean_ms": 49.51102426919301,
+      "p50_ms": 14.675968,
+      "p99_ms": 584.374053
+     }
+    },
+    "completed": 34956,
+    "dlq": 0,
+    "long_max_wait_ms": 22502.713547,
+    "lookup_mean_us": 1.47061,
+    "mean_latency_ms": 3140.7398883128503,
+    "messages": 34956,
+    "p50_latency_ms": 26.951409,
+    "p95_latency_ms": 22684.945055,
+    "p99_latency_ms": 24498.385284,
+    "per_class": {
+     "deliver_webhook": {
+      "count": 3479,
+      "max_wait_ms": 24835.847598,
+      "mean_ms": 8755.642395695028,
+      "median_service_ms": 44.8174,
+      "p50_ms": 4376.271042,
+      "p95_ms": 24211.996948,
+      "p99_ms": 24829.961898
+     },
+     "export_report": {
+      "count": 47,
+      "max_wait_ms": 22502.713547,
+      "mean_ms": 6313.567203978723,
+      "median_service_ms": 1347.81,
+      "p50_ms": 1997.467778,
+      "p95_ms": 21551.821654,
+      "p99_ms": 23362.755307
+     },
+     "generate_invoice": {
+      "count": 5111,
+      "max_wait_ms": 256.073098,
+      "mean_ms": 15.060465173547252,
+      "median_service_ms": 4.54873,
+      "p50_ms": 10.208395,
+      "p95_ms": 41.325533,
+      "p99_ms": 73.962741
+     },
+     "push_notification": {
+      "count": 7568,
+      "max_wait_ms": 325.832783,
+      "mean_ms": 30.641426901294928,
+      "median_service_ms": 9.151230000000002,
+      "p50_ms": 21.201495,
+      "p95_ms": 80.365128,
+      "p99_ms": 187.591688
+     },
+     "reindex_product": {
+      "count": 3210,
+      "max_wait_ms": 249.348125,
+      "mean_ms": 13.953078680062305,
+      "median_service_ms": 2.499535,
+      "p50_ms": 7.536359,
+      "p95_ms": 45.875766,
+      "p99_ms": 94.422542
+     },
+     "reserve_inventory": {
+      "count": 6713,
+      "max_wait_ms": 324.893871,
+      "mean_ms": 27.138554552510055,
+      "median_service_ms": 6.13525,
+      "p50_ms": 17.766476,
+      "p95_ms": 77.739063,
+      "p99_ms": 191.484551
+     },
+     "resize_image": {
+      "count": 2299,
+      "max_wait_ms": 24847.872742,
+      "mean_ms": 6957.671655085689,
+      "median_service_ms": 15.3641,
+      "p50_ms": 125.384266,
+      "p95_ms": 23805.494697,
+      "p99_ms": 24551.227778
+     },
+     "send_order_email": {
+      "count": 5014,
+      "max_wait_ms": 24849.540049,
+      "mean_ms": 9698.634664189869,
+      "median_service_ms": 35.16565,
+      "p50_ms": 7717.319973,
+      "p95_ms": 24284.327247,
+      "p99_ms": 24640.305599
+     },
+     "send_sms": {
+      "count": 1515,
+      "max_wait_ms": 24819.864961,
+      "mean_ms": 9154.855304157756,
+      "median_service_ms": 80.0202,
+      "p50_ms": 6651.299459,
+      "p95_ms": 24081.366774,
+      "p99_ms": 24720.441049
+     }
+    },
+    "shifted_class_mean_ms:deliver_webhook": 1316.6013319805115,
+    "shifted_class_mean_ms:export_report": 3030.641570857143,
+    "shifted_class_mean_ms:generate_invoice": 17.64019704577823,
+    "shifted_class_mean_ms:push_notification": 29.792993417759238,
+    "shifted_class_mean_ms:reindex_product": 17.689708103004293,
+    "shifted_class_mean_ms:reserve_inventory": 24.273633163362412,
+    "shifted_class_mean_ms:resize_image": 658.7609114952229,
+    "shifted_class_mean_ms:send_order_email": 1393.7448687639312,
+    "shifted_class_mean_ms:send_sms": 1272.6553382061538,
+    "short_mean_ms": 23.7075858581099,
+    "short_p50_ms": 15.110148,
+    "slowdown_p50": 3.03114313450211,
+    "slowdown_p95": 678.7588511814109,
+    "slowdown_p99": 1512.6704306674728,
+    "submit_errors": 0,
+    "throughput_per_s": 116.23756898828536
+   },
+   "22": {
+    "class_mean_ms:deliver_webhook": 11160.415801394895,
+    "class_mean_ms:export_report": 12184.475391607142,
+    "class_mean_ms:generate_invoice": 15.863893047542629,
+    "class_mean_ms:push_notification": 29.398487164649556,
+    "class_mean_ms:reindex_product": 14.116655841344736,
+    "class_mean_ms:reserve_inventory": 26.962289443543632,
+    "class_mean_ms:resize_image": 8848.17724722527,
+    "class_mean_ms:send_order_email": 11751.600577781306,
+    "class_mean_ms:send_sms": 11601.955157365948,
+    "cohorts": {
+     "flash_sale": {
+      "count": 12013,
+      "mean_ms": 5978.250761242238,
+      "p50_ms": 32.505987,
+      "p99_ms": 27935.787903
+     },
+     "ramp": {
+      "count": 3868,
+      "mean_ms": 136.56991937409515,
+      "p50_ms": 25.525947,
+      "p99_ms": 1321.981792
+     },
+     "recovery": {
+      "count": 6380,
+      "mean_ms": 7875.714775007366,
+      "p50_ms": 30.22301,
+      "p99_ms": 29016.94837
+     },
+     "shifted": {
+      "count": 7717,
+      "mean_ms": 1872.6453693364,
+      "p50_ms": 33.762004,
+      "p99_ms": 13779.340159
+     },
+     "steady": {
+      "count": 5078,
+      "mean_ms": 37.59790233871603,
+      "p50_ms": 13.037084,
+      "p99_ms": 347.237341
+     }
+    },
+    "completed": 35056,
+    "dlq": 0,
+    "long_max_wait_ms": 29004.155187,
+    "lookup_mean_us": 1.45121,
+    "mean_latency_ms": 3914.712618973471,
+    "messages": 35056,
+    "p50_latency_ms": 27.967728,
+    "p95_latency_ms": 24518.927752,
+    "p99_latency_ms": 28600.085355,
+    "per_class": {
+     "deliver_webhook": {
+      "count": 3525,
+      "max_wait_ms": 29227.411928,
+      "mean_ms": 11160.415801394895,
+      "median_service_ms": 45.1195,
+      "p50_ms": 8915.17112,
+      "p95_ms": 27784.911667,
+      "p99_ms": 29028.937882
+     },
+     "export_report": {
+      "count": 56,
+      "max_wait_ms": 29004.155187,
+      "mean_ms": 12184.475391607142,
+      "median_service_ms": 1461.445,
+      "p50_ms": 7256.976479,
+      "p95_ms": 30496.334598,
+      "p99_ms": 31102.731554
+     },
+     "generate_invoice": {
+      "count": 4985,
+      "max_wait_ms": 260.074118,
+      "mean_ms": 15.863893047542629,
+      "median_service_ms": 4.54122,
+      "p50_ms": 10.573865,
+      "p95_ms": 42.175403,
+      "p99_ms": 81.023513
+     },
+     "push_notification": {
+      "count": 7519,
+      "max_wait_ms": 565.110237,
+      "mean_ms": 29.398487164649556,
+      "median_service_ms": 9.13326,
+      "p50_ms": 21.950645,
+      "p95_ms": 71.331921,
+      "p99_ms": 149.957919
+     },
+     "reindex_product": {
+      "count": 3391,
+      "max_wait_ms": 278.013275,
+      "mean_ms": 14.116655841344736,
+      "median_service_ms": 2.52255,
+      "p50_ms": 8.273024,
+      "p95_ms": 43.940477,
+      "p99_ms": 92.311395
+     },
+     "reserve_inventory": {
+      "count": 6784,
+      "max_wait_ms": 491.18076,
+      "mean_ms": 26.962289443543632,
+      "median_service_ms": 6.091295000000001,
+      "p50_ms": 18.897755,
+      "p95_ms": 70.227774,
+      "p99_ms": 153.745849
+     },
+     "resize_image": {
+      "count": 2224,
+      "max_wait_ms": 29245.583917,
+      "mean_ms": 8848.17724722527,
+      "median_service_ms": 15.2733,
+      "p50_ms": 220.692739,
+      "p95_ms": 28168.34274,
+      "p99_ms": 28883.514866
+     },
+     "send_order_email": {
+      "count": 5039,
+      "max_wait_ms": 29235.639864,
+      "mean_ms": 11751.600577781306,
+      "median_service_ms": 35.3033,
+      "p50_ms": 10685.564994,
+      "p95_ms": 27458.565129,
+      "p99_ms": 28844.89911
+     },
+     "send_sms": {
+      "count": 1533,
+      "max_wait_ms": 29214.804515,
+      "mean_ms": 11601.955157365948,
+      "median_service_ms": 80.8637,
+      "p50_ms": 10751.640427,
+      "p95_ms": 27733.901312,
+      "p99_ms": 28897.130923
+     }
+    },
+    "shifted_class_mean_ms:deliver_webhook": 5866.089269713044,
+    "shifted_class_mean_ms:export_report": 7754.9659261874995,
+    "shifted_class_mean_ms:generate_invoice": 21.680341229622268,
+    "shifted_class_mean_ms:push_notification": 34.001923514450866,
+    "shifted_class_mean_ms:reindex_product": 19.946889644941635,
+    "shifted_class_mean_ms:reserve_inventory": 34.86329883320523,
+    "shifted_class_mean_ms:resize_image": 2396.6079009859377,
+    "shifted_class_mean_ms:send_order_email": 5691.979837727805,
+    "shifted_class_mean_ms:send_sms": 6183.4827003038345,
+    "short_mean_ms": 23.409783649014507,
+    "short_p50_ms": 16.078378,
+    "slowdown_p50": 3.423296811872083,
+    "slowdown_p95": 799.8408198382876,
+    "slowdown_p99": 1796.3135781558544,
+    "submit_errors": 0,
+    "throughput_per_s": 116.67246636574136
+   },
+   "33": {
+    "class_mean_ms:deliver_webhook": 7095.258810448136,
+    "class_mean_ms:export_report": 6567.63137918,
+    "class_mean_ms:generate_invoice": 17.242578509289174,
+    "class_mean_ms:push_notification": 29.42357383708166,
+    "class_mean_ms:reindex_product": 14.82919572386707,
+    "class_mean_ms:reserve_inventory": 19.229981935068732,
+    "class_mean_ms:resize_image": 3980.7995592083334,
+    "class_mean_ms:send_order_email": 8083.792477612417,
+    "class_mean_ms:send_sms": 7687.3226638875085,
+    "cohorts": {
+     "flash_sale": {
+      "count": 11859,
+      "mean_ms": 4338.166293394553,
+      "p50_ms": 29.563983,
+      "p99_ms": 21970.001476
+     },
+     "ramp": {
+      "count": 3863,
+      "mean_ms": 87.10351745922858,
+      "p50_ms": 21.866096,
+      "p99_ms": 963.288384
+     },
+     "recovery": {
+      "count": 6393,
+      "mean_ms": 4919.202392722196,
+      "p50_ms": 28.935584,
+      "p99_ms": 22144.390458
+     },
+     "shifted": {
+      "count": 7517,
+      "mean_ms": 332.5950695753625,
+      "p50_ms": 28.209041,
+      "p99_ms": 5434.429784
+     },
+     "steady": {
+      "count": 5134,
+      "mean_ms": 40.952931629723416,
+      "p50_ms": 12.780945,
+      "p99_ms": 479.346118
+     }
+    },
+    "completed": 34766,
+    "dlq": 0,
+    "long_max_wait_ms": 21190.872145,
+    "lookup_mean_us": 1.547,
+    "mean_latency_ms": 2472.0021097327563,
+    "messages": 34766,
+    "p50_latency_ms": 25.130037,
+    "p95_latency_ms": 18786.726508,
+    "p99_latency_ms": 21643.667761,
+    "per_class": {
+     "deliver_webhook": {
+      "count": 3432,
+      "max_wait_ms": 22772.18896,
+      "mean_ms": 7095.258810448136,
+      "median_service_ms": 45.17725,
+      "p50_ms": 3309.516934,
+      "p95_ms": 21229.479487,
+      "p99_ms": 22563.583193
+     },
+     "export_report": {
+      "count": 50,
+      "max_wait_ms": 21190.872145,
+      "mean_ms": 6567.63137918,
+      "median_service_ms": 1283.08,
+      "p50_ms": 1841.708112,
+      "p95_ms": 20004.60765,
+      "p99_ms": 22825.584015
+     },
+     "generate_invoice": {
+      "count": 4952,
+      "max_wait_ms": 238.03121,
+      "mean_ms": 17.242578509289174,
+      "median_service_ms": 4.578860000000001,
+      "p50_ms": 11.99161,
+      "p95_ms": 45.213735,
+      "p99_ms": 76.714384
+     },
+     "push_notification": {
+      "count": 7470,
+      "max_wait_ms": 363.84765,
+      "mean_ms": 29.42357383708166,
+      "median_service_ms": 9.023875,
+      "p50_ms": 20.535083,
+      "p95_ms": 78.14467,
+      "p99_ms": 155.708865
+     },
+     "reindex_product": {
+      "count": 3310,
+      "max_wait_ms": 194.471921,
+      "mean_ms": 14.82919572386707,
+      "median_service_ms": 2.5086649999999997,
+      "p50_ms": 9.0391,
+      "p95_ms": 44.723403,
+      "p99_ms": 85.452369
+     },
+     "reserve_inventory": {
+      "count": 6838,
+      "max_wait_ms": 264.645044,
+      "mean_ms": 19.229981935068732,
+      "median_service_ms": 6.108585,
+      "p50_ms": 14.185836,
+      "p95_ms": 48.705559,
+      "p99_ms": 89.508662
+     },
+     "resize_image": {
+      "count": 2208,
+      "max_wait_ms": 22837.694724,
+      "mean_ms": 3980.7995592083334,
+      "median_service_ms": 15.25795,
+      "p50_ms": 63.993702,
+      "p95_ms": 20514.013332,
+      "p99_ms": 21993.775426
+     },
+     "send_order_email": {
+      "count": 4977,
+      "max_wait_ms": 22819.100507,
+      "mean_ms": 8083.792477612417,
+      "median_service_ms": 35.4219,
+      "p50_ms": 6030.408569,
+      "p95_ms": 21377.941558,
+      "p99_ms": 22159.925243
+     },
+     "send_sms": {
+      "count": 1529,
+      "max_wait_ms": 22780.475726,
+      "mean_ms": 7687.3226638875085,
+      "median_service_ms": 83.8749,
+      "p50_ms": 4827.426552,
+      "p95_ms": 21195.465946,
+      "p99_ms": 22363.746451
+     }
+    },
+    "shifted_class_mean_ms:deliver_webhook": 1023.3164060169903,
+    "shifted_class_mean_ms:export_report": 1545.9970084615384,
+    "shifted_class_mean_ms:generate_invoice": 19.755744834562698,
+    "shifted_class_mean_ms:push_notification": 30.71991696681557,
+    "shifted_class_mean_ms:reindex_product": 18.019086406570842,
+    "shifted_class_mean_ms:reserve_inventory": 22.455083350998464,
+    "shifted_class_mean_ms:resize_image": 395.8784480573152,
+    "shifted_class_mean_ms:send_order_email": 1022.1091878333333,
+    "shifted_class_mean_ms:send_sms": 1047.574682652819,
+    "short_mean_ms": 21.522312789499335,
+    "short_p50_ms": 14.946839,
+    "slowdown_p50": 2.89235116545865,
+    "slowdown_p95": 511.70745188014683,
+    "slowdown_p99": 1161.320678955967,
+    "submit_errors": 0,
+    "throughput_per_s": 115.84916424668992
+   },
+   "44": {
+    "class_mean_ms:deliver_webhook": 12639.005201073323,
+    "class_mean_ms:export_report": 12472.583910767124,
+    "class_mean_ms:generate_invoice": 17.352115135710065,
+    "class_mean_ms:push_notification": 35.43172690425114,
+    "class_mean_ms:reindex_product": 15.852784233021431,
+    "class_mean_ms:reserve_inventory": 32.30964616777728,
+    "class_mean_ms:resize_image": 8750.229272155617,
+    "class_mean_ms:send_order_email": 12840.274651219792,
+    "class_mean_ms:send_sms": 12810.558702012322,
+    "cohorts": {
+     "flash_sale": {
+      "count": 12133,
+      "mean_ms": 5623.950862828155,
+      "p50_ms": 32.407713,
+      "p99_ms": 29009.619991
+     },
+     "ramp": {
+      "count": 3922,
+      "mean_ms": 378.23856361116776,
+      "p50_ms": 31.693282,
+      "p99_ms": 3132.414734
+     },
+     "recovery": {
+      "count": 6474,
+      "mean_ms": 8684.521061797806,
+      "p50_ms": 32.250366,
+      "p99_ms": 28683.734794
+     },
+     "shifted": {
+      "count": 7606,
+      "mean_ms": 3170.9518416089927,
+      "p50_ms": 42.101093,
+      "p99_ms": 16030.635446
+     },
+     "steady": {
+      "count": 5067,
+      "mean_ms": 54.04849732405763,
+      "p50_ms": 14.69841,
+      "p99_ms": 672.359998
+     }
+    },
+    "completed": 35202,
+    "dlq": 0,
+    "long_max_wait_ms": 28497.673227,
+    "lookup_mean_us": 1.4691,
+    "mean_latency_ms": 4270.625540096444,
+    "messages": 35202,
+    "p50_latency_ms": 30.801549,
+    "p95_latency_ms": 25304.430054,
+    "p99_latency_ms": 28516.480057,
+    "per_class": {
+     "deliver_webhook": {
+      "count": 3655,
+      "max_wait_ms": 29223.396273,
+      "mean_ms": 12639.005201073323,
+      "median_service_ms": 45.3612,
+      "p50_ms": 11352.040777,
+      "p95_ms": 27902.486903,
+      "p99_ms": 29264.592268
+     },
+     "export_report": {
+      "count": 73,
+      "max_wait_ms": 28497.673227,
+      "mean_ms": 12472.583910767124,
+      "median_service_ms": 1314.26,
+      "p50_ms": 8624.955403,
+      "p95_ms": 27500.622945,
+      "p99_ms": 30525.974013
+     },
+     "generate_invoice": {
+      "count": 5077,
+      "max_wait_ms": 362.276337,
+      "mean_ms": 17.352115135710065,
+      "median_service_ms": 4.53875,
+      "p50_ms": 11.399081,
+      "p95_ms": 47.529142,
+      "p99_ms": 96.904201
+     },
+     "push_notification": {
+      "count": 7645,
+      "max_wait_ms": 613.159481,
+      "mean_ms": 35.43172690425114,
+      "median_service_ms": 9.09889,
+      "p50_ms": 24.178421,
+      "p95_ms": 99.003843,
+      "p99_ms": 216.019015
+     },
+     "reindex_product": {
+      "count": 3313,
+      "max_wait_ms": 330.186439,
+      "mean_ms": 15.852784233021431,
+      "median_service_ms": 2.51873,
+      "p50_ms": 9.185868,
+      "p95_ms": 48.750449,
+      "p99_ms": 90.925036
+     },
+     "reserve_inventory": {
+      "count": 6753,
+      "max_wait_ms": 609.734302,
+      "mean_ms": 32.30964616777728,
+      "median_service_ms": 6.08889,
+      "p50_ms": 21.016647,
+      "p95_ms": 90.87018,
+      "p99_ms": 225.439043
+     },
+     "resize_image": {
+      "count": 2172,
+      "max_wait_ms": 29139.475845,
+      "mean_ms": 8750.229272155617,
+      "median_service_ms": 15.498899999999999,
+      "p50_ms": 4032.129844,
+      "p95_ms": 27201.106135,
+      "p99_ms": 28664.604177
+     },
+     "send_order_email": {
+      "count": 4891,
+      "max_wait_ms": 29206.289882,
+      "mean_ms": 12840.274651219792,
+      "median_service_ms": 35.2546,
+      "p50_ms": 11911.87374,
+      "p95_ms": 27860.662689,
+      "p99_ms": 28942.762318
+     },
+     "send_sms": {
+      "count": 1623,
+      "max_wait_ms": 29219.538445,
+      "mean_ms": 12810.558702012322,
+      "median_service_ms": 79.1827,
+      "p50_ms": 11820.389507,
+      "p95_ms": 28120.020087,
+      "p99_ms": 29052.640652
+     }
+    },
+    "shifted_class_mean_ms:deliver_webhook": 9316.63679390136,
+    "shifted_class_mean_ms:export_report": 9292.48219512,
+    "shifted_class_mean_ms:generate_invoice": 24.309786787721123,
+    "shifted_class_mean_ms:push_notification": 40.645423279698306,
+    "shifted_class_mean_ms:reindex_product": 21.99336207370518,
+    "shifted_class_mean_ms:reserve_inventory": 38.43170277429467,
+    "shifted_class_mean_ms:resize_image": 6628.554391635468,
+    "shifted_class_mean_ms:send_order_email": 9024.984275157267,
+    "shifted_class_mean_ms:send_sms": 9380.059857663691,
+    "short_mean_ms": 27.632067555818853,
+    "short_p50_ms": 17.798123,
+    "slowdown_p50": 4.086537115051215,
+    "slowdown_p95": 784.5937283325987,
+    "slowdown_p99": 1757.3352871543364,
+    "submit_errors": 0,
+    "throughput_per_s": 114.96340529728822
+   },
+   "55": {
+    "class_mean_ms:deliver_webhook": 6825.8623780256485,
+    "class_mean_ms:export_report": 4873.635384239131,
+    "class_mean_ms:generate_invoice": 15.587779671638822,
+    "class_mean_ms:push_notification": 26.638982109368772,
+    "class_mean_ms:reindex_product": 14.114269124176857,
+    "class_mean_ms:reserve_inventory": 23.374700998201707,
+    "class_mean_ms:resize_image": 5909.400835273815,
+    "class_mean_ms:send_order_email": 7500.264581037934,
+    "class_mean_ms:send_sms": 7510.327732141362,
+    "cohorts": {
+     "flash_sale": {
+      "count": 11762,
+      "mean_ms": 4293.743997812617,
+      "p50_ms": 29.301854,
+      "p99_ms": 21823.312524
+     },
+     "ramp": {
+      "count": 3796,
+      "mean_ms": 159.224839306902,
+      "p50_ms": 23.499625,
+      "p99_ms": 1263.879647
+     },
+     "recovery": {
+      "count": 6409,
+      "mean_ms": 4916.233987131845,
+      "p50_ms": 30.386127,
+      "p99_ms": 21417.917594
+     },
+     "shifted": {
+      "count": 7586,
+      "mean_ms": 469.4025907395202,
+      "p50_ms": 29.626228,
+      "p99_ms": 4646.781513
+     },
+     "steady": {
+      "count": 5119,
+      "mean_ms": 38.65927219652276,
+      "p50_ms": 13.172275,
+      "p99_ms": 408.42761
+     }
+    },
+    "completed": 34672,
+    "dlq": 0,
+    "long_max_wait_ms": 19729.35595,
+    "lookup_mean_us": 1.44637,
+    "mean_latency_ms": 2491.1849008863924,
+    "messages": 34672,
+    "p50_latency_ms": 25.976167,
+    "p95_latency_ms": 18296.072678,
+    "p99_latency_ms": 21488.708625,
+    "per_class": {
+     "deliver_webhook": {
+      "count": 3470,
+      "max_wait_ms": 21936.237351,
+      "mean_ms": 6825.8623780256485,
+      "median_service_ms": 44.6426,
+      "p50_ms": 2903.137913,
+      "p95_ms": 21230.880749,
+      "p99_ms": 21886.74569
+     },
+     "export_report": {
+      "count": 46,
+      "max_wait_ms": 19729.35595,
+      "mean_ms": 4873.635384239131,
+      "median_service_ms": 1360.835,
+      "p50_ms": 1859.715945,
+      "p95_ms": 20585.30901,
+      "p99_ms": 20818.104638
+     },
+     "generate_invoice": {
+      "count": 5028,
+      "max_wait_ms": 490.628943,
+      "mean_ms": 15.587779671638822,
+      "median_service_ms": 4.54846,
+      "p50_ms": 10.351209,
+      "p95_ms": 41.100686,
+      "p99_ms": 81.37263
+     },
+     "push_notification": {
+      "count": 7525,
+      "max_wait_ms": 530.897889,
+      "mean_ms": 26.638982109368772,
+      "median_service_ms": 9.12518,
+      "p50_ms": 20.034814,
+      "p95_ms": 62.651352,
+      "p99_ms": 112.727167
+     },
+     "reindex_product": {
+      "count": 3189,
+      "max_wait_ms": 419.748315,
+      "mean_ms": 14.114269124176857,
+      "median_service_ms": 2.52065,
+      "p50_ms": 7.613468,
+      "p95_ms": 43.253839,
+      "p99_ms": 100.617046
+     },
+     "reserve_inventory": {
+      "count": 6673,
+      "max_wait_ms": 532.489971,
+      "mean_ms": 23.374700998201707,
+      "median_service_ms": 6.12115,
+      "p50_ms": 16.864142,
+      "p95_ms": 58.778457,
+      "p99_ms": 114.363383
+     },
+     "resize_image": {
+      "count": 2257,
+      "max_wait_ms": 21932.711846,
+      "mean_ms": 5909.400835273815,
+      "median_service_ms": 15.5171,
+      "p50_ms": 1695.662664,
+      "p95_ms": 20567.64189,
+      "p99_ms": 21685.482591
+     },
+     "send_order_email": {
+      "count": 4956,
+      "max_wait_ms": 21915.649976,
+      "mean_ms": 7500.264581037934,
+      "median_service_ms": 35.2658,
+      "p50_ms": 4241.959022,
+      "p95_ms": 21230.47432,
+      "p99_ms": 21820.154772
+     },
+     "send_sms": {
+      "count": 1528,
+      "max_wait_ms": 21924.203623,
+      "mean_ms": 7510.327732141362,
+      "median_service_ms": 81.17235,
+      "p50_ms": 4341.338789,
+      "p95_ms": 21187.605476,
+      "p99_ms": 21840.340317
+     }
+    },
+    "shifted_class_mean_ms:deliver_webhook": 1387.1488221227848,
+    "shifted_class_mean_ms:export_report": 2839.4466219375,
+    "shifted_class_mean_ms:generate_invoice": 21.890578622564103,
+    "shifted_class_mean_ms:push_notification": 32.254009133001865,
+    "shifted_class_mean_ms:reindex_product": 19.85113812605042,
+    "shifted_class_mean_ms:reserve_inventory": 28.543507767511176,
+    "shifted_class_mean_ms:resize_image": 1270.867010554859,
+    "shifted_class_mean_ms:send_order_email": 1122.622359539501,
+    "shifted_class_mean_ms:send_sms": 1319.171488539735,
+    "short_mean_ms": 21.406356482712468,
+    "short_p50_ms": 14.891324,
+    "slowdown_p50": 3.021964653412427,
+    "slowdown_p95": 531.2021797249128,
+    "slowdown_p99": 1216.4711049855396,
+    "submit_errors": 0,
+    "throughput_per_s": 115.37701581577039
+   }
+  },
+  "rabbitmq_fifo": {
+   "11": {
+    "class_mean_ms:deliver_webhook": 6326.844246456453,
+    "class_mean_ms:export_report": 5932.847755425531,
+    "class_mean_ms:generate_invoice": 7106.539936400313,
+    "class_mean_ms:push_notification": 6721.809081963134,
+    "class_mean_ms:reindex_product": 5081.666713487851,
+    "class_mean_ms:reserve_inventory": 7176.192594619098,
+    "class_mean_ms:resize_image": 5409.499876941279,
+    "class_mean_ms:send_order_email": 7115.526800470682,
+    "class_mean_ms:send_sms": 6680.481828246865,
+    "cohorts": {
+     "flash_sale": {
+      "count": 11911,
+      "mean_ms": 12223.515998783141,
+      "p50_ms": 13400.230824,
+      "p99_ms": 20369.236316
+     },
+     "ramp": {
+      "count": 3812,
+      "mean_ms": 216.28926464979014,
+      "p50_ms": 88.823429,
+      "p99_ms": 944.901362
+     },
+     "recovery": {
+      "count": 6511,
+      "mean_ms": 12561.659920543389,
+      "p50_ms": 13036.007037,
+      "p99_ms": 20221.269103
+     },
+     "shifted": {
+      "count": 7629,
+      "mean_ms": 480.2979738056102,
+      "p50_ms": 103.961532,
+      "p99_ms": 4096.792237
+     },
+     "steady": {
+      "count": 5093,
+      "mean_ms": 64.93414577066562,
+      "p50_ms": 19.465776,
+      "p99_ms": 562.779785
+     }
+    },
+    "completed": 34956,
+    "dlq": 0,
+    "long_max_wait_ms": 18285.73982,
+    "lookup_mean_us": null,
+    "mean_latency_ms": 6642.712676724511,
+    "messages": 34956,
+    "p50_latency_ms": 3380.223106,
+    "p95_latency_ms": 19177.209036,
+    "p99_latency_ms": 20127.932407,
+    "per_class": {
+     "deliver_webhook": {
+      "count": 3479,
+      "max_wait_ms": 20402.389796,
+      "mean_ms": 6326.844246456453,
+      "median_service_ms": 44.8143,
+      "p50_ms": 2679.201095,
+      "p95_ms": 19013.551886,
+      "p99_ms": 20143.556103
+     },
+     "export_report": {
+      "count": 47,
+      "max_wait_ms": 18285.73982,
+      "mean_ms": 5932.847755425531,
+      "median_service_ms": 1348.87,
+      "p50_ms": 2005.000485,
+      "p95_ms": 17747.989862,
+      "p99_ms": 19143.67594
+     },
+     "generate_invoice": {
+      "count": 5111,
+      "max_wait_ms": 20409.113689,
+      "mean_ms": 7106.539936400313,
+      "median_service_ms": 4.5616,
+      "p50_ms": 4538.690411,
+      "p95_ms": 19305.852296,
+      "p99_ms": 20114.36305
+     },
+     "push_notification": {
+      "count": 7568,
+      "max_wait_ms": 20416.465627,
+      "mean_ms": 6721.809081963134,
+      "median_service_ms": 9.156275,
+      "p50_ms": 3841.361302,
+      "p95_ms": 19234.340382,
+      "p99_ms": 20152.785189
+     },
+     "reindex_product": {
+      "count": 3210,
+      "max_wait_ms": 20408.503322,
+      "mean_ms": 5081.666713487851,
+      "median_service_ms": 2.501215,
+      "p50_ms": 336.259765,
+      "p95_ms": 18502.821385,
+      "p99_ms": 19862.163902
+     },
+     "reserve_inventory": {
+      "count": 6713,
+      "max_wait_ms": 20406.951055,
+      "mean_ms": 7176.192594619098,
+      "median_service_ms": 6.13334,
+      "p50_ms": 5146.231408,
+      "p95_ms": 19222.202069,
+      "p99_ms": 20134.607676
+     },
+     "resize_image": {
+      "count": 2299,
+      "max_wait_ms": 20399.953387,
+      "mean_ms": 5409.499876941279,
+      "median_service_ms": 15.3485,
+      "p50_ms": 455.821008,
+      "p95_ms": 18657.054258,
+      "p99_ms": 20057.651648
+     },
+     "send_order_email": {
+      "count": 5014,
+      "max_wait_ms": 20404.182895,
+      "mean_ms": 7115.526800470682,
+      "median_service_ms": 35.18165,
+      "p50_ms": 4732.537012,
+      "p95_ms": 19336.814241,
+      "p99_ms": 20170.227838
+     },
+     "send_sms": {
+      "count": 1515,
+      "max_wait_ms": 20392.551526,
+      "mean_ms": 6680.481828246865,
+      "median_service_ms": 80.0904,
+      "p50_ms": 3956.925825,
+      "p95_ms": 18998.727712,
+      "p99_ms": 20257.414566
+     }
+    },
+    "shifted_class_mean_ms:deliver_webhook": 566.992807314251,
+    "shifted_class_mean_ms:export_report": 1856.0899239999999,
+    "shifted_class_mean_ms:generate_invoice": 416.57791731129197,
+    "shifted_class_mean_ms:push_notification": 461.78851227473183,
+    "shifted_class_mean_ms:reindex_product": 421.05990623390556,
+    "shifted_class_mean_ms:reserve_inventory": 438.8578451054718,
+    "shifted_class_mean_ms:resize_image": 514.4465480971338,
+    "shifted_class_mean_ms:send_order_email": 554.9566031570415,
+    "shifted_class_mean_ms:send_sms": 528.2692224584615,
+    "short_mean_ms": 6710.826819981108,
+    "short_p50_ms": 3668.003108,
+    "slowdown_p50": 171.60626127077376,
+    "slowdown_p95": 4115.451121740156,
+    "slowdown_p99": 6868.940605149445,
+    "submit_errors": 0,
+    "throughput_per_s": 116.24058398126247
+   },
+   "22": {
+    "class_mean_ms:deliver_webhook": 8054.698950824964,
+    "class_mean_ms:export_report": 10851.198472910713,
+    "class_mean_ms:generate_invoice": 8495.667378907723,
+    "class_mean_ms:push_notification": 8267.441950073415,
+    "class_mean_ms:reindex_product": 7108.835210290475,
+    "class_mean_ms:reserve_inventory": 8545.706839423054,
+    "class_mean_ms:resize_image": 7360.2042689343525,
+    "class_mean_ms:send_order_email": 8566.287613522325,
+    "class_mean_ms:send_sms": 8461.83914820548,
+    "cohorts": {
+     "flash_sale": {
+      "count": 12013,
+      "mean_ms": 12419.673353039956,
+      "p50_ms": 13351.119806,
+      "p99_ms": 23462.714286
+     },
+     "ramp": {
+      "count": 3868,
+      "mean_ms": 239.7913504312306,
+      "p50_ms": 116.257194,
+      "p99_ms": 914.092085
+     },
+     "recovery": {
+      "count": 6380,
+      "mean_ms": 17718.825133429153,
+      "p50_ms": 18090.159158,
+      "p99_ms": 24084.826577
+     },
+     "shifted": {
+      "count": 7717,
+      "mean_ms": 3202.9357447693405,
+      "p50_ms": 2315.009679,
+      "p99_ms": 9804.998606
+     },
+     "steady": {
+      "count": 5078,
+      "mean_ms": 41.9107493081922,
+      "p50_ms": 14.206609,
+      "p99_ms": 328.464056
+     }
+    },
+    "completed": 35056,
+    "dlq": 0,
+    "long_max_wait_ms": 23800.699092,
+    "lookup_mean_us": null,
+    "mean_latency_ms": 8218.308740648876,
+    "messages": 35056,
+    "p50_latency_ms": 6235.200139,
+    "p95_latency_ms": 22630.23298,
+    "p99_latency_ms": 23833.073382,
+    "per_class": {
+     "deliver_webhook": {
+      "count": 3525,
+      "max_wait_ms": 24177.99878,
+      "mean_ms": 8054.698950824964,
+      "median_service_ms": 45.1187,
+      "p50_ms": 5080.685481,
+      "p95_ms": 22528.353253,
+      "p99_ms": 23857.152547
+     },
+     "export_report": {
+      "count": 56,
+      "max_wait_ms": 23800.699092,
+      "mean_ms": 10851.198472910713,
+      "median_service_ms": 1461.6399999999999,
+      "p50_ms": 8174.278399,
+      "p95_ms": 25498.951343,
+      "p99_ms": 25883.800589
+     },
+     "generate_invoice": {
+      "count": 4985,
+      "max_wait_ms": 24198.160903,
+      "mean_ms": 8495.667378907723,
+      "median_service_ms": 4.54425,
+      "p50_ms": 6695.339142,
+      "p95_ms": 22837.7019,
+      "p99_ms": 23814.238237
+     },
+     "push_notification": {
+      "count": 7519,
+      "max_wait_ms": 24181.36344,
+      "mean_ms": 8267.441950073415,
+      "median_service_ms": 9.12607,
+      "p50_ms": 6385.760558,
+      "p95_ms": 22456.81799,
+      "p99_ms": 23786.557617
+     },
+     "reindex_product": {
+      "count": 3391,
+      "max_wait_ms": 24178.776196,
+      "mean_ms": 7108.835210290475,
+      "median_service_ms": 2.52754,
+      "p50_ms": 4102.164661,
+      "p95_ms": 22597.225714,
+      "p99_ms": 23785.430032
+     },
+     "reserve_inventory": {
+      "count": 6784,
+      "max_wait_ms": 24193.754352,
+      "mean_ms": 8545.706839423054,
+      "median_service_ms": 6.09649,
+      "p50_ms": 6861.637828,
+      "p95_ms": 22669.680755,
+      "p99_ms": 23817.245093
+     },
+     "resize_image": {
+      "count": 2224,
+      "max_wait_ms": 24176.743803,
+      "mean_ms": 7360.2042689343525,
+      "median_service_ms": 15.2985,
+      "p50_ms": 4192.755791,
+      "p95_ms": 23180.109169,
+      "p99_ms": 23861.61722
+     },
+     "send_order_email": {
+      "count": 5039,
+      "max_wait_ms": 24168.614623,
+      "mean_ms": 8566.287613522325,
+      "median_service_ms": 35.3521,
+      "p50_ms": 6938.089519,
+      "p95_ms": 22494.955992,
+      "p99_ms": 23842.424787
+     },
+     "send_sms": {
+      "count": 1533,
+      "max_wait_ms": 24179.178488,
+      "mean_ms": 8461.83914820548,
+      "median_service_ms": 80.8947,
+      "p50_ms": 6683.170342,
+      "p95_ms": 22851.321127,
+      "p99_ms": 23886.917921
+     }
+    },
+    "shifted_class_mean_ms:deliver_webhook": 3253.2627490857144,
+    "shifted_class_mean_ms:export_report": 5018.0777296875,
+    "shifted_class_mean_ms:generate_invoice": 3162.050895833002,
+    "shifted_class_mean_ms:push_notification": 3212.2423987546563,
+    "shifted_class_mean_ms:reindex_product": 3094.9387416371596,
+    "shifted_class_mean_ms:reserve_inventory": 3238.1562496986935,
+    "shifted_class_mean_ms:resize_image": 3248.149213259375,
+    "shifted_class_mean_ms:send_order_email": 3106.536890115122,
+    "shifted_class_mean_ms:send_sms": 3474.780688825959,
+    "short_mean_ms": 8227.608505807046,
+    "short_p50_ms": 6272.163472,
+    "slowdown_p50": 331.39811544151814,
+    "slowdown_p95": 4841.200215878302,
+    "slowdown_p99": 8353.31963580461,
+    "submit_errors": 0,
+    "throughput_per_s": 116.68818084224795
+   },
+   "33": {
+    "class_mean_ms:deliver_webhook": 5081.124362764277,
+    "class_mean_ms:export_report": 5623.7463940200005,
+    "class_mean_ms:generate_invoice": 5448.500319430735,
+    "class_mean_ms:push_notification": 5464.985659462249,
+    "class_mean_ms:reindex_product": 4282.790906503021,
+    "class_mean_ms:reserve_inventory": 5666.711882489763,
+    "class_mean_ms:resize_image": 4030.244002844656,
+    "class_mean_ms:send_order_email": 5849.854551387382,
+    "class_mean_ms:send_sms": 5578.166497179202,
+    "cohorts": {
+     "flash_sale": {
+      "count": 11859,
+      "mean_ms": 9510.943252030609,
+      "p50_ms": 9260.130246,
+      "p99_ms": 18232.632638
+     },
+     "ramp": {
+      "count": 3863,
+      "mean_ms": 132.4399694491328,
+      "p50_ms": 63.571804,
+      "p99_ms": 581.76385
+     },
+     "recovery": {
+      "count": 6393,
+      "mean_ms": 10693.00246318974,
+      "p50_ms": 10711.70652,
+      "p99_ms": 18363.048646
+     },
+     "shifted": {
+      "count": 7517,
+      "mean_ms": 410.3894489678063,
+      "p50_ms": 103.865314,
+      "p99_ms": 3002.258314
+     },
+     "steady": {
+      "count": 5134,
+      "mean_ms": 47.60496991604986,
+      "p50_ms": 14.041255,
+      "p99_ms": 362.271981
+     }
+    },
+    "completed": 34766,
+    "dlq": 0,
+    "long_max_wait_ms": 17206.263223,
+    "lookup_mean_us": null,
+    "mean_latency_ms": 5321.048086591066,
+    "messages": 34766,
+    "p50_latency_ms": 2407.779821,
+    "p95_latency_ms": 16936.922745,
+    "p99_latency_ms": 18001.767919,
+    "per_class": {
+     "deliver_webhook": {
+      "count": 3432,
+      "max_wait_ms": 18604.642532,
+      "mean_ms": 5081.124362764277,
+      "median_service_ms": 45.210300000000004,
+      "p50_ms": 1753.762459,
+      "p95_ms": 16782.706785,
+      "p99_ms": 18214.962973
+     },
+     "export_report": {
+      "count": 50,
+      "max_wait_ms": 17206.263223,
+      "mean_ms": 5623.7463940200005,
+      "median_service_ms": 1281.085,
+      "p50_ms": 1991.849115,
+      "p95_ms": 15841.833365,
+      "p99_ms": 18837.393382
+     },
+     "generate_invoice": {
+      "count": 4952,
+      "max_wait_ms": 18628.392653,
+      "mean_ms": 5448.500319430735,
+      "median_service_ms": 4.590859999999999,
+      "p50_ms": 2756.571374,
+      "p95_ms": 16685.253696,
+      "p99_ms": 17849.390691
+     },
+     "push_notification": {
+      "count": 7470,
+      "max_wait_ms": 18613.618759,
+      "mean_ms": 5464.985659462249,
+      "median_service_ms": 9.029815,
+      "p50_ms": 2717.24302,
+      "p95_ms": 17036.346404,
+      "p99_ms": 18017.142226
+     },
+     "reindex_product": {
+      "count": 3310,
+      "max_wait_ms": 18604.201414,
+      "mean_ms": 4282.790906503021,
+      "median_service_ms": 2.50936,
+      "p50_ms": 317.125706,
+      "p95_ms": 16614.083357,
+      "p99_ms": 18081.429298
+     },
+     "reserve_inventory": {
+      "count": 6838,
+      "max_wait_ms": 18609.820452,
+      "mean_ms": 5666.711882489763,
+      "median_service_ms": 6.109965,
+      "p50_ms": 3002.258314,
+      "p95_ms": 17043.557186,
+      "p99_ms": 17962.1483
+     },
+     "resize_image": {
+      "count": 2208,
+      "max_wait_ms": 18617.238372,
+      "mean_ms": 4030.244002844656,
+      "median_service_ms": 15.283999999999999,
+      "p50_ms": 309.563036,
+      "p95_ms": 16193.894895,
+      "p99_ms": 17856.643962
+     },
+     "send_order_email": {
+      "count": 4977,
+      "max_wait_ms": 18617.203556,
+      "mean_ms": 5849.854551387382,
+      "median_service_ms": 35.437,
+      "p50_ms": 3436.969931,
+      "p95_ms": 17082.777438,
+      "p99_ms": 18051.449121
+     },
+     "send_sms": {
+      "count": 1529,
+      "max_wait_ms": 18608.176024,
+      "mean_ms": 5578.166497179202,
+      "median_service_ms": 83.9387,
+      "p50_ms": 2793.231145,
+      "p95_ms": 16835.155548,
+      "p99_ms": 18259.138536
+     }
+    },
+    "shifted_class_mean_ms:deliver_webhook": 524.0106117985437,
+    "shifted_class_mean_ms:export_report": 1353.7274333846153,
+    "shifted_class_mean_ms:generate_invoice": 377.77921254899894,
+    "shifted_class_mean_ms:push_notification": 379.0933284633057,
+    "shifted_class_mean_ms:reindex_product": 375.8428048942505,
+    "shifted_class_mean_ms:reserve_inventory": 360.5622692511521,
+    "shifted_class_mean_ms:resize_image": 425.0342179321267,
+    "shifted_class_mean_ms:send_order_email": 461.279158481982,
+    "shifted_class_mean_ms:send_sms": 462.9852313679525,
+    "short_mean_ms": 5349.110775852636,
+    "short_p50_ms": 2448.720346,
+    "slowdown_p50": 122.12089714888441,
+    "slowdown_p95": 3335.8687339063717,
+    "slowdown_p99": 6016.956450758015,
+    "submit_errors": 0,
+    "throughput_per_s": 115.85994752175357
+   },
+   "44": {
+    "class_mean_ms:deliver_webhook": 9099.92448385554,
+    "class_mean_ms:export_report": 9998.10574989041,
+    "class_mean_ms:generate_invoice": 9574.76889780579,
+    "class_mean_ms:push_notification": 9321.260136841596,
+    "class_mean_ms:reindex_product": 8091.425634278297,
+    "class_mean_ms:reserve_inventory": 9592.641108573524,
+    "class_mean_ms:resize_image": 8152.55507417035,
+    "class_mean_ms:send_order_email": 9375.589146595175,
+    "class_mean_ms:send_sms": 9432.628680680838,
+    "cohorts": {
+     "flash_sale": {
+      "count": 12133,
+      "mean_ms": 12659.093029920794,
+      "p50_ms": 13133.937906,
+      "p99_ms": 24121.172747
+     },
+     "ramp": {
+      "count": 3922,
+      "mean_ms": 752.6730392534421,
+      "p50_ms": 501.107833,
+      "p99_ms": 2343.701437
+     },
+     "recovery": {
+      "count": 6474,
+      "mean_ms": 19302.02903960936,
+      "p50_ms": 19329.039044,
+      "p99_ms": 23911.591857
+     },
+     "shifted": {
+      "count": 7606,
+      "mean_ms": 5581.793174905995,
+      "p50_ms": 4831.308175,
+      "p99_ms": 13046.943129
+     },
+     "steady": {
+      "count": 5067,
+      "mean_ms": 70.95280919715807,
+      "p50_ms": 18.564561,
+      "p99_ms": 627.193226
+     }
+    },
+    "completed": 35202,
+    "dlq": 0,
+    "long_max_wait_ms": 23613.470326,
+    "lookup_mean_us": null,
+    "mean_latency_ms": 9213.133690328646,
+    "messages": 35202,
+    "p50_latency_ms": 7613.339371,
+    "p95_latency_ms": 22582.462465,
+    "p99_latency_ms": 23936.307677,
+    "per_class": {
+     "deliver_webhook": {
+      "count": 3655,
+      "max_wait_ms": 24220.433113,
+      "mean_ms": 9099.92448385554,
+      "median_service_ms": 45.3042,
+      "p50_ms": 7400.740323,
+      "p95_ms": 22500.108167,
+      "p99_ms": 23977.572028
+     },
+     "export_report": {
+      "count": 73,
+      "max_wait_ms": 23613.470326,
+      "mean_ms": 9998.10574989041,
+      "median_service_ms": 1319.62,
+      "p50_ms": 7375.668181,
+      "p95_ms": 22837.544161,
+      "p99_ms": 25647.93526
+     },
+     "generate_invoice": {
+      "count": 5077,
+      "max_wait_ms": 24248.244,
+      "mean_ms": 9574.76889780579,
+      "median_service_ms": 4.53253,
+      "p50_ms": 8328.071465,
+      "p95_ms": 22559.381635,
+      "p99_ms": 23960.860518
+     },
+     "push_notification": {
+      "count": 7645,
+      "max_wait_ms": 24247.495231,
+      "mean_ms": 9321.260136841596,
+      "median_service_ms": 9.10476,
+      "p50_ms": 7928.093852,
+      "p95_ms": 22606.837703,
+      "p99_ms": 23952.086737
+     },
+     "reindex_product": {
+      "count": 3313,
+      "max_wait_ms": 24116.456,
+      "mean_ms": 8091.425634278297,
+      "median_service_ms": 2.51839,
+      "p50_ms": 5190.948402,
+      "p95_ms": 22160.555578,
+      "p99_ms": 23759.985115
+     },
+     "reserve_inventory": {
+      "count": 6753,
+      "max_wait_ms": 24235.577696,
+      "mean_ms": 9592.641108573524,
+      "median_service_ms": 6.09122,
+      "p50_ms": 8431.423743,
+      "p95_ms": 22658.431741,
+      "p99_ms": 23929.741926
+     },
+     "resize_image": {
+      "count": 2172,
+      "max_wait_ms": 24181.474803,
+      "mean_ms": 8152.55507417035,
+      "median_service_ms": 15.5059,
+      "p50_ms": 5017.236855,
+      "p95_ms": 22230.697762,
+      "p99_ms": 23760.091759
+     },
+     "send_order_email": {
+      "count": 4891,
+      "max_wait_ms": 24228.224708,
+      "mean_ms": 9375.589146595175,
+      "median_service_ms": 35.2497,
+      "p50_ms": 7764.503989,
+      "p95_ms": 22600.722864,
+      "p99_ms": 23927.260709
+     },
+     "send_sms": {
+      "count": 1623,
+      "max_wait_ms": 24201.50603,
+      "mean_ms": 9432.628680680838,
+      "median_service_ms": 79.1324,
+      "p50_ms": 7710.469726,
+      "p95_ms": 23057.247615,
+      "p99_ms": 24002.077243
+     }
+    },
+    "shifted_class_mean_ms:deliver_webhook": 5593.440893670068,
+    "shifted_class_mean_ms:export_report": 5841.2582072,
+    "shifted_class_mean_ms:generate_invoice": 5478.250586022893,
+    "shifted_class_mean_ms:push_notification": 5758.997145983029,
+    "shifted_class_mean_ms:reindex_product": 5547.890757063745,
+    "shifted_class_mean_ms:reserve_inventory": 5602.288454068182,
+    "shifted_class_mean_ms:resize_image": 5291.760723481117,
+    "shifted_class_mean_ms:send_order_email": 5477.2224090542295,
+    "shifted_class_mean_ms:send_sms": 5825.0760811904765,
+    "short_mean_ms": 9279.363435706293,
+    "short_p50_ms": 7738.344809,
+    "slowdown_p50": 454.01890932517585,
+    "slowdown_p95": 5160.202177593754,
+    "slowdown_p99": 8410.985866259765,
+    "submit_errors": 0,
+    "throughput_per_s": 116.06555586918613
+   },
+   "55": {
+    "class_mean_ms:deliver_webhook": 4754.114994976945,
+    "class_mean_ms:export_report": 5667.256707326087,
+    "class_mean_ms:generate_invoice": 5229.424296071003,
+    "class_mean_ms:push_notification": 5064.755974389767,
+    "class_mean_ms:reindex_product": 3929.4888149379117,
+    "class_mean_ms:reserve_inventory": 5180.934778728608,
+    "class_mean_ms:resize_image": 4151.019084850243,
+    "class_mean_ms:send_order_email": 5271.458953523204,
+    "class_mean_ms:send_sms": 5302.437125165576,
+    "cohorts": {
+     "flash_sale": {
+      "count": 11762,
+      "mean_ms": 8526.171840025167,
+      "p50_ms": 9161.214996,
+      "p99_ms": 17153.147392
+     },
+     "ramp": {
+      "count": 3796,
+      "mean_ms": 230.92195377423604,
+      "p50_ms": 119.380485,
+      "p99_ms": 1048.180689
+     },
+     "recovery": {
+      "count": 6409,
+      "mean_ms": 10456.249809956,
+      "p50_ms": 11022.643739,
+      "p99_ms": 17374.30454
+     },
+     "shifted": {
+      "count": 7586,
+      "mean_ms": 456.5960568296863,
+      "p50_ms": 126.600427,
+      "p99_ms": 2272.247741
+     },
+     "steady": {
+      "count": 5119,
+      "mean_ms": 43.73773309787068,
+      "p50_ms": 14.671446,
+      "p99_ms": 357.732982
+     }
+    },
+    "completed": 34672,
+    "dlq": 0,
+    "long_max_wait_ms": 16882.604389,
+    "lookup_mean_us": null,
+    "mean_latency_ms": 4956.828250281178,
+    "messages": 34672,
+    "p50_latency_ms": 1951.24568,
+    "p95_latency_ms": 15706.636802,
+    "p99_latency_ms": 17092.870936,
+    "per_class": {
+     "deliver_webhook": {
+      "count": 3470,
+      "max_wait_ms": 17586.059119,
+      "mean_ms": 4754.114994976945,
+      "median_service_ms": 44.65075,
+      "p50_ms": 1662.606648,
+      "p95_ms": 15789.148536,
+      "p99_ms": 17189.024728
+     },
+     "export_report": {
+      "count": 46,
+      "max_wait_ms": 16882.604389,
+      "mean_ms": 5667.256707326087,
+      "median_service_ms": 1358.29,
+      "p50_ms": 1981.613411,
+      "p95_ms": 17443.024058,
+      "p99_ms": 18691.034983
+     },
+     "generate_invoice": {
+      "count": 5028,
+      "max_wait_ms": 17618.908584,
+      "mean_ms": 5229.424296071003,
+      "median_service_ms": 4.551410000000001,
+      "p50_ms": 2590.769347,
+      "p95_ms": 15713.534605,
+      "p99_ms": 17101.945411
+     },
+     "push_notification": {
+      "count": 7525,
+      "max_wait_ms": 17633.91455,
+      "mean_ms": 5064.755974389767,
+      "median_service_ms": 9.1214,
+      "p50_ms": 2081.423632,
+      "p95_ms": 15741.099561,
+      "p99_ms": 17057.058549
+     },
+     "reindex_product": {
+      "count": 3189,
+      "max_wait_ms": 17621.874633,
+      "mean_ms": 3929.4888149379117,
+      "median_service_ms": 2.52698,
+      "p50_ms": 385.147192,
+      "p95_ms": 15444.720374,
+      "p99_ms": 17019.994359
+     },
+     "reserve_inventory": {
+      "count": 6673,
+      "max_wait_ms": 17609.822055,
+      "mean_ms": 5180.934778728608,
+      "median_service_ms": 6.12116,
+      "p50_ms": 2452.511361,
+      "p95_ms": 15721.399779,
+      "p99_ms": 17052.138201
+     },
+     "resize_image": {
+      "count": 2257,
+      "max_wait_ms": 17616.679409,
+      "mean_ms": 4151.019084850243,
+      "median_service_ms": 15.581,
+      "p50_ms": 598.445232,
+      "p95_ms": 15493.703162,
+      "p99_ms": 17039.278902
+     },
+     "send_order_email": {
+      "count": 4956,
+      "max_wait_ms": 17575.423962,
+      "mean_ms": 5271.458953523204,
+      "median_service_ms": 35.26935,
+      "p50_ms": 2578.505157,
+      "p95_ms": 15716.281617,
+      "p99_ms": 17114.4088
+     },
+     "send_sms": {
+      "count": 1528,
+      "max_wait_ms": 17611.967994,
+      "mean_ms": 5302.437125165576,
+      "median_service_ms": 81.19005,
+      "p50_ms": 2504.515552,
+      "p95_ms": 15879.807691,
+      "p99_ms": 17087.135157
+     }
+    },
+    "shifted_class_mean_ms:deliver_webhook": 618.8142536658228,
+    "shifted_class_mean_ms:export_report": 1959.3477238125,
+    "shifted_class_mean_ms:generate_invoice": 406.01673212102565,
+    "shifted_class_mean_ms:push_notification": 446.23585852019886,
+    "shifted_class_mean_ms:reindex_product": 397.1780140483193,
+    "shifted_class_mean_ms:reserve_inventory": 421.72345021833087,
+    "shifted_class_mean_ms:resize_image": 482.50669010971785,
+    "shifted_class_mean_ms:send_order_email": 443.7689970790021,
+    "shifted_class_mean_ms:send_sms": 499.5154632748344,
+    "short_mean_ms": 4974.764741343788,
+    "short_p50_ms": 1972.245917,
+    "slowdown_p50": 115.1451991625588,
+    "slowdown_p95": 3175.211339654927,
+    "slowdown_p99": 5614.5546568759055,
+    "submit_errors": 0,
+    "throughput_per_s": 115.41322097735657
+   }
+  },
+  "rabbitmq_predictive": {
+   "11": {
+    "class_mean_ms:deliver_webhook": 7820.541046035068,
+    "class_mean_ms:export_report": 5464.343794489361,
+    "class_mean_ms:generate_invoice": 13.799276157307768,
+    "class_mean_ms:push_notification": 27.3217337967759,
+    "class_mean_ms:reindex_product": 11.569236822429907,
+    "class_mean_ms:reserve_inventory": 24.568821830776105,
+    "class_mean_ms:resize_image": 6137.58510446194,
+    "class_mean_ms:send_order_email": 8876.123670766056,
+    "class_mean_ms:send_sms": 8364.687879366336,
+    "cohorts": {
+     "flash_sale": {
+      "count": 11911,
+      "mean_ms": 5358.592509851986,
+      "p50_ms": 31.311902,
+      "p99_ms": 23220.936273
+     },
+     "ramp": {
+      "count": 3812,
+      "mean_ms": 108.63174613903463,
+      "p50_ms": 21.486368,
+      "p99_ms": 1094.733131
+     },
+     "recovery": {
+      "count": 6511,
+      "mean_ms": 5074.399466049916,
+      "p50_ms": 27.326294,
+      "p99_ms": 22622.529123
+     },
+     "shifted": {
+      "count": 7629,
+      "mean_ms": 223.81115372538997,
+      "p50_ms": 25.519526,
+      "p99_ms": 4124.553667
+     },
+     "steady": {
+      "count": 5093,
+      "mean_ms": 47.983065330649914,
+      "p50_ms": 14.005821,
+      "p99_ms": 567.803999
+     }
+    },
+    "completed": 34956,
+    "dlq": 0,
+    "long_max_wait_ms": 20903.388201,
+    "lookup_mean_us": 6.05338,
+    "mean_latency_ms": 2838.7557949445018,
+    "messages": 34956,
+    "p50_latency_ms": 25.495346,
+    "p95_latency_ms": 21052.657739,
+    "p99_latency_ms": 23074.153902,
+    "per_class": {
+     "deliver_webhook": {
+      "count": 3479,
+      "max_wait_ms": 23363.339999,
+      "mean_ms": 7820.541046035068,
+      "median_service_ms": 44.8356,
+      "p50_ms": 3806.979395,
+      "p95_ms": 22682.263734,
+      "p99_ms": 23228.569436
+     },
+     "export_report": {
+      "count": 47,
+      "max_wait_ms": 20903.388201,
+      "mean_ms": 5464.343794489361,
+      "median_service_ms": 1348.45,
+      "p50_ms": 1784.145409,
+      "p95_ms": 19865.414423,
+      "p99_ms": 21762.340524
+     },
+     "generate_invoice": {
+      "count": 5111,
+      "max_wait_ms": 249.899007,
+      "mean_ms": 13.799276157307768,
+      "median_service_ms": 4.55489,
+      "p50_ms": 9.745406,
+      "p95_ms": 36.385838,
+      "p99_ms": 67.060324
+     },
+     "push_notification": {
+      "count": 7568,
+      "max_wait_ms": 292.619382,
+      "mean_ms": 27.3217337967759,
+      "median_service_ms": 9.157015000000001,
+      "p50_ms": 20.254686,
+      "p95_ms": 69.133308,
+      "p99_ms": 112.666228
+     },
+     "reindex_product": {
+      "count": 3210,
+      "max_wait_ms": 202.349319,
+      "mean_ms": 11.569236822429907,
+      "median_service_ms": 2.50335,
+      "p50_ms": 7.020999,
+      "p95_ms": 36.235541,
+      "p99_ms": 66.539601
+     },
+     "reserve_inventory": {
+      "count": 6713,
+      "max_wait_ms": 285.252915,
+      "mean_ms": 24.568821830776105,
+      "median_service_ms": 6.136,
+      "p50_ms": 17.265894,
+      "p95_ms": 68.934525,
+      "p99_ms": 117.763235
+     },
+     "resize_image": {
+      "count": 2299,
+      "max_wait_ms": 23363.207186,
+      "mean_ms": 6137.58510446194,
+      "median_service_ms": 15.3249,
+      "p50_ms": 92.719902,
+      "p95_ms": 22433.752391,
+      "p99_ms": 23134.803891
+     },
+     "send_order_email": {
+      "count": 5014,
+      "max_wait_ms": 23384.594485,
+      "mean_ms": 8876.123670766056,
+      "median_service_ms": 35.15275,
+      "p50_ms": 6394.729799,
+      "p95_ms": 22868.573388,
+      "p99_ms": 23238.058134
+     },
+     "send_sms": {
+      "count": 1515,
+      "max_wait_ms": 23348.59415,
+      "mean_ms": 8364.687879366336,
+      "median_service_ms": 80.0185,
+      "p50_ms": 6001.042289,
+      "p95_ms": 22746.515925,
+      "p99_ms": 23276.536499
+     }
+    },
+    "shifted_class_mean_ms:deliver_webhook": 641.1577346419001,
+    "shifted_class_mean_ms:export_report": 1908.4760826428571,
+    "shifted_class_mean_ms:generate_invoice": 16.743782662258393,
+    "shifted_class_mean_ms:push_notification": 28.592849901668654,
+    "shifted_class_mean_ms:reindex_product": 13.704063895922747,
+    "shifted_class_mean_ms:reserve_inventory": 25.278575806502776,
+    "shifted_class_mean_ms:resize_image": 334.77321055732483,
+    "shifted_class_mean_ms:send_order_email": 644.3851638926038,
+    "shifted_class_mean_ms:send_sms": 612.3507118338462,
+    "short_mean_ms": 21.209040481550304,
+    "short_p50_ms": 14.416391,
+    "slowdown_p50": 2.8199211948759113,
+    "slowdown_p95": 611.7383949356695,
+    "slowdown_p99": 1407.3262993997598,
+    "submit_errors": 0,
+    "throughput_per_s": 116.24016280823325
+   },
+   "22": {
+    "class_mean_ms:deliver_webhook": 9793.986340611347,
+    "class_mean_ms:export_report": 10886.683198071429,
+    "class_mean_ms:generate_invoice": 14.815611011634905,
+    "class_mean_ms:push_notification": 27.541107336480916,
+    "class_mean_ms:reindex_product": 13.094855612503686,
+    "class_mean_ms:reserve_inventory": 25.54274518956368,
+    "class_mean_ms:resize_image": 8262.962418354766,
+    "class_mean_ms:send_order_email": 10526.11303103989,
+    "class_mean_ms:send_sms": 10353.154359744945,
+    "cohorts": {
+     "flash_sale": {
+      "count": 12013,
+      "mean_ms": 5563.651682881378,
+      "p50_ms": 30.405088,
+      "p99_ms": 26080.586689
+     },
+     "ramp": {
+      "count": 3868,
+      "mean_ms": 125.47063076447776,
+      "p50_ms": 25.239341,
+      "p99_ms": 1296.07555
+     },
+     "recovery": {
+      "count": 6380,
+      "mean_ms": 7126.443160460658,
+      "p50_ms": 29.56298,
+      "p99_ms": 27216.980889
+     },
+     "shifted": {
+      "count": 7717,
+      "mean_ms": 1288.8933965053777,
+      "p50_ms": 31.840977,
+      "p99_ms": 10641.454525
+     },
+     "steady": {
+      "count": 5078,
+      "mean_ms": 36.788499399172906,
+      "p50_ms": 12.867599,
+      "p99_ms": 344.288091
+     }
+    },
+    "completed": 35056,
+    "dlq": 0,
+    "long_max_wait_ms": 27063.49774,
+    "lookup_mean_us": 5.94985,
+    "mean_latency_ms": 3506.4290783538054,
+    "messages": 35056,
+    "p50_latency_ms": 26.89573,
+    "p95_latency_ms": 22986.524108,
+    "p99_latency_ms": 26786.377757,
+    "per_class": {
+     "deliver_webhook": {
+      "count": 3525,
+      "max_wait_ms": 27485.049768,
+      "mean_ms": 9793.986340611347,
+      "median_service_ms": 45.0891,
+      "p50_ms": 7019.76501,
+      "p95_ms": 25779.852975,
+      "p99_ms": 27067.321715
+     },
+     "export_report": {
+      "count": 56,
+      "max_wait_ms": 27063.49774,
+      "mean_ms": 10886.683198071429,
+      "median_service_ms": 1463.8899999999999,
+      "p50_ms": 4519.525678,
+      "p95_ms": 28786.639652,
+      "p99_ms": 29150.207679
+     },
+     "generate_invoice": {
+      "count": 4985,
+      "max_wait_ms": 207.684419,
+      "mean_ms": 14.815611011634905,
+      "median_service_ms": 4.53107,
+      "p50_ms": 9.988727,
+      "p95_ms": 39.798031,
+      "p99_ms": 80.940461
+     },
+     "push_notification": {
+      "count": 7519,
+      "max_wait_ms": 292.3841,
+      "mean_ms": 27.541107336480916,
+      "median_service_ms": 9.13014,
+      "p50_ms": 21.254691,
+      "p95_ms": 66.753702,
+      "p99_ms": 124.100179
+     },
+     "reindex_product": {
+      "count": 3391,
+      "max_wait_ms": 257.06971,
+      "mean_ms": 13.094855612503686,
+      "median_service_ms": 2.52732,
+      "p50_ms": 7.619806,
+      "p95_ms": 40.982798,
+      "p99_ms": 86.365926
+     },
+     "reserve_inventory": {
+      "count": 6784,
+      "max_wait_ms": 299.086457,
+      "mean_ms": 25.54274518956368,
+      "median_service_ms": 6.083705,
+      "p50_ms": 18.7443,
+      "p95_ms": 67.453569,
+      "p99_ms": 131.912131
+     },
+     "resize_image": {
+      "count": 2224,
+      "max_wait_ms": 27510.857318,
+      "mean_ms": 8262.962418354766,
+      "median_service_ms": 15.2605,
+      "p50_ms": 994.904978,
+      "p95_ms": 26361.272689,
+      "p99_ms": 27087.043295
+     },
+     "send_order_email": {
+      "count": 5039,
+      "max_wait_ms": 27502.44129,
+      "mean_ms": 10526.11303103989,
+      "median_service_ms": 35.3276,
+      "p50_ms": 9006.0082,
+      "p95_ms": 25746.778028,
+      "p99_ms": 27072.059315
+     },
+     "send_sms": {
+      "count": 1533,
+      "max_wait_ms": 27452.471384,
+      "mean_ms": 10353.154359744945,
+      "median_service_ms": 80.8999,
+      "p50_ms": 8015.163079,
+      "p95_ms": 25995.164846,
+      "p99_ms": 27123.23402
+     }
+    },
+    "shifted_class_mean_ms:deliver_webhook": 3685.515746573913,
+    "shifted_class_mean_ms:export_report": 5497.7996559375,
+    "shifted_class_mean_ms:generate_invoice": 19.162973881709743,
+    "shifted_class_mean_ms:push_notification": 30.743142192035968,
+    "shifted_class_mean_ms:reindex_product": 17.50713118774319,
+    "shifted_class_mean_ms:reserve_inventory": 30.57678615219062,
+    "shifted_class_mean_ms:resize_image": 2800.361880990625,
+    "shifted_class_mean_ms:send_order_email": 3545.264326847805,
+    "shifted_class_mean_ms:send_sms": 3954.380760262537,
+    "short_mean_ms": 21.986156607610564,
+    "short_p50_ms": 15.362254,
+    "slowdown_p50": 3.1858468992711457,
+    "slowdown_p95": 727.3178341437367,
+    "slowdown_p99": 1662.5763427623538,
+    "submit_errors": 0,
+    "throughput_per_s": 116.68077849970527
+   },
+   "33": {
+    "class_mean_ms:deliver_webhook": 6191.631635040501,
+    "class_mean_ms:export_report": 5906.00974724,
+    "class_mean_ms:generate_invoice": 15.314655346122779,
+    "class_mean_ms:push_notification": 28.33289504056225,
+    "class_mean_ms:reindex_product": 12.894907295468277,
+    "class_mean_ms:reserve_inventory": 17.045562275372916,
+    "class_mean_ms:resize_image": 3178.3223155416667,
+    "class_mean_ms:send_order_email": 7220.576173665662,
+    "class_mean_ms:send_sms": 6809.744067378025,
+    "cohorts": {
+     "flash_sale": {
+      "count": 11859,
+      "mean_ms": 3939.693399834219,
+      "p50_ms": 27.25163,
+      "p99_ms": 20237.413634
+     },
+     "ramp": {
+      "count": 3863,
+      "mean_ms": 77.86563485555268,
+      "p50_ms": 19.774671,
+      "p99_ms": 882.296846
+     },
+     "recovery": {
+      "count": 6393,
+      "mean_ms": 4185.690868587361,
+      "p50_ms": 27.361877,
+      "p99_ms": 20413.719035
+     },
+     "shifted": {
+      "count": 7517,
+      "mean_ms": 182.40039075309298,
+      "p50_ms": 24.767091,
+      "p99_ms": 2841.735654
+     },
+     "steady": {
+      "count": 5134,
+      "mean_ms": 40.22251419068952,
+      "p50_ms": 12.595486,
+      "p99_ms": 456.857415
+     }
+    },
+    "completed": 34766,
+    "dlq": 0,
+    "long_max_wait_ms": 19453.155476,
+    "lookup_mean_us": 6.16334,
+    "mean_latency_ms": 2167.5874942215382,
+    "messages": 34766,
+    "p50_latency_ms": 23.124467,
+    "p95_latency_ms": 17079.204283,
+    "p99_latency_ms": 19969.846769,
+    "per_class": {
+     "deliver_webhook": {
+      "count": 3432,
+      "max_wait_ms": 21047.912697,
+      "mean_ms": 6191.631635040501,
+      "median_service_ms": 45.2037,
+      "p50_ms": 2068.771648,
+      "p95_ms": 19525.45457,
+      "p99_ms": 20594.968624
+     },
+     "export_report": {
+      "count": 50,
+      "max_wait_ms": 19453.155476,
+      "mean_ms": 5906.00974724,
+      "median_service_ms": 1281.585,
+      "p50_ms": 1771.098389,
+      "p95_ms": 18768.39507,
+      "p99_ms": 21080.879436
+     },
+     "generate_invoice": {
+      "count": 4952,
+      "max_wait_ms": 237.400526,
+      "mean_ms": 15.314655346122779,
+      "median_service_ms": 4.580685000000001,
+      "p50_ms": 10.550447,
+      "p95_ms": 40.490286,
+      "p99_ms": 68.194138
+     },
+     "push_notification": {
+      "count": 7470,
+      "max_wait_ms": 302.847436,
+      "mean_ms": 28.33289504056225,
+      "median_service_ms": 9.02637,
+      "p50_ms": 20.607523,
+      "p95_ms": 74.052855,
+      "p99_ms": 128.71124
+     },
+     "reindex_product": {
+      "count": 3310,
+      "max_wait_ms": 179.900198,
+      "mean_ms": 12.894907295468277,
+      "median_service_ms": 2.510675,
+      "p50_ms": 7.574996,
+      "p95_ms": 40.428175,
+      "p99_ms": 72.103641
+     },
+     "reserve_inventory": {
+      "count": 6838,
+      "max_wait_ms": 257.143583,
+      "mean_ms": 17.045562275372916,
+      "median_service_ms": 6.10909,
+      "p50_ms": 12.695386,
+      "p95_ms": 43.027291,
+      "p99_ms": 75.373048
+     },
+     "resize_image": {
+      "count": 2208,
+      "max_wait_ms": 21114.158802,
+      "mean_ms": 3178.3223155416667,
+      "median_service_ms": 15.23275,
+      "p50_ms": 59.697595,
+      "p95_ms": 18911.388842,
+      "p99_ms": 20279.762526
+     },
+     "send_order_email": {
+      "count": 4977,
+      "max_wait_ms": 21129.704933,
+      "mean_ms": 7220.576173665662,
+      "median_service_ms": 35.4264,
+      "p50_ms": 4611.190625,
+      "p95_ms": 19725.162917,
+      "p99_ms": 20464.040335
+     },
+     "send_sms": {
+      "count": 1529,
+      "max_wait_ms": 21046.106315,
+      "mean_ms": 6809.744067378025,
+      "median_service_ms": 83.8587,
+      "p50_ms": 3686.373682,
+      "p95_ms": 19649.17382,
+      "p99_ms": 20665.803819
+     }
+    },
+    "shifted_class_mean_ms:deliver_webhook": 565.0014840218447,
+    "shifted_class_mean_ms:export_report": 1369.8224605384617,
+    "shifted_class_mean_ms:generate_invoice": 17.633866503688093,
+    "shifted_class_mean_ms:push_notification": 29.692122335035098,
+    "shifted_class_mean_ms:reindex_product": 15.402289757700204,
+    "shifted_class_mean_ms:reserve_inventory": 19.721771747311827,
+    "shifted_class_mean_ms:resize_image": 246.87777304977377,
+    "shifted_class_mean_ms:send_order_email": 506.7905441126126,
+    "shifted_class_mean_ms:send_sms": 504.6978745281899,
+    "short_mean_ms": 19.792848791050066,
+    "short_p50_ms": 13.596801,
+    "slowdown_p50": 2.5599046089784587,
+    "slowdown_p95": 450.7071275763187,
+    "slowdown_p99": 1026.8390346023966,
+    "submit_errors": 0,
+    "throughput_per_s": 115.85146688332067
+   },
+   "44": {
+    "class_mean_ms:deliver_webhook": 10899.056414232831,
+    "class_mean_ms:export_report": 10797.895179232877,
+    "class_mean_ms:generate_invoice": 16.780781923773883,
+    "class_mean_ms:push_notification": 32.22239535382603,
+    "class_mean_ms:reindex_product": 15.312216554784184,
+    "class_mean_ms:reserve_inventory": 24.985172084110765,
+    "class_mean_ms:resize_image": 9257.832884660222,
+    "class_mean_ms:send_order_email": 11430.843598880801,
+    "class_mean_ms:send_sms": 11381.067371629699,
+    "cohorts": {
+     "flash_sale": {
+      "count": 12133,
+      "mean_ms": 5394.577805009643,
+      "p50_ms": 29.690809,
+      "p99_ms": 27421.467813
+     },
+     "ramp": {
+      "count": 3922,
+      "mean_ms": 349.9483023187149,
+      "p50_ms": 28.133445,
+      "p99_ms": 3023.157884
+     },
+     "recovery": {
+      "count": 6474,
+      "mean_ms": 7943.438410824529,
+      "p50_ms": 30.83715,
+      "p99_ms": 27071.550537
+     },
+     "shifted": {
+      "count": 7606,
+      "mean_ms": 2254.413095114515,
+      "p50_ms": 38.664895,
+      "p99_ms": 13369.847362
+     },
+     "steady": {
+      "count": 5067,
+      "mean_ms": 52.34525630747977,
+      "p50_ms": 14.041535,
+      "p99_ms": 661.935548
+     }
+    },
+    "completed": 35202,
+    "dlq": 0,
+    "long_max_wait_ms": 26889.361769,
+    "lookup_mean_us": 6.01469,
+    "mean_latency_ms": 3853.8443678400376,
+    "messages": 35202,
+    "p50_latency_ms": 28.906848,
+    "p95_latency_ms": 23675.165055,
+    "p99_latency_ms": 26807.239294,
+    "per_class": {
+     "deliver_webhook": {
+      "count": 3655,
+      "max_wait_ms": 27664.800846,
+      "mean_ms": 10899.056414232831,
+      "median_service_ms": 45.3196,
+      "p50_ms": 9228.967519,
+      "p95_ms": 26269.675274,
+      "p99_ms": 27464.344791
+     },
+     "export_report": {
+      "count": 73,
+      "max_wait_ms": 26889.361769,
+      "mean_ms": 10797.895179232877,
+      "median_service_ms": 1323.43,
+      "p50_ms": 5943.276933,
+      "p95_ms": 25697.154689,
+      "p99_ms": 28920.276927
+     },
+     "generate_invoice": {
+      "count": 5077,
+      "max_wait_ms": 303.554018,
+      "mean_ms": 16.780781923773883,
+      "median_service_ms": 4.53727,
+      "p50_ms": 11.082629,
+      "p95_ms": 45.701122,
+      "p99_ms": 94.224296
+     },
+     "push_notification": {
+      "count": 7645,
+      "max_wait_ms": 570.700634,
+      "mean_ms": 32.22239535382603,
+      "median_service_ms": 9.09873,
+      "p50_ms": 23.29435,
+      "p95_ms": 79.398864,
+      "p99_ms": 196.355128
+     },
+     "reindex_product": {
+      "count": 3313,
+      "max_wait_ms": 276.060687,
+      "mean_ms": 15.312216554784184,
+      "median_service_ms": 2.5223,
+      "p50_ms": 8.958511,
+      "p95_ms": 45.684159,
+      "p99_ms": 116.141157
+     },
+     "reserve_inventory": {
+      "count": 6753,
+      "max_wait_ms": 316.462759,
+      "mean_ms": 24.985172084110765,
+      "median_service_ms": 6.08667,
+      "p50_ms": 18.218173,
+      "p95_ms": 63.15339,
+      "p99_ms": 115.416696
+     },
+     "resize_image": {
+      "count": 2172,
+      "max_wait_ms": 27588.660148,
+      "mean_ms": 9257.832884660222,
+      "median_service_ms": 15.522,
+      "p50_ms": 4826.139948,
+      "p95_ms": 25578.299059,
+      "p99_ms": 27100.396216
+     },
+     "send_order_email": {
+      "count": 4891,
+      "max_wait_ms": 27671.851665,
+      "mean_ms": 11430.843598880801,
+      "median_service_ms": 35.2511,
+      "p50_ms": 9577.726213,
+      "p95_ms": 26333.49903,
+      "p99_ms": 27411.496159
+     },
+     "send_sms": {
+      "count": 1623,
+      "max_wait_ms": 27649.09726,
+      "mean_ms": 11381.067371629699,
+      "median_service_ms": 79.178,
+      "p50_ms": 9580.212201,
+      "p95_ms": 26500.302553,
+      "p99_ms": 27507.944739
+     }
+    },
+    "shifted_class_mean_ms:deliver_webhook": 6207.745961608844,
+    "shifted_class_mean_ms:export_report": 6342.9809176,
+    "shifted_class_mean_ms:generate_invoice": 24.20599390842872,
+    "shifted_class_mean_ms:push_notification": 35.27509237397863,
+    "shifted_class_mean_ms:reindex_product": 20.994009319721116,
+    "shifted_class_mean_ms:reserve_inventory": 32.591696887931036,
+    "shifted_class_mean_ms:resize_image": 5884.45920008046,
+    "shifted_class_mean_ms:send_order_email": 6090.523000744035,
+    "shifted_class_mean_ms:send_sms": 6464.619220619047,
+    "short_mean_ms": 24.178975023565034,
+    "short_p50_ms": 16.376022,
+    "slowdown_p50": 3.8487605856381135,
+    "slowdown_p95": 753.9276770458358,
+    "slowdown_p99": 1644.9373880786345,
+    "submit_errors": 0,
+    "throughput_per_s": 116.023856623041
+   },
+   "55": {
+    "class_mean_ms:deliver_webhook": 5894.265607819597,
+    "class_mean_ms:export_report": 4179.357869565218,
+    "class_mean_ms:generate_invoice": 15.131787248806683,
+    "class_mean_ms:push_notification": 29.53116891322259,
+    "class_mean_ms:reindex_product": 12.934808308560678,
+    "class_mean_ms:reserve_inventory": 25.551695166491832,
+    "class_mean_ms:resize_image": 4900.547603640231,
+    "class_mean_ms:send_order_email": 6668.516098495965,
+    "class_mean_ms:send_sms": 6634.67940418979,
+    "cohorts": {
+     "flash_sale": {
+      "count": 11762,
+      "mean_ms": 3944.1829872276826,
+      "p50_ms": 27.979816,
+      "p99_ms": 20232.622824
+     },
+     "ramp": {
+      "count": 3796,
+      "mean_ms": 130.7390986975764,
+      "p50_ms": 22.59792,
+      "p99_ms": 1175.204814
+     },
+     "recovery": {
+      "count": 6409,
+      "mean_ms": 4192.468803426432,
+      "p50_ms": 27.653889,
+      "p99_ms": 19755.126766
+     },
+     "shifted": {
+      "count": 7586,
+      "mean_ms": 191.6898829649354,
+      "p50_ms": 27.594463,
+      "p99_ms": 2517.334651
+     },
+     "steady": {
+      "count": 5119,
+      "mean_ms": 37.399157343035746,
+      "p50_ms": 12.795184,
+      "p99_ms": 398.740706
+     }
+    },
+    "completed": 34672,
+    "dlq": 0,
+    "long_max_wait_ms": 18027.828551,
+    "lookup_mean_us": 6.09218,
+    "mean_latency_ms": 2174.7491986098003,
+    "messages": 34672,
+    "p50_latency_ms": 24.691694,
+    "p95_latency_ms": 16138.386009,
+    "p99_latency_ms": 19957.98135,
+    "per_class": {
+     "deliver_webhook": {
+      "count": 3470,
+      "max_wait_ms": 20343.676362,
+      "mean_ms": 5894.265607819597,
+      "median_service_ms": 44.6507,
+      "p50_ms": 1931.290402,
+      "p95_ms": 19681.788998,
+      "p99_ms": 20248.087847
+     },
+     "export_report": {
+      "count": 46,
+      "max_wait_ms": 18027.828551,
+      "mean_ms": 4179.357869565218,
+      "median_service_ms": 1358.77,
+      "p50_ms": 1690.800219,
+      "p95_ms": 18875.277368,
+      "p99_ms": 19058.846909
+     },
+     "generate_invoice": {
+      "count": 5028,
+      "max_wait_ms": 490.57376,
+      "mean_ms": 15.131787248806683,
+      "median_service_ms": 4.54584,
+      "p50_ms": 9.656858,
+      "p95_ms": 40.074046,
+      "p99_ms": 79.794866
+     },
+     "push_notification": {
+      "count": 7525,
+      "max_wait_ms": 680.833246,
+      "mean_ms": 29.53116891322259,
+      "median_service_ms": 9.12832,
+      "p50_ms": 19.424675,
+      "p95_ms": 64.469781,
+      "p99_ms": 229.98901
+     },
+     "reindex_product": {
+      "count": 3189,
+      "max_wait_ms": 410.771649,
+      "mean_ms": 12.934808308560678,
+      "median_service_ms": 2.52684,
+      "p50_ms": 7.005356,
+      "p95_ms": 38.75579,
+      "p99_ms": 93.455732
+     },
+     "reserve_inventory": {
+      "count": 6673,
+      "max_wait_ms": 704.87494,
+      "mean_ms": 25.551695166491832,
+      "median_service_ms": 6.12244,
+      "p50_ms": 16.209514,
+      "p95_ms": 59.815362,
+      "p99_ms": 172.022169
+     },
+     "resize_image": {
+      "count": 2257,
+      "max_wait_ms": 20336.356564,
+      "mean_ms": 4900.547603640231,
+      "median_service_ms": 15.5489,
+      "p50_ms": 308.406698,
+      "p95_ms": 19128.351842,
+      "p99_ms": 20131.818567
+     },
+     "send_order_email": {
+      "count": 4956,
+      "max_wait_ms": 20323.634598,
+      "mean_ms": 6668.516098495965,
+      "median_service_ms": 35.2422,
+      "p50_ms": 3446.011069,
+      "p95_ms": 19749.218456,
+      "p99_ms": 20233.17411
+     },
+     "send_sms": {
+      "count": 1528,
+      "max_wait_ms": 20311.222274,
+      "mean_ms": 6634.67940418979,
+      "median_service_ms": 81.19890000000001,
+      "p50_ms": 3384.506705,
+      "p95_ms": 19686.776086,
+      "p99_ms": 20268.314874
+     }
+    },
+    "shifted_class_mean_ms:deliver_webhook": 683.1434840886076,
+    "shifted_class_mean_ms:export_report": 2062.545063625,
+    "shifted_class_mean_ms:generate_invoice": 20.484785212307692,
+    "shifted_class_mean_ms:push_notification": 30.434854428216283,
+    "shifted_class_mean_ms:reindex_product": 17.891994651260504,
+    "shifted_class_mean_ms:reserve_inventory": 27.515645149776454,
+    "shifted_class_mean_ms:resize_image": 163.94943471943574,
+    "shifted_class_mean_ms:send_order_email": 503.01464023804573,
+    "shifted_class_mean_ms:send_sms": 563.1590543311258,
+    "short_mean_ms": 22.755308405130492,
+    "short_p50_ms": 14.078187,
+    "slowdown_p50": 2.7254193072813955,
+    "slowdown_p95": 472.3523661377484,
+    "slowdown_p99": 1090.2366981644016,
+    "submit_errors": 0,
+    "throughput_per_s": 115.39854021421293
+   }
+  },
+  "rabbitmq_priority": {
+   "11": {
+    "class_mean_ms:deliver_webhook": 5000.795160894222,
+    "class_mean_ms:export_report": 20096.887250787233,
+    "class_mean_ms:generate_invoice": 5867.516342289767,
+    "class_mean_ms:push_notification": 23.97908960808668,
+    "class_mean_ms:reindex_product": 15.601522708099688,
+    "class_mean_ms:reserve_inventory": 20.10922075599583,
+    "class_mean_ms:resize_image": 25660.251702894737,
+    "class_mean_ms:send_order_email": 5844.875606157958,
+    "class_mean_ms:send_sms": 5392.086720621122,
+    "cohorts": {
+     "flash_sale": {
+      "count": 11911,
+      "mean_ms": 9089.83584893762,
+      "p50_ms": 2031.652914,
+      "p99_ms": 92369.814034
+     },
+     "ramp": {
+      "count": 3812,
+      "mean_ms": 366.78383068730324,
+      "p50_ms": 26.417789,
+      "p99_ms": 2513.235978
+     },
+     "recovery": {
+      "count": 6511,
+      "mean_ms": 5189.173265054984,
+      "p50_ms": 42.109169,
+      "p99_ms": 50028.725876
+     },
+     "shifted": {
+      "count": 7629,
+      "mean_ms": 185.91581306501507,
+      "p50_ms": 30.590174,
+      "p99_ms": 4044.793538
+     },
+     "steady": {
+      "count": 5093,
+      "mean_ms": 57.64905517632044,
+      "p50_ms": 15.085554,
+      "p99_ms": 877.170374
+     }
+    },
+    "completed": 34956,
+    "dlq": 0,
+    "long_max_wait_ms": 101224.309294,
+    "lookup_mean_us": null,
+    "mean_latency_ms": 4152.817263529437,
+    "messages": 34956,
+    "p50_latency_ms": 34.219181,
+    "p95_latency_ms": 17552.185616,
+    "p99_latency_ms": 72187.361947,
+    "per_class": {
+     "deliver_webhook": {
+      "count": 3479,
+      "max_wait_ms": 17934.136732,
+      "mean_ms": 5000.795160894222,
+      "median_service_ms": 44.8212,
+      "p50_ms": 464.430794,
+      "p95_ms": 17469.527593,
+      "p99_ms": 17918.366528
+     },
+     "export_report": {
+      "count": 47,
+      "max_wait_ms": 101224.309294,
+      "mean_ms": 20096.887250787233,
+      "median_service_ms": 1347.36,
+      "p50_ms": 2591.432857,
+      "p95_ms": 92163.736247,
+      "p99_ms": 102327.714527
+     },
+     "generate_invoice": {
+      "count": 5111,
+      "max_wait_ms": 17972.057261,
+      "mean_ms": 5867.516342289767,
+      "median_service_ms": 4.55687,
+      "p50_ms": 1990.812697,
+      "p95_ms": 17595.169526,
+      "p99_ms": 17849.872798
+     },
+     "push_notification": {
+      "count": 7568,
+      "max_wait_ms": 276.670932,
+      "mean_ms": 23.97908960808668,
+      "median_service_ms": 9.163525,
+      "p50_ms": 18.015512,
+      "p95_ms": 56.658405,
+      "p99_ms": 100.230837
+     },
+     "reindex_product": {
+      "count": 3210,
+      "max_wait_ms": 339.22799,
+      "mean_ms": 15.601522708099688,
+      "median_service_ms": 2.504195,
+      "p50_ms": 8.977695,
+      "p95_ms": 48.385388,
+      "p99_ms": 92.81795
+     },
+     "reserve_inventory": {
+      "count": 6713,
+      "max_wait_ms": 285.525991,
+      "mean_ms": 20.10922075599583,
+      "median_service_ms": 6.13607,
+      "p50_ms": 14.353693,
+      "p95_ms": 50.909395,
+      "p99_ms": 90.151369
+     },
+     "resize_image": {
+      "count": 2299,
+      "max_wait_ms": 104075.829353,
+      "mean_ms": 25660.251702894737,
+      "median_service_ms": 15.3302,
+      "p50_ms": 1626.532272,
+      "p95_ms": 93339.95307,
+      "p99_ms": 101896.829788
+     },
+     "send_order_email": {
+      "count": 5014,
+      "max_wait_ms": 17942.458238,
+      "mean_ms": 5844.875606157958,
+      "median_service_ms": 35.1523,
+      "p50_ms": 1208.327033,
+      "p95_ms": 17651.672351,
+      "p99_ms": 17883.015859
+     },
+     "send_sms": {
+      "count": 1515,
+      "max_wait_ms": 17932.437243,
+      "mean_ms": 5392.086720621122,
+      "median_service_ms": 80.023,
+      "p50_ms": 572.290002,
+      "p95_ms": 17533.260537,
+      "p99_ms": 17916.837867
+     }
+    },
+    "shifted_class_mean_ms:deliver_webhook": 229.28489094397077,
+    "shifted_class_mean_ms:export_report": 2470.5136438571426,
+    "shifted_class_mean_ms:generate_invoice": 75.28037490132249,
+    "shifted_class_mean_ms:push_notification": 27.194562799165674,
+    "shifted_class_mean_ms:reindex_product": 19.171084568669528,
+    "shifted_class_mean_ms:reserve_inventory": 22.27886971371927,
+    "shifted_class_mean_ms:resize_image": 1380.373475977707,
+    "shifted_class_mean_ms:send_order_email": 113.43439264539008,
+    "shifted_class_mean_ms:send_sms": 157.20976156,
+    "short_mean_ms": 1343.0414946652952,
+    "short_p50_ms": 17.817956,
+    "slowdown_p50": 3.117076530317891,
+    "slowdown_p95": 2764.855910201,
+    "slowdown_p99": 5702.09611510276,
+    "submit_errors": 0,
+    "throughput_per_s": 116.24036642991729
+   },
+   "22": {
+    "class_mean_ms:deliver_webhook": 4933.431666213617,
+    "class_mean_ms:export_report": 39504.390872035714,
+    "class_mean_ms:generate_invoice": 5423.783020308526,
+    "class_mean_ms:push_notification": 23.636532322649288,
+    "class_mean_ms:reindex_product": 16.77261947803008,
+    "class_mean_ms:reserve_inventory": 20.85239629038915,
+    "class_mean_ms:resize_image": 32331.60692146133,
+    "class_mean_ms:send_order_email": 5476.398559251042,
+    "class_mean_ms:send_sms": 5367.235586480757,
+    "cohorts": {
+     "flash_sale": {
+      "count": 12013,
+      "mean_ms": 8706.361171128527,
+      "p50_ms": 78.528357,
+      "p99_ms": 95684.792853
+     },
+     "ramp": {
+      "count": 3868,
+      "mean_ms": 483.81620214219237,
+      "p50_ms": 29.719022,
+      "p99_ms": 2888.404173
+     },
+     "recovery": {
+      "count": 6380,
+      "mean_ms": 6365.307360725392,
+      "p50_ms": 43.062712,
+      "p99_ms": 66672.790834
+     },
+     "shifted": {
+      "count": 7717,
+      "mean_ms": 968.5156391613322,
+      "p50_ms": 38.38886,
+      "p99_ms": 25301.085146
+     },
+     "steady": {
+      "count": 5078,
+      "mean_ms": 39.314077210515954,
+      "p50_ms": 13.18599,
+      "p99_ms": 378.633568
+     }
+    },
+    "completed": 35056,
+    "dlq": 0,
+    "long_max_wait_ms": 105897.679405,
+    "lookup_mean_us": null,
+    "mean_latency_ms": 4414.23011329199,
+    "messages": 35056,
+    "p50_latency_ms": 34.287431,
+    "p95_latency_ms": 17725.303966,
+    "p99_latency_ms": 77317.181298,
+    "per_class": {
+     "deliver_webhook": {
+      "count": 3525,
+      "max_wait_ms": 18217.369457,
+      "mean_ms": 4933.431666213617,
+      "median_service_ms": 45.0997,
+      "p50_ms": 584.003061,
+      "p95_ms": 17009.090122,
+      "p99_ms": 18089.880292
+     },
+     "export_report": {
+      "count": 56,
+      "max_wait_ms": 105897.679405,
+      "mean_ms": 39504.390872035714,
+      "median_service_ms": 1462.895,
+      "p50_ms": 29177.299383,
+      "p95_ms": 97493.43782,
+      "p99_ms": 107515.638988
+     },
+     "generate_invoice": {
+      "count": 4985,
+      "max_wait_ms": 18230.307877,
+      "mean_ms": 5423.783020308526,
+      "median_service_ms": 4.53559,
+      "p50_ms": 718.203115,
+      "p95_ms": 17248.775008,
+      "p99_ms": 18073.828816
+     },
+     "push_notification": {
+      "count": 7519,
+      "max_wait_ms": 472.570788,
+      "mean_ms": 23.636532322649288,
+      "median_service_ms": 9.13369,
+      "p50_ms": 18.073877,
+      "p95_ms": 55.045515,
+      "p99_ms": 91.46564
+     },
+     "reindex_product": {
+      "count": 3391,
+      "max_wait_ms": 493.48885,
+      "mean_ms": 16.77261947803008,
+      "median_service_ms": 2.52369,
+      "p50_ms": 9.865677,
+      "p95_ms": 48.399687,
+      "p99_ms": 106.752743
+     },
+     "reserve_inventory": {
+      "count": 6784,
+      "max_wait_ms": 421.298192,
+      "mean_ms": 20.85239629038915,
+      "median_service_ms": 6.093385,
+      "p50_ms": 15.236752,
+      "p95_ms": 52.136185,
+      "p99_ms": 95.313114
+     },
+     "resize_image": {
+      "count": 2224,
+      "max_wait_ms": 106486.747826,
+      "mean_ms": 32331.60692146133,
+      "median_service_ms": 15.25825,
+      "p50_ms": 17962.518077,
+      "p95_ms": 96789.93764,
+      "p99_ms": 103938.049826
+     },
+     "send_order_email": {
+      "count": 5039,
+      "max_wait_ms": 18226.002315,
+      "mean_ms": 5476.398559251042,
+      "median_service_ms": 35.3057,
+      "p50_ms": 803.412349,
+      "p95_ms": 17351.223077,
+      "p99_ms": 18067.270392
+     },
+     "send_sms": {
+      "count": 1533,
+      "max_wait_ms": 18225.937647,
+      "mean_ms": 5367.235586480757,
+      "median_service_ms": 80.8553,
+      "p50_ms": 615.346879,
+      "p95_ms": 17501.378891,
+      "p99_ms": 18152.384039
+     }
+    },
+    "shifted_class_mean_ms:deliver_webhook": 301.8572260583851,
+    "shifted_class_mean_ms:export_report": 12446.1918234375,
+    "shifted_class_mean_ms:generate_invoice": 148.57606985089464,
+    "shifted_class_mean_ms:push_notification": 30.943221434168272,
+    "shifted_class_mean_ms:reindex_product": 24.570803543774318,
+    "shifted_class_mean_ms:reserve_inventory": 29.141412709454265,
+    "shifted_class_mean_ms:resize_image": 10145.845238835938,
+    "shifted_class_mean_ms:send_order_email": 191.38216809560976,
+    "shifted_class_mean_ms:send_sms": 240.63566395870205,
+    "short_mean_ms": 1208.7667027583227,
+    "short_p50_ms": 18.195994,
+    "slowdown_p50": 3.3314744851973632,
+    "slowdown_p95": 2759.6906668424226,
+    "slowdown_p99": 5729.198416117353,
+    "submit_errors": 0,
+    "throughput_per_s": 116.69970088144397
+   },
+   "33": {
+    "class_mean_ms:deliver_webhook": 3263.8024049093824,
+    "class_mean_ms:export_report": 24499.37591226,
+    "class_mean_ms:generate_invoice": 3575.9240906702344,
+    "class_mean_ms:push_notification": 22.051313097590363,
+    "class_mean_ms:reindex_product": 14.55950592386707,
+    "class_mean_ms:reserve_inventory": 19.38174620707809,
+    "class_mean_ms:resize_image": 22134.00194999366,
+    "class_mean_ms:send_order_email": 3931.452554596544,
+    "class_mean_ms:send_sms": 3613.6904583106607,
+    "cohorts": {
+     "flash_sale": {
+      "count": 11859,
+      "mean_ms": 6646.960168422633,
+      "p50_ms": 64.642741,
+      "p99_ms": 86621.656014
+     },
+     "ramp": {
+      "count": 3863,
+      "mean_ms": 94.37642051669687,
+      "p50_ms": 24.270338,
+      "p99_ms": 1257.173445
+     },
+     "recovery": {
+      "count": 6393,
+      "mean_ms": 3698.9778717957142,
+      "p50_ms": 40.383988,
+      "p99_ms": 43482.804904
+     },
+     "shifted": {
+      "count": 7517,
+      "mean_ms": 184.13665061301052,
+      "p50_ms": 29.344979,
+      "p99_ms": 2881.057355
+     },
+     "steady": {
+      "count": 5134,
+      "mean_ms": 43.087903002337356,
+      "p50_ms": 12.96408,
+      "p99_ms": 437.829581
+     }
+    },
+    "completed": 34766,
+    "dlq": 0,
+    "long_max_wait_ms": 94937.257828,
+    "lookup_mean_us": null,
+    "mean_latency_ms": 3004.194062614106,
+    "messages": 34766,
+    "p50_latency_ms": 30.843653,
+    "p95_latency_ms": 12972.276557,
+    "p99_latency_ms": 67731.643358,
+    "per_class": {
+     "deliver_webhook": {
+      "count": 3432,
+      "max_wait_ms": 14462.767593,
+      "mean_ms": 3263.8024049093824,
+      "median_service_ms": 45.2134,
+      "p50_ms": 414.758989,
+      "p95_ms": 13019.983402,
+      "p99_ms": 14016.878547
+     },
+     "export_report": {
+      "count": 50,
+      "max_wait_ms": 94937.257828,
+      "mean_ms": 24499.37591226,
+      "median_service_ms": 1278.98,
+      "p50_ms": 2370.509666,
+      "p95_ms": 88835.525268,
+      "p99_ms": 95691.850489
+     },
+     "generate_invoice": {
+      "count": 4952,
+      "max_wait_ms": 14482.476511,
+      "mean_ms": 3575.9240906702344,
+      "median_service_ms": 4.587765,
+      "p50_ms": 380.04836,
+      "p95_ms": 13010.04435,
+      "p99_ms": 13741.721442
+     },
+     "push_notification": {
+      "count": 7470,
+      "max_wait_ms": 275.441528,
+      "mean_ms": 22.051313097590363,
+      "median_service_ms": 9.028395,
+      "p50_ms": 16.975553,
+      "p95_ms": 51.441187,
+      "p99_ms": 87.135783
+     },
+     "reindex_product": {
+      "count": 3310,
+      "max_wait_ms": 231.483424,
+      "mean_ms": 14.55950592386707,
+      "median_service_ms": 2.51343,
+      "p50_ms": 8.428614,
+      "p95_ms": 43.946989,
+      "p99_ms": 85.807245
+     },
+     "reserve_inventory": {
+      "count": 6838,
+      "max_wait_ms": 270.551184,
+      "mean_ms": 19.38174620707809,
+      "median_service_ms": 6.100745,
+      "p50_ms": 14.341057,
+      "p95_ms": 48.674669,
+      "p99_ms": 88.26224
+     },
+     "resize_image": {
+      "count": 2208,
+      "max_wait_ms": 96635.356526,
+      "mean_ms": 22134.00194999366,
+      "median_service_ms": 15.2185,
+      "p50_ms": 1013.284801,
+      "p95_ms": 87240.382536,
+      "p99_ms": 94530.704547
+     },
+     "send_order_email": {
+      "count": 4977,
+      "max_wait_ms": 14485.513336,
+      "mean_ms": 3931.452554596544,
+      "median_service_ms": 35.4253,
+      "p50_ms": 885.898336,
+      "p95_ms": 13309.521384,
+      "p99_ms": 13848.308901
+     },
+     "send_sms": {
+      "count": 1529,
+      "max_wait_ms": 14478.096519,
+      "mean_ms": 3613.6904583106607,
+      "median_service_ms": 83.8778,
+      "p50_ms": 419.203535,
+      "p95_ms": 13155.885421,
+      "p99_ms": 14045.199553
+     }
+    },
+    "shifted_class_mean_ms:deliver_webhook": 291.2316807682039,
+    "shifted_class_mean_ms:export_report": 1613.449031923077,
+    "shifted_class_mean_ms:generate_invoice": 114.87931695468914,
+    "shifted_class_mean_ms:push_notification": 24.89104225845565,
+    "shifted_class_mean_ms:reindex_product": 17.810747136550308,
+    "shifted_class_mean_ms:reserve_inventory": 22.75220816359447,
+    "shifted_class_mean_ms:resize_image": 1075.2093549426847,
+    "shifted_class_mean_ms:send_order_email": 162.943074643018,
+    "shifted_class_mean_ms:send_sms": 209.6511273916914,
+    "short_mean_ms": 799.8858551621622,
+    "short_p50_ms": 16.686117,
+    "slowdown_p50": 2.845551375459622,
+    "slowdown_p95": 1680.866407750816,
+    "slowdown_p99": 4559.969369090683,
+    "submit_errors": 0,
+    "throughput_per_s": 115.84981066859665
+   },
+   "44": {
+    "class_mean_ms:deliver_webhook": 4278.858954658276,
+    "class_mean_ms:export_report": 45181.629813356165,
+    "class_mean_ms:generate_invoice": 4821.533604412448,
+    "class_mean_ms:push_notification": 26.25649827233486,
+    "class_mean_ms:reindex_product": 19.74769064171446,
+    "class_mean_ms:reserve_inventory": 23.15629554257367,
+    "class_mean_ms:resize_image": 42037.78448904742,
+    "class_mean_ms:send_order_email": 4743.207792428338,
+    "class_mean_ms:send_sms": 4666.4732121109055,
+    "cohorts": {
+     "flash_sale": {
+      "count": 12133,
+      "mean_ms": 8262.520872066596,
+      "p50_ms": 93.240476,
+      "p99_ms": 105898.998594
+     },
+     "ramp": {
+      "count": 3922,
+      "mean_ms": 2242.2883066302907,
+      "p50_ms": 41.780504,
+      "p99_ms": 116333.025729
+     },
+     "recovery": {
+      "count": 6474,
+      "mean_ms": 7074.240672303985,
+      "p50_ms": 61.477745,
+      "p99_ms": 67073.742276
+     },
+     "shifted": {
+      "count": 7606,
+      "mean_ms": 1419.44265646345,
+      "p50_ms": 51.949432,
+      "p99_ms": 33210.290378
+     },
+     "steady": {
+      "count": 5067,
+      "mean_ms": 55.13950399230314,
+      "p50_ms": 14.727296,
+      "p99_ms": 627.413305
+     }
+    },
+    "completed": 35202,
+    "dlq": 0,
+    "long_max_wait_ms": 119442.434126,
+    "lookup_mean_us": null,
+    "mean_latency_ms": 4713.303997036362,
+    "messages": 35202,
+    "p50_latency_ms": 40.83972,
+    "p95_latency_ms": 16488.006626,
+    "p99_latency_ms": 95357.416034,
+    "per_class": {
+     "deliver_webhook": {
+      "count": 3655,
+      "max_wait_ms": 17574.899279,
+      "mean_ms": 4278.858954658276,
+      "median_service_ms": 45.3306,
+      "p50_ms": 842.700827,
+      "p95_ms": 16260.128055,
+      "p99_ms": 17384.195972
+     },
+     "export_report": {
+      "count": 73,
+      "max_wait_ms": 119442.434126,
+      "mean_ms": 45181.629813356165,
+      "median_service_ms": 1328.31,
+      "p50_ms": 37515.777733,
+      "p95_ms": 107976.475476,
+      "p99_ms": 121509.319926
+     },
+     "generate_invoice": {
+      "count": 5077,
+      "max_wait_ms": 17607.843612,
+      "mean_ms": 4821.533604412448,
+      "median_service_ms": 4.52871,
+      "p50_ms": 1722.744138,
+      "p95_ms": 16319.23809,
+      "p99_ms": 17375.166295
+     },
+     "push_notification": {
+      "count": 7645,
+      "max_wait_ms": 294.70687,
+      "mean_ms": 26.25649827233486,
+      "median_service_ms": 9.10818,
+      "p50_ms": 19.569375,
+      "p95_ms": 63.005882,
+      "p99_ms": 144.15585
+     },
+     "reindex_product": {
+      "count": 3313,
+      "max_wait_ms": 295.141309,
+      "mean_ms": 19.74769064171446,
+      "median_service_ms": 2.52015,
+      "p50_ms": 11.329749,
+      "p95_ms": 58.386846,
+      "p99_ms": 158.357103
+     },
+     "reserve_inventory": {
+      "count": 6753,
+      "max_wait_ms": 282.769805,
+      "mean_ms": 23.15629554257367,
+      "median_service_ms": 6.07841,
+      "p50_ms": 16.255746,
+      "p95_ms": 60.57904,
+      "p99_ms": 132.685819
+     },
+     "resize_image": {
+      "count": 2172,
+      "max_wait_ms": 120475.767082,
+      "mean_ms": 42037.78448904742,
+      "median_service_ms": 15.47275,
+      "p50_ms": 32376.71627,
+      "p95_ms": 109947.482816,
+      "p99_ms": 118206.343291
+     },
+     "send_order_email": {
+      "count": 4891,
+      "max_wait_ms": 17571.336607,
+      "mean_ms": 4743.207792428338,
+      "median_service_ms": 35.2443,
+      "p50_ms": 1489.779685,
+      "p95_ms": 16301.067598,
+      "p99_ms": 17377.614633
+     },
+     "send_sms": {
+      "count": 1623,
+      "max_wait_ms": 17565.163477,
+      "mean_ms": 4666.4732121109055,
+      "median_service_ms": 79.1747,
+      "p50_ms": 1002.209048,
+      "p95_ms": 16464.13771,
+      "p99_ms": 17461.697512
+     }
+    },
+    "shifted_class_mean_ms:deliver_webhook": 372.33008646145123,
+    "shifted_class_mean_ms:export_report": 14385.29723112,
+    "shifted_class_mean_ms:generate_invoice": 187.68924001977106,
+    "shifted_class_mean_ms:push_notification": 37.63448110559396,
+    "shifted_class_mean_ms:reindex_product": 31.174217310756973,
+    "shifted_class_mean_ms:reserve_inventory": 33.073333795454545,
+    "shifted_class_mean_ms:resize_image": 15550.249322200329,
+    "shifted_class_mean_ms:send_order_email": 247.04277344251628,
+    "shifted_class_mean_ms:send_sms": 287.5943347886905,
+    "short_mean_ms": 1092.7442338857732,
+    "short_p50_ms": 20.603245,
+    "slowdown_p50": 4.336592226878696,
+    "slowdown_p95": 2691.059320141276,
+    "slowdown_p99": 6599.261617801535,
+    "submit_errors": 0,
+    "throughput_per_s": 115.95000630973769
+   },
+   "55": {
+    "class_mean_ms:deliver_webhook": 3494.783607488761,
+    "class_mean_ms:export_report": 18259.57674980435,
+    "class_mean_ms:generate_invoice": 4029.823783111774,
+    "class_mean_ms:push_notification": 22.77018755614618,
+    "class_mean_ms:reindex_product": 15.320831195986203,
+    "class_mean_ms:reserve_inventory": 19.60396758429492,
+    "class_mean_ms:resize_image": 23363.179695234827,
+    "class_mean_ms:send_order_email": 4143.842631960855,
+    "class_mean_ms:send_sms": 4029.3255456092934,
+    "cohorts": {
+     "flash_sale": {
+      "count": 11762,
+      "mean_ms": 7127.348021512158,
+      "p50_ms": 386.440545,
+      "p99_ms": 89876.509602
+     },
+     "ramp": {
+      "count": 3796,
+      "mean_ms": 133.09185853398313,
+      "p50_ms": 26.892881,
+      "p99_ms": 2002.458151
+     },
+     "recovery": {
+      "count": 6409,
+      "mean_ms": 4198.985980866126,
+      "p50_ms": 40.823761,
+      "p99_ms": 45943.864699
+     },
+     "shifted": {
+      "count": 7586,
+      "mean_ms": 203.862350889797,
+      "p50_ms": 30.312722,
+      "p99_ms": 5117.43301
+     },
+     "steady": {
+      "count": 5119,
+      "mean_ms": 40.89074395174839,
+      "p50_ms": 13.04579,
+      "p99_ms": 417.919311
+     }
+    },
+    "completed": 34672,
+    "dlq": 0,
+    "long_max_wait_ms": 94029.081874,
+    "lookup_mean_us": null,
+    "mean_latency_ms": 3259.2352557548165,
+    "messages": 34672,
+    "p50_latency_ms": 31.679644,
+    "p95_latency_ms": 13994.178788,
+    "p99_latency_ms": 65976.084152,
+    "per_class": {
+     "deliver_webhook": {
+      "count": 3470,
+      "max_wait_ms": 14627.453637,
+      "mean_ms": 3494.783607488761,
+      "median_service_ms": 44.66345,
+      "p50_ms": 375.63561,
+      "p95_ms": 14075.405494,
+      "p99_ms": 14555.855742
+     },
+     "export_report": {
+      "count": 46,
+      "max_wait_ms": 94029.081874,
+      "mean_ms": 18259.57674980435,
+      "median_service_ms": 1357.165,
+      "p50_ms": 2447.589049,
+      "p95_ms": 69655.606428,
+      "p99_ms": 94731.177515
+     },
+     "generate_invoice": {
+      "count": 5028,
+      "max_wait_ms": 14653.889938,
+      "mean_ms": 4029.823783111774,
+      "median_service_ms": 4.55128,
+      "p50_ms": 449.098033,
+      "p95_ms": 14060.415072,
+      "p99_ms": 14506.039413
+     },
+     "push_notification": {
+      "count": 7525,
+      "max_wait_ms": 487.94743,
+      "mean_ms": 22.77018755614618,
+      "median_service_ms": 9.11643,
+      "p50_ms": 17.384047,
+      "p95_ms": 52.61383,
+      "p99_ms": 97.593487
+     },
+     "reindex_product": {
+      "count": 3189,
+      "max_wait_ms": 438.019567,
+      "mean_ms": 15.320831195986203,
+      "median_service_ms": 2.52028,
+      "p50_ms": 8.691941,
+      "p95_ms": 44.980238,
+      "p99_ms": 102.632567
+     },
+     "reserve_inventory": {
+      "count": 6673,
+      "max_wait_ms": 459.418799,
+      "mean_ms": 19.60396758429492,
+      "median_service_ms": 6.12365,
+      "p50_ms": 14.24249,
+      "p95_ms": 49.256938,
+      "p99_ms": 89.302609
+     },
+     "resize_image": {
+      "count": 2257,
+      "max_wait_ms": 97257.717628,
+      "mean_ms": 23363.179695234827,
+      "median_service_ms": 15.4744,
+      "p50_ms": 2192.000351,
+      "p95_ms": 89907.78032,
+      "p99_ms": 95703.733549
+     },
+     "send_order_email": {
+      "count": 4956,
+      "max_wait_ms": 14602.937424,
+      "mean_ms": 4143.842631960855,
+      "median_service_ms": 35.25775,
+      "p50_ms": 478.962924,
+      "p95_ms": 14126.492215,
+      "p99_ms": 14539.506614
+     },
+     "send_sms": {
+      "count": 1528,
+      "max_wait_ms": 14599.954497,
+      "mean_ms": 4029.3255456092934,
+      "median_service_ms": 81.20205,
+      "p50_ms": 408.084034,
+      "p95_ms": 14039.060042,
+      "p99_ms": 14570.832767
+     }
+    },
+    "shifted_class_mean_ms:deliver_webhook": 267.43156779367087,
+    "shifted_class_mean_ms:export_report": 3396.6982390625,
+    "shifted_class_mean_ms:generate_invoice": 92.91142656512821,
+    "shifted_class_mean_ms:push_notification": 28.622859631448105,
+    "shifted_class_mean_ms:reindex_product": 20.998807922268906,
+    "shifted_class_mean_ms:reserve_inventory": 24.94113848733234,
+    "shifted_class_mean_ms:resize_image": 1447.9961553291537,
+    "shifted_class_mean_ms:send_order_email": 120.73647255821206,
+    "shifted_class_mean_ms:send_sms": 168.23494942715232,
+    "short_mean_ms": 919.6062926263663,
+    "short_p50_ms": 17.120524,
+    "slowdown_p50": 2.9120515162523963,
+    "slowdown_p95": 2040.858765386962,
+    "slowdown_p99": 4760.736964082925,
+    "submit_errors": 0,
+    "throughput_per_s": 115.49253709849276
+   }
+  },
+  "redis_fifo": {
+   "11": {
+    "class_mean_ms:deliver_webhook": 6788.860068108939,
+    "class_mean_ms:export_report": 6348.710796276596,
+    "class_mean_ms:generate_invoice": 7459.264114780473,
+    "class_mean_ms:push_notification": 7078.79602039852,
+    "class_mean_ms:reindex_product": 5422.092652533333,
+    "class_mean_ms:reserve_inventory": 7536.354627178311,
+    "class_mean_ms:resize_image": 5739.739809812092,
+    "class_mean_ms:send_order_email": 7479.468719152772,
+    "class_mean_ms:send_sms": 7029.396663433663,
+    "cohorts": {
+     "flash_sale": {
+      "count": 11911,
+      "mean_ms": 12624.059796051884,
+      "p50_ms": 13785.169519,
+      "p99_ms": 21053.344434
+     },
+     "ramp": {
+      "count": 3812,
+      "mean_ms": 226.71109255089192,
+      "p50_ms": 92.565391,
+      "p99_ms": 957.355295
+     },
+     "recovery": {
+      "count": 6511,
+      "mean_ms": 13425.071546828443,
+      "p50_ms": 13890.245672,
+      "p99_ms": 20918.3018
+     },
+     "shifted": {
+      "count": 7629,
+      "mean_ms": 783.7252503291388,
+      "p50_ms": 134.2646,
+      "p99_ms": 5179.466308
+     },
+     "steady": {
+      "count": 5093,
+      "mean_ms": 66.38543456273317,
+      "p50_ms": 19.598904,
+      "p99_ms": 556.976508
+     }
+    },
+    "completed": 34956,
+    "dlq": 0,
+    "long_max_wait_ms": 19008.622208,
+    "lookup_mean_us": null,
+    "mean_latency_ms": 7007.586128560676,
+    "messages": 34956,
+    "p50_latency_ms": 3876.974155,
+    "p95_latency_ms": 19809.583385,
+    "p99_latency_ms": 20819.597739,
+    "per_class": {
+     "deliver_webhook": {
+      "count": 3479,
+      "max_wait_ms": 21078.598467,
+      "mean_ms": 6788.860068108939,
+      "median_service_ms": 44.8208,
+      "p50_ms": 2979.308423,
+      "p95_ms": 19959.212704,
+      "p99_ms": 21073.290938
+     },
+     "export_report": {
+      "count": 47,
+      "max_wait_ms": 19008.622208,
+      "mean_ms": 6348.710796276596,
+      "median_service_ms": 1345.86,
+      "p50_ms": 2501.988113,
+      "p95_ms": 18432.275884,
+      "p99_ms": 19868.291067
+     },
+     "generate_invoice": {
+      "count": 5111,
+      "max_wait_ms": 21086.667766,
+      "mean_ms": 7459.264114780473,
+      "median_service_ms": 4.56557,
+      "p50_ms": 5093.29282,
+      "p95_ms": 19930.229155,
+      "p99_ms": 20786.26799
+     },
+     "push_notification": {
+      "count": 7568,
+      "max_wait_ms": 21091.949409,
+      "mean_ms": 7078.79602039852,
+      "median_service_ms": 9.160095,
+      "p50_ms": 4084.846248,
+      "p95_ms": 19878.07348,
+      "p99_ms": 20827.147404
+     },
+     "reindex_product": {
+      "count": 3210,
+      "max_wait_ms": 21084.670283,
+      "mean_ms": 5422.092652533333,
+      "median_service_ms": 2.5046600000000003,
+      "p50_ms": 493.3673,
+      "p95_ms": 19121.901785,
+      "p99_ms": 20528.362623
+     },
+     "reserve_inventory": {
+      "count": 6713,
+      "max_wait_ms": 21082.585558,
+      "mean_ms": 7536.354627178311,
+      "median_service_ms": 6.1327,
+      "p50_ms": 5598.654312,
+      "p95_ms": 19842.155249,
+      "p99_ms": 20814.374688
+     },
+     "resize_image": {
+      "count": 2299,
+      "max_wait_ms": 21073.945285,
+      "mean_ms": 5739.739809812092,
+      "median_service_ms": 15.3502,
+      "p50_ms": 725.40432,
+      "p95_ms": 19303.329719,
+      "p99_ms": 20742.563441
+     },
+     "send_order_email": {
+      "count": 5014,
+      "max_wait_ms": 21081.347927,
+      "mean_ms": 7479.468719152772,
+      "median_service_ms": 35.16635,
+      "p50_ms": 5319.263181,
+      "p95_ms": 19961.081473,
+      "p99_ms": 20848.50082
+     },
+     "send_sms": {
+      "count": 1515,
+      "max_wait_ms": 21068.52376,
+      "mean_ms": 7029.396663433663,
+      "median_service_ms": 80.0924,
+      "p50_ms": 4223.689185,
+      "p95_ms": 19607.851822,
+      "p99_ms": 20933.117502
+     }
+    },
+    "shifted_class_mean_ms:deliver_webhook": 862.7631240194884,
+    "shifted_class_mean_ms:export_report": 2352.279861357143,
+    "shifted_class_mean_ms:generate_invoice": 707.5116293652086,
+    "shifted_class_mean_ms:push_notification": 759.8244574046483,
+    "shifted_class_mean_ms:reindex_product": 725.2262092178112,
+    "shifted_class_mean_ms:reserve_inventory": 735.9012126050753,
+    "shifted_class_mean_ms:resize_image": 821.9279041050955,
+    "shifted_class_mean_ms:send_order_email": 891.5568570141844,
+    "shifted_class_mean_ms:send_sms": 822.43237832,
+    "short_mean_ms": 7065.44081054327,
+    "short_p50_ms": 4016.000573,
+    "slowdown_p50": 205.87060049464432,
+    "slowdown_p95": 4308.177916828254,
+    "slowdown_p99": 7124.834994907986,
+    "submit_errors": 0,
+    "throughput_per_s": 116.24129937589015
+   },
+   "22": {
+    "class_mean_ms:deliver_webhook": 8533.458212421277,
+    "class_mean_ms:export_report": 11293.519299982143,
+    "class_mean_ms:generate_invoice": 8852.09918051354,
+    "class_mean_ms:push_notification": 8627.881981979519,
+    "class_mean_ms:reindex_product": 7503.598024883515,
+    "class_mean_ms:reserve_inventory": 8903.146632993514,
+    "class_mean_ms:resize_image": 7752.001937367356,
+    "class_mean_ms:send_order_email": 8931.47673597936,
+    "class_mean_ms:send_sms": 8830.730306666015,
+    "cohorts": {
+     "flash_sale": {
+      "count": 12013,
+      "mean_ms": 12705.456990641389,
+      "p50_ms": 13609.046682,
+      "p99_ms": 24009.635103
+     },
+     "ramp": {
+      "count": 3868,
+      "mean_ms": 250.32148979058945,
+      "p50_ms": 131.577623,
+      "p99_ms": 925.387961
+     },
+     "recovery": {
+      "count": 6380,
+      "mean_ms": 18435.41072910674,
+      "p50_ms": 18795.512525,
+      "p99_ms": 24671.642439
+     },
+     "shifted": {
+      "count": 7717,
+      "mean_ms": 3875.744447884411,
+      "p50_ms": 3343.681069,
+      "p99_ms": 10681.750805
+     },
+     "steady": {
+      "count": 5078,
+      "mean_ms": 42.343129552973615,
+      "p50_ms": 14.166265,
+      "p99_ms": 327.837731
+     }
+    },
+    "completed": 35056,
+    "dlq": 0,
+    "long_max_wait_ms": 24395.705105,
+    "lookup_mean_us": null,
+    "mean_latency_ms": 8595.988051089114,
+    "messages": 35056,
+    "p50_latency_ms": 6838.095968,
+    "p95_latency_ms": 23235.744011,
+    "p99_latency_ms": 24398.917928,
+    "per_class": {
+     "deliver_webhook": {
+      "count": 3525,
+      "max_wait_ms": 24761.739701,
+      "mean_ms": 8533.458212421277,
+      "median_service_ms": 45.1063,
+      "p50_ms": 5994.409942,
+      "p95_ms": 23401.082274,
+      "p99_ms": 24594.375539
+     },
+     "export_report": {
+      "count": 56,
+      "max_wait_ms": 24395.705105,
+      "mean_ms": 11293.519299982143,
+      "median_service_ms": 1462.155,
+      "p50_ms": 8674.430062,
+      "p95_ms": 26007.852375,
+      "p99_ms": 26476.500829
+     },
+     "generate_invoice": {
+      "count": 4985,
+      "max_wait_ms": 24778.186149,
+      "mean_ms": 8852.09918051354,
+      "median_service_ms": 4.53917,
+      "p50_ms": 7198.915706,
+      "p95_ms": 23406.85629,
+      "p99_ms": 24357.344733
+     },
+     "push_notification": {
+      "count": 7519,
+      "max_wait_ms": 24764.856049,
+      "mean_ms": 8627.881981979519,
+      "median_service_ms": 9.13257,
+      "p50_ms": 7081.284308,
+      "p95_ms": 23035.04641,
+      "p99_ms": 24352.108478
+     },
+     "reindex_product": {
+      "count": 3391,
+      "max_wait_ms": 24763.91378,
+      "mean_ms": 7503.598024883515,
+      "median_service_ms": 2.53061,
+      "p50_ms": 4761.438695,
+      "p95_ms": 23157.605304,
+      "p99_ms": 24362.15805
+     },
+     "reserve_inventory": {
+      "count": 6784,
+      "max_wait_ms": 24773.489112,
+      "mean_ms": 8903.146632993514,
+      "median_service_ms": 6.077405000000001,
+      "p50_ms": 7314.773396,
+      "p95_ms": 23240.800082,
+      "p99_ms": 24364.571531
+     },
+     "resize_image": {
+      "count": 2224,
+      "max_wait_ms": 24757.046375,
+      "mean_ms": 7752.001937367356,
+      "median_service_ms": 15.28315,
+      "p50_ms": 5017.7231,
+      "p95_ms": 23732.415012,
+      "p99_ms": 24420.901563
+     },
+     "send_order_email": {
+      "count": 5039,
+      "max_wait_ms": 24755.437942,
+      "mean_ms": 8931.47673597936,
+      "median_service_ms": 35.3035,
+      "p50_ms": 7305.679221,
+      "p95_ms": 23090.925475,
+      "p99_ms": 24399.529927
+     },
+     "send_sms": {
+      "count": 1533,
+      "max_wait_ms": 24754.022441,
+      "mean_ms": 8830.730306666015,
+      "median_service_ms": 80.8302,
+      "p50_ms": 7358.15859,
+      "p95_ms": 23443.351472,
+      "p99_ms": 24426.175902
+     }
+    },
+    "shifted_class_mean_ms:deliver_webhook": 3963.18620181118,
+    "shifted_class_mean_ms:export_report": 5741.173915,
+    "shifted_class_mean_ms:generate_invoice": 3818.338521976143,
+    "shifted_class_mean_ms:push_notification": 3887.9653770044956,
+    "shifted_class_mean_ms:reindex_product": 3739.1532651663424,
+    "shifted_class_mean_ms:reserve_inventory": 3910.3667588885473,
+    "shifted_class_mean_ms:resize_image": 3929.9251869140626,
+    "shifted_class_mean_ms:send_order_email": 3781.9870096517075,
+    "shifted_class_mean_ms:send_sms": 4156.814364893806,
+    "short_mean_ms": 8591.40203262807,
+    "short_p50_ms": 7022.599733,
+    "slowdown_p50": 365.47907216899046,
+    "slowdown_p95": 4984.5041448106185,
+    "slowdown_p99": 8589.520780683873,
+    "submit_errors": 0,
+    "throughput_per_s": 116.6868502829549
+   },
+   "33": {
+    "class_mean_ms:deliver_webhook": 5382.020663577506,
+    "class_mean_ms:export_report": 5823.68909962,
+    "class_mean_ms:generate_invoice": 5678.668224308966,
+    "class_mean_ms:push_notification": 5696.9944529008035,
+    "class_mean_ms:reindex_product": 4498.896851134139,
+    "class_mean_ms:reserve_inventory": 5900.1984309299505,
+    "class_mean_ms:resize_image": 4235.523878078351,
+    "class_mean_ms:send_order_email": 6086.918753800884,
+    "class_mean_ms:send_sms": 5822.275406184434,
+    "cohorts": {
+     "flash_sale": {
+      "count": 11859,
+      "mean_ms": 9768.2980386283,
+      "p50_ms": 9509.982695,
+      "p99_ms": 18750.815071
+     },
+     "ramp": {
+      "count": 3863,
+      "mean_ms": 142.62963521692984,
+      "p50_ms": 70.182864,
+      "p99_ms": 604.916174
+     },
+     "recovery": {
+      "count": 6393,
+      "mean_ms": 11352.541939225872,
+      "p50_ms": 11358.985207,
+      "p99_ms": 18831.058243
+     },
+     "shifted": {
+      "count": 7517,
+      "mean_ms": 533.3719927850207,
+      "p50_ms": 121.102272,
+      "p99_ms": 3796.233113
+     },
+     "steady": {
+      "count": 5134,
+      "mean_ms": 47.91707803408648,
+      "p50_ms": 13.935689,
+      "p99_ms": 365.03716
+     }
+    },
+    "completed": 34766,
+    "dlq": 0,
+    "long_max_wait_ms": 17703.677774,
+    "lookup_mean_us": null,
+    "mean_latency_ms": 5557.8838200195305,
+    "messages": 34766,
+    "p50_latency_ms": 2779.95761,
+    "p95_latency_ms": 17375.35654,
+    "p99_latency_ms": 18487.132891,
+    "per_class": {
+     "deliver_webhook": {
+      "count": 3432,
+      "max_wait_ms": 19061.26862,
+      "mean_ms": 5382.020663577506,
+      "median_service_ms": 45.19775,
+      "p50_ms": 2105.506732,
+      "p95_ms": 17465.103965,
+      "p99_ms": 18864.280117
+     },
+     "export_report": {
+      "count": 50,
+      "max_wait_ms": 17703.677774,
+      "mean_ms": 5823.68909962,
+      "median_service_ms": 1281.68,
+      "p50_ms": 1997.009426,
+      "p95_ms": 16417.902076,
+      "p99_ms": 19333.544006
+     },
+     "generate_invoice": {
+      "count": 4952,
+      "max_wait_ms": 19082.852186,
+      "mean_ms": 5678.668224308966,
+      "median_service_ms": 4.592695,
+      "p50_ms": 2960.38002,
+      "p95_ms": 17128.957578,
+      "p99_ms": 18319.67257
+     },
+     "push_notification": {
+      "count": 7470,
+      "max_wait_ms": 19077.966148,
+      "mean_ms": 5696.9944529008035,
+      "median_service_ms": 9.020375,
+      "p50_ms": 2938.721609,
+      "p95_ms": 17469.758951,
+      "p99_ms": 18469.611774
+     },
+     "reindex_product": {
+      "count": 3310,
+      "max_wait_ms": 19056.359061,
+      "mean_ms": 4498.896851134139,
+      "median_service_ms": 2.51857,
+      "p50_ms": 350.203053,
+      "p95_ms": 17093.899724,
+      "p99_ms": 18549.050689
+     },
+     "reserve_inventory": {
+      "count": 6838,
+      "max_wait_ms": 19062.390009,
+      "mean_ms": 5900.1984309299505,
+      "median_service_ms": 6.099635,
+      "p50_ms": 3250.665276,
+      "p95_ms": 17476.854207,
+      "p99_ms": 18428.225314
+     },
+     "resize_image": {
+      "count": 2208,
+      "max_wait_ms": 19071.868774,
+      "mean_ms": 4235.523878078351,
+      "median_service_ms": 15.25125,
+      "p50_ms": 350.795716,
+      "p95_ms": 16617.503043,
+      "p99_ms": 18304.860717
+     },
+     "send_order_email": {
+      "count": 4977,
+      "max_wait_ms": 19082.246786,
+      "mean_ms": 6086.918753800884,
+      "median_service_ms": 35.442,
+      "p50_ms": 3760.587051,
+      "p95_ms": 17514.90169,
+      "p99_ms": 18514.929115
+     },
+     "send_sms": {
+      "count": 1529,
+      "max_wait_ms": 19062.87083,
+      "mean_ms": 5822.275406184434,
+      "median_service_ms": 83.8995,
+      "p50_ms": 3033.483817,
+      "p95_ms": 17311.161932,
+      "p99_ms": 18718.127002
+     }
+    },
+    "shifted_class_mean_ms:deliver_webhook": 643.7565608713592,
+    "shifted_class_mean_ms:export_report": 1356.0080836923078,
+    "shifted_class_mean_ms:generate_invoice": 505.6939751728135,
+    "shifted_class_mean_ms:push_notification": 503.5434372693044,
+    "shifted_class_mean_ms:reindex_product": 494.2647709158111,
+    "shifted_class_mean_ms:reserve_inventory": 475.206488515361,
+    "shifted_class_mean_ms:resize_image": 543.5722936395174,
+    "shifted_class_mean_ms:send_order_email": 596.6330797804054,
+    "shifted_class_mean_ms:send_sms": 599.3657846646885,
+    "short_mean_ms": 5578.831150106336,
+    "short_p50_ms": 2787.253811,
+    "slowdown_p50": 132.85783383882273,
+    "slowdown_p95": 3467.626426691761,
+    "slowdown_p99": 6206.856749258034,
+    "submit_errors": 0,
+    "throughput_per_s": 115.85962559390323
+   },
+   "44": {
+    "class_mean_ms:deliver_webhook": 9870.525401101504,
+    "class_mean_ms:export_report": 10721.028590082193,
+    "class_mean_ms:generate_invoice": 10110.30085507071,
+    "class_mean_ms:push_notification": 9864.060131087115,
+    "class_mean_ms:reindex_product": 8715.228543002717,
+    "class_mean_ms:reserve_inventory": 10125.792857582852,
+    "class_mean_ms:resize_image": 8754.883594143646,
+    "class_mean_ms:send_order_email": 9902.96161022613,
+    "class_mean_ms:send_sms": 9976.495704668516,
+    "cohorts": {
+     "flash_sale": {
+      "count": 12133,
+      "mean_ms": 13053.944005448198,
+      "p50_ms": 13486.147441,
+      "p99_ms": 24709.96385
+     },
+     "ramp": {
+      "count": 3922,
+      "mean_ms": 781.7649128717491,
+      "p50_ms": 539.932322,
+      "p99_ms": 2403.176096
+     },
+     "recovery": {
+      "count": 6474,
+      "mean_ms": 20153.70603484986,
+      "p50_ms": 20172.97528,
+      "p99_ms": 24509.089718
+     },
+     "shifted": {
+      "count": 7606,
+      "mean_ms": 6863.8199688147515,
+      "p50_ms": 6091.657508,
+      "p99_ms": 14155.070805
+     },
+     "steady": {
+      "count": 5067,
+      "mean_ms": 72.05973428971778,
+      "p50_ms": 18.452178,
+      "p99_ms": 627.772633
+     }
+    },
+    "completed": 35202,
+    "dlq": 0,
+    "long_max_wait_ms": 24223.565741,
+    "lookup_mean_us": null,
+    "mean_latency_ms": 9786.262679178883,
+    "messages": 35202,
+    "p50_latency_ms": 8384.778664,
+    "p95_latency_ms": 23159.125253,
+    "p99_latency_ms": 24522.975792,
+    "per_class": {
+     "deliver_webhook": {
+      "count": 3655,
+      "max_wait_ms": 24795.323795,
+      "mean_ms": 9870.525401101504,
+      "median_service_ms": 45.3321,
+      "p50_ms": 8065.614714,
+      "p95_ms": 23257.835271,
+      "p99_ms": 24785.68742
+     },
+     "export_report": {
+      "count": 73,
+      "max_wait_ms": 24223.565741,
+      "mean_ms": 10721.028590082193,
+      "median_service_ms": 1315.69,
+      "p50_ms": 7616.680466,
+      "p95_ms": 23610.873798,
+      "p99_ms": 26262.790439
+     },
+     "generate_invoice": {
+      "count": 5077,
+      "max_wait_ms": 24817.359084,
+      "mean_ms": 10110.30085507071,
+      "median_service_ms": 4.53864,
+      "p50_ms": 9171.058326,
+      "p95_ms": 23128.773285,
+      "p99_ms": 24526.963503
+     },
+     "push_notification": {
+      "count": 7645,
+      "max_wait_ms": 24818.820695,
+      "mean_ms": 9864.060131087115,
+      "median_service_ms": 9.09486,
+      "p50_ms": 8791.266873,
+      "p95_ms": 23180.31855,
+      "p99_ms": 24514.232889
+     },
+     "reindex_product": {
+      "count": 3313,
+      "max_wait_ms": 24689.651427,
+      "mean_ms": 8715.228543002717,
+      "median_service_ms": 2.52892,
+      "p50_ms": 6216.333004,
+      "p95_ms": 22741.839217,
+      "p99_ms": 24354.374344
+     },
+     "reserve_inventory": {
+      "count": 6753,
+      "max_wait_ms": 24807.629648,
+      "mean_ms": 10125.792857582852,
+      "median_service_ms": 6.08722,
+      "p50_ms": 9361.932705,
+      "p95_ms": 23225.442171,
+      "p99_ms": 24506.544416
+     },
+     "resize_image": {
+      "count": 2172,
+      "max_wait_ms": 24755.36814,
+      "mean_ms": 8754.883594143646,
+      "median_service_ms": 15.549399999999999,
+      "p50_ms": 5743.242265,
+      "p95_ms": 22835.74165,
+      "p99_ms": 24364.03795
+     },
+     "send_order_email": {
+      "count": 4891,
+      "max_wait_ms": 24797.761621,
+      "mean_ms": 9902.96161022613,
+      "median_service_ms": 35.27,
+      "p50_ms": 8453.822445,
+      "p95_ms": 23165.709167,
+      "p99_ms": 24503.358041
+     },
+     "send_sms": {
+      "count": 1623,
+      "max_wait_ms": 24772.753812,
+      "mean_ms": 9976.495704668516,
+      "median_service_ms": 79.1631,
+      "p50_ms": 8588.096115,
+      "p95_ms": 23663.460985,
+      "p99_ms": 24576.435326
+     }
+    },
+    "shifted_class_mean_ms:deliver_webhook": 6992.143072284581,
+    "shifted_class_mean_ms:export_report": 7151.17976784,
+    "shifted_class_mean_ms:generate_invoice": 6746.134739671176,
+    "shifted_class_mean_ms:push_notification": 7019.679419908234,
+    "shifted_class_mean_ms:reindex_product": 6815.997101603586,
+    "shifted_class_mean_ms:reserve_inventory": 6867.003060187304,
+    "shifted_class_mean_ms:resize_image": 6571.30320357307,
+    "shifted_class_mean_ms:send_order_email": 6746.760404198481,
+    "shifted_class_mean_ms:send_sms": 7086.3863645833335,
+    "short_mean_ms": 9829.461491731614,
+    "short_p50_ms": 8613.830839,
+    "slowdown_p50": 526.6428965443523,
+    "slowdown_p95": 5380.50456694705,
+    "slowdown_p99": 8677.6500469208,
+    "submit_errors": 0,
+    "throughput_per_s": 115.50232454052158
+   },
+   "55": {
+    "class_mean_ms:deliver_webhook": 5058.6742302458215,
+    "class_mean_ms:export_report": 5917.087385652174,
+    "class_mean_ms:generate_invoice": 5458.093537660104,
+    "class_mean_ms:push_notification": 5292.440480541661,
+    "class_mean_ms:reindex_product": 4138.293658794293,
+    "class_mean_ms:reserve_inventory": 5406.863628309006,
+    "class_mean_ms:resize_image": 4371.4821885427555,
+    "class_mean_ms:send_order_email": 5493.414255697337,
+    "class_mean_ms:send_sms": 5536.243920219241,
+    "cohorts": {
+     "flash_sale": {
+      "count": 11762,
+      "mean_ms": 8797.873624086806,
+      "p50_ms": 9367.667528,
+      "p99_ms": 17674.055539
+     },
+     "ramp": {
+      "count": 3796,
+      "mean_ms": 241.47680201738672,
+      "p50_ms": 131.940462,
+      "p99_ms": 1048.024012
+     },
+     "recovery": {
+      "count": 6409,
+      "mean_ms": 11009.852701098143,
+      "p50_ms": 11540.536379,
+      "p99_ms": 17866.929837
+     },
+     "shifted": {
+      "count": 7586,
+      "mean_ms": 624.2704885955708,
+      "p50_ms": 175.306036,
+      "p99_ms": 2950.901334
+     },
+     "steady": {
+      "count": 5119,
+      "mean_ms": 44.499640126196525,
+      "p50_ms": 14.742836,
+      "p99_ms": 370.774233
+     }
+    },
+    "completed": 34672,
+    "dlq": 0,
+    "long_max_wait_ms": 17370.506369,
+    "lookup_mean_us": null,
+    "mean_latency_ms": 5189.285044202728,
+    "messages": 34672,
+    "p50_latency_ms": 2517.480771,
+    "p95_latency_ms": 16181.122741,
+    "p99_latency_ms": 17586.216863,
+    "per_class": {
+     "deliver_webhook": {
+      "count": 3470,
+      "max_wait_ms": 18077.184844,
+      "mean_ms": 5058.6742302458215,
+      "median_service_ms": 44.641000000000005,
+      "p50_ms": 2034.684357,
+      "p95_ms": 16388.590618,
+      "p99_ms": 17871.692898
+     },
+     "export_report": {
+      "count": 46,
+      "max_wait_ms": 17370.506369,
+      "mean_ms": 5917.087385652174,
+      "median_service_ms": 1356.185,
+      "p50_ms": 1995.22991,
+      "p95_ms": 17921.955431,
+      "p99_ms": 19175.751279
+     },
+     "generate_invoice": {
+      "count": 5028,
+      "max_wait_ms": 18110.126529,
+      "mean_ms": 5458.093537660104,
+      "median_service_ms": 4.562480000000001,
+      "p50_ms": 2786.180293,
+      "p95_ms": 16187.074811,
+      "p99_ms": 17584.477563
+     },
+     "push_notification": {
+      "count": 7525,
+      "max_wait_ms": 18124.624407,
+      "mean_ms": 5292.440480541661,
+      "median_service_ms": 9.12904,
+      "p50_ms": 2671.061025,
+      "p95_ms": 16212.941904,
+      "p99_ms": 17545.421979
+     },
+     "reindex_product": {
+      "count": 3189,
+      "max_wait_ms": 18112.603606,
+      "mean_ms": 4138.293658794293,
+      "median_service_ms": 2.53084,
+      "p50_ms": 451.740995,
+      "p95_ms": 15903.748406,
+      "p99_ms": 17494.780517
+     },
+     "reserve_inventory": {
+      "count": 6673,
+      "max_wait_ms": 18096.814605,
+      "mean_ms": 5406.863628309006,
+      "median_service_ms": 6.11574,
+      "p50_ms": 2760.060988,
+      "p95_ms": 16192.315751,
+      "p99_ms": 17538.745626
+     },
+     "resize_image": {
+      "count": 2257,
+      "max_wait_ms": 18107.443927,
+      "mean_ms": 4371.4821885427555,
+      "median_service_ms": 15.5517,
+      "p50_ms": 694.334753,
+      "p95_ms": 15975.228101,
+      "p99_ms": 17523.67757
+     },
+     "send_order_email": {
+      "count": 4956,
+      "max_wait_ms": 18064.13889,
+      "mean_ms": 5493.414255697337,
+      "median_service_ms": 35.24235,
+      "p50_ms": 2818.634701,
+      "p95_ms": 16175.070674,
+      "p99_ms": 17595.869886
+     },
+     "send_sms": {
+      "count": 1528,
+      "max_wait_ms": 18098.870446,
+      "mean_ms": 5536.243920219241,
+      "median_service_ms": 81.2146,
+      "p50_ms": 2842.80951,
+      "p95_ms": 16354.981903,
+      "p99_ms": 17572.695473
+     }
+    },
+    "shifted_class_mean_ms:deliver_webhook": 809.5334855873418,
+    "shifted_class_mean_ms:export_report": 2183.8830583125,
+    "shifted_class_mean_ms:generate_invoice": 567.0344309989744,
+    "shifted_class_mean_ms:push_notification": 617.1236330515849,
+    "shifted_class_mean_ms:reindex_product": 545.2732636586135,
+    "shifted_class_mean_ms:reserve_inventory": 585.2820188211624,
+    "shifted_class_mean_ms:resize_image": 666.7365573934169,
+    "shifted_class_mean_ms:send_order_email": 602.2154980810811,
+    "shifted_class_mean_ms:send_sms": 682.695361268212,
+    "short_mean_ms": 5199.461449611064,
+    "short_p50_ms": 2557.735053,
+    "slowdown_p50": 127.85581578639336,
+    "slowdown_p95": 3290.629193456931,
+    "slowdown_p99": 5788.037844865927,
+    "submit_errors": 0,
+    "throughput_per_s": 115.41206013904782
+   }
+  },
+  "static_tuned": {
+   "11": {
+    "class_mean_ms:deliver_webhook": 7119.943607026732,
+    "class_mean_ms:export_report": 9151.634258531914,
+    "class_mean_ms:generate_invoice": 7843.078917728624,
+    "class_mean_ms:push_notification": 4353.77555517138,
+    "class_mean_ms:reindex_product": 3436.3136453099687,
+    "class_mean_ms:reserve_inventory": 4609.940324058245,
+    "class_mean_ms:resize_image": 8759.449185714224,
+    "class_mean_ms:send_order_email": 7864.845031777224,
+    "class_mean_ms:send_sms": 7395.342631448845,
+    "cohorts": {
+     "flash_sale": {
+      "count": 11911,
+      "mean_ms": 10580.20500451297,
+      "p50_ms": 10618.032688,
+      "p99_ms": 25607.621561
+     },
+     "ramp": {
+      "count": 3812,
+      "mean_ms": 170.04810601101784,
+      "p50_ms": 26.90979,
+      "p99_ms": 2458.734694
+     },
+     "recovery": {
+      "count": 6511,
+      "mean_ms": 12244.314229406082,
+      "p50_ms": 12362.800859,
+      "p99_ms": 23972.801678
+     },
+     "shifted": {
+      "count": 7629,
+      "mean_ms": 562.8884016383537,
+      "p50_ms": 38.826585,
+      "p99_ms": 6766.107122
+     },
+     "steady": {
+      "count": 5093,
+      "mean_ms": 59.50452919615158,
+      "p50_ms": 15.559207,
+      "p99_ms": 965.955731
+     }
+    },
+    "completed": 34956,
+    "dlq": 0,
+    "long_max_wait_ms": 23693.904759,
+    "lookup_mean_us": null,
+    "mean_latency_ms": 6035.848132504463,
+    "messages": 34956,
+    "p50_latency_ms": 1658.979235,
+    "p95_latency_ms": 20134.646668,
+    "p99_latency_ms": 22600.695458,
+    "per_class": {
+     "deliver_webhook": {
+      "count": 3479,
+      "max_wait_ms": 21868.300924,
+      "mean_ms": 7119.943607026732,
+      "median_service_ms": 44.8428,
+      "p50_ms": 2701.597215,
+      "p95_ms": 21070.347279,
+      "p99_ms": 21824.074014
+     },
+     "export_report": {
+      "count": 47,
+      "max_wait_ms": 23693.904759,
+      "mean_ms": 9151.634258531914,
+      "median_service_ms": 1357.65,
+      "p50_ms": 6768.787312,
+      "p95_ms": 24174.870352,
+      "p99_ms": 24959.994249
+     },
+     "generate_invoice": {
+      "count": 5111,
+      "max_wait_ms": 21875.871928,
+      "mean_ms": 7843.078917728624,
+      "median_service_ms": 4.5484,
+      "p50_ms": 5813.410459,
+      "p95_ms": 21053.841757,
+      "p99_ms": 21621.665323
+     },
+     "push_notification": {
+      "count": 7568,
+      "max_wait_ms": 16826.626515,
+      "mean_ms": 4353.77555517138,
+      "median_service_ms": 9.158930000000002,
+      "p50_ms": 58.244394,
+      "p95_ms": 15254.339473,
+      "p99_ms": 16330.446074
+     },
+     "reindex_product": {
+      "count": 3210,
+      "max_wait_ms": 16822.077047,
+      "mean_ms": 3436.3136453099687,
+      "median_service_ms": 2.49962,
+      "p50_ms": 23.037138,
+      "p95_ms": 14682.141632,
+      "p99_ms": 16361.768704
+     },
+     "reserve_inventory": {
+      "count": 6713,
+      "max_wait_ms": 16811.071031,
+      "mean_ms": 4609.940324058245,
+      "median_service_ms": 6.13237,
+      "p50_ms": 142.223265,
+      "p95_ms": 15247.768713,
+      "p99_ms": 16344.182319
+     },
+     "resize_image": {
+      "count": 2299,
+      "max_wait_ms": 27201.093019,
+      "mean_ms": 8759.449185714224,
+      "median_service_ms": 15.3673,
+      "p50_ms": 3580.664994,
+      "p95_ms": 25499.883614,
+      "p99_ms": 26799.802236
+     },
+     "send_order_email": {
+      "count": 5014,
+      "max_wait_ms": 21900.916028,
+      "mean_ms": 7864.845031777224,
+      "median_service_ms": 35.168549999999996,
+      "p50_ms": 5926.259853,
+      "p95_ms": 21120.173575,
+      "p99_ms": 21655.138055
+     },
+     "send_sms": {
+      "count": 1515,
+      "max_wait_ms": 21847.15758,
+      "mean_ms": 7395.342631448845,
+      "median_service_ms": 80.0395,
+      "p50_ms": 5181.250541,
+      "p95_ms": 20813.218052,
+      "p99_ms": 21743.422028
+     }
+    },
+    "shifted_class_mean_ms:deliver_webhook": 833.2874180487211,
+    "shifted_class_mean_ms:export_report": 4032.1338765714286,
+    "shifted_class_mean_ms:generate_invoice": 690.0229715930824,
+    "shifted_class_mean_ms:push_notification": 130.52906937544697,
+    "shifted_class_mean_ms:reindex_product": 110.9065053390558,
+    "shifted_class_mean_ms:reserve_inventory": 118.85509893655829,
+    "shifted_class_mean_ms:resize_image": 2051.0277546656052,
+    "shifted_class_mean_ms:send_order_email": 868.4646780445795,
+    "shifted_class_mean_ms:send_sms": 793.5852376184615,
+    "short_mean_ms": 5088.595962609326,
+    "short_p50_ms": 314.753139,
+    "slowdown_p50": 71.89643844554423,
+    "slowdown_p95": 3713.899146071701,
+    "slowdown_p99": 5996.120624721657,
+    "submit_errors": 0,
+    "throughput_per_s": 116.23758095879268
+   },
+   "22": {
+    "class_mean_ms:deliver_webhook": 8985.151068575602,
+    "class_mean_ms:export_report": 15397.018386392858,
+    "class_mean_ms:generate_invoice": 9315.292182786961,
+    "class_mean_ms:push_notification": 5457.826714471339,
+    "class_mean_ms:reindex_product": 4918.086204046594,
+    "class_mean_ms:reserve_inventory": 5623.382002433667,
+    "class_mean_ms:resize_image": 11581.519133011241,
+    "class_mean_ms:send_order_email": 9413.426477958126,
+    "class_mean_ms:send_sms": 9299.252110973908,
+    "cohorts": {
+     "flash_sale": {
+      "count": 12013,
+      "mean_ms": 10543.959710825939,
+      "p50_ms": 10319.33864,
+      "p99_ms": 28299.194614
+     },
+     "ramp": {
+      "count": 3868,
+      "mean_ms": 195.535830586091,
+      "p50_ms": 31.867732,
+      "p99_ms": 3368.452649
+     },
+     "recovery": {
+      "count": 6380,
+      "mean_ms": 17185.166690060345,
+      "p50_ms": 17782.372852,
+      "p99_ms": 28621.090997
+     },
+     "shifted": {
+      "count": 7717,
+      "mean_ms": 3241.7428842088893,
+      "p50_ms": 1778.528457,
+      "p99_ms": 13380.478086
+     },
+     "steady": {
+      "count": 5078,
+      "mean_ms": 40.127827410200865,
+      "p50_ms": 13.230613,
+      "p99_ms": 381.467229
+     }
+    },
+    "completed": 35056,
+    "dlq": 0,
+    "long_max_wait_ms": 28828.74487,
+    "lookup_mean_us": null,
+    "mean_latency_ms": 7481.817178984283,
+    "messages": 35056,
+    "p50_latency_ms": 4885.719696,
+    "p95_latency_ms": 23082.068942,
+    "p99_latency_ms": 26126.351893,
+    "per_class": {
+     "deliver_webhook": {
+      "count": 3525,
+      "max_wait_ms": 24369.445139,
+      "mean_ms": 8985.151068575602,
+      "median_service_ms": 45.0958,
+      "p50_ms": 6758.029629,
+      "p95_ms": 23602.648001,
+      "p99_ms": 24285.134804
+     },
+     "export_report": {
+      "count": 56,
+      "max_wait_ms": 28828.74487,
+      "mean_ms": 15397.018386392858,
+      "median_service_ms": 1464.3400000000001,
+      "p50_ms": 14030.927266,
+      "p95_ms": 30653.082563,
+      "p99_ms": 30807.734932
+     },
+     "generate_invoice": {
+      "count": 4985,
+      "max_wait_ms": 24365.195935,
+      "mean_ms": 9315.292182786961,
+      "median_service_ms": 4.52975,
+      "p50_ms": 7894.776044,
+      "p95_ms": 23583.798049,
+      "p99_ms": 24204.736404
+     },
+     "push_notification": {
+      "count": 7519,
+      "max_wait_ms": 19233.960161,
+      "mean_ms": 5457.826714471339,
+      "median_service_ms": 9.12318,
+      "p50_ms": 1500.089761,
+      "p95_ms": 18138.604314,
+      "p99_ms": 18805.889113
+     },
+     "reindex_product": {
+      "count": 3391,
+      "max_wait_ms": 19233.886425,
+      "mean_ms": 4918.086204046594,
+      "median_service_ms": 2.52077,
+      "p50_ms": 223.631003,
+      "p95_ms": 18171.087915,
+      "p99_ms": 18805.780243
+     },
+     "reserve_inventory": {
+      "count": 6784,
+      "max_wait_ms": 19227.088031,
+      "mean_ms": 5623.382002433667,
+      "median_service_ms": 6.08849,
+      "p50_ms": 2176.136042,
+      "p95_ms": 18158.65521,
+      "p99_ms": 18809.643656
+     },
+     "resize_image": {
+      "count": 2224,
+      "max_wait_ms": 29754.292123,
+      "mean_ms": 11581.519133011241,
+      "median_service_ms": 15.3231,
+      "p50_ms": 11029.01753,
+      "p95_ms": 28836.557926,
+      "p99_ms": 29319.505439
+     },
+     "send_order_email": {
+      "count": 5039,
+      "max_wait_ms": 24364.859002,
+      "mean_ms": 9413.426477958126,
+      "median_service_ms": 35.336,
+      "p50_ms": 7962.532155,
+      "p95_ms": 23651.097051,
+      "p99_ms": 24218.040315
+     },
+     "send_sms": {
+      "count": 1533,
+      "max_wait_ms": 24359.078092,
+      "mean_ms": 9299.252110973908,
+      "median_service_ms": 80.875,
+      "p50_ms": 8012.063565,
+      "p95_ms": 23707.577894,
+      "p99_ms": 24250.04812
+     }
+    },
+    "shifted_class_mean_ms:deliver_webhook": 4395.314585222361,
+    "shifted_class_mean_ms:export_report": 9509.539616125,
+    "shifted_class_mean_ms:generate_invoice": 4262.451929607356,
+    "shifted_class_mean_ms:push_notification": 1652.592678554271,
+    "shifted_class_mean_ms:reindex_product": 1611.3606700389105,
+    "shifted_class_mean_ms:reserve_inventory": 1636.3929050315141,
+    "shifted_class_mean_ms:resize_image": 7518.018587117187,
+    "shifted_class_mean_ms:send_order_email": 4205.422314129756,
+    "shifted_class_mean_ms:send_sms": 4594.4537309734515,
+    "short_mean_ms": 6274.544046022091,
+    "short_p50_ms": 2845.341869,
+    "slowdown_p50": 211.49866581693917,
+    "slowdown_p95": 4309.786489484061,
+    "slowdown_p99": 7226.462588808423,
+    "submit_errors": 0,
+    "throughput_per_s": 116.70101836682589
+   },
+   "33": {
+    "class_mean_ms:deliver_webhook": 5804.862830487471,
+    "class_mean_ms:export_report": 8602.97616136,
+    "class_mean_ms:generate_invoice": 6130.267873267972,
+    "class_mean_ms:push_notification": 3161.9105869414993,
+    "class_mean_ms:reindex_product": 2652.8311752178247,
+    "class_mean_ms:reserve_inventory": 3257.4601790965194,
+    "class_mean_ms:resize_image": 7083.830162612771,
+    "class_mean_ms:send_order_email": 6570.791449202733,
+    "class_mean_ms:send_sms": 6284.681559495749,
+    "cohorts": {
+     "flash_sale": {
+      "count": 11859,
+      "mean_ms": 7855.609013753183,
+      "p50_ms": 7565.81042,
+      "p99_ms": 22846.989957
+     },
+     "ramp": {
+      "count": 3863,
+      "mean_ms": 101.62822126766761,
+      "p50_ms": 24.658223,
+      "p99_ms": 1370.762234
+     },
+     "recovery": {
+      "count": 6393,
+      "mean_ms": 10360.432742233694,
+      "p50_ms": 10622.60318,
+      "p99_ms": 20767.941515
+     },
+     "shifted": {
+      "count": 7517,
+      "mean_ms": 442.5268796473327,
+      "p50_ms": 36.256321,
+      "p99_ms": 5947.999546
+     },
+     "steady": {
+      "count": 5134,
+      "mean_ms": 43.74882893358006,
+      "p50_ms": 12.959518,
+      "p99_ms": 452.384622
+     }
+    },
+    "completed": 34766,
+    "dlq": 0,
+    "long_max_wait_ms": 22857.878136,
+    "lookup_mean_us": null,
+    "mean_latency_ms": 4698.198949433642,
+    "messages": 34766,
+    "p50_latency_ms": 570.407987,
+    "p95_latency_ms": 17054.314134,
+    "p99_latency_ms": 19836.43788,
+    "per_class": {
+     "deliver_webhook": {
+      "count": 3432,
+      "max_wait_ms": 20069.735594,
+      "mean_ms": 5804.862830487471,
+      "median_service_ms": 45.19775,
+      "p50_ms": 2334.326623,
+      "p95_ms": 18609.170588,
+      "p99_ms": 19885.977079
+     },
+     "export_report": {
+      "count": 50,
+      "max_wait_ms": 22857.878136,
+      "mean_ms": 8602.97616136,
+      "median_service_ms": 1278.02,
+      "p50_ms": 2445.001223,
+      "p95_ms": 22399.512151,
+      "p99_ms": 23578.204321
+     },
+     "generate_invoice": {
+      "count": 4952,
+      "max_wait_ms": 20128.948991,
+      "mean_ms": 6130.267873267972,
+      "median_service_ms": 4.581440000000001,
+      "p50_ms": 3413.758616,
+      "p95_ms": 18374.58549,
+      "p99_ms": 19409.70851
+     },
+     "push_notification": {
+      "count": 7470,
+      "max_wait_ms": 14986.880151,
+      "mean_ms": 3161.9105869414993,
+      "median_service_ms": 9.02279,
+      "p50_ms": 39.407906,
+      "p95_ms": 12834.762398,
+      "p99_ms": 14340.235858
+     },
+     "reindex_product": {
+      "count": 3310,
+      "max_wait_ms": 14992.692692,
+      "mean_ms": 2652.8311752178247,
+      "median_service_ms": 2.5035,
+      "p50_ms": 19.417493,
+      "p95_ms": 13118.208375,
+      "p99_ms": 14331.101372
+     },
+     "reserve_inventory": {
+      "count": 6838,
+      "max_wait_ms": 14991.9993,
+      "mean_ms": 3257.4601790965194,
+      "median_service_ms": 6.1053,
+      "p50_ms": 41.941399,
+      "p95_ms": 12790.750042,
+      "p99_ms": 14157.203787
+     },
+     "resize_image": {
+      "count": 2208,
+      "max_wait_ms": 25348.336035,
+      "mean_ms": 7083.830162612771,
+      "median_service_ms": 15.22495,
+      "p50_ms": 1406.145006,
+      "p95_ms": 23059.441131,
+      "p99_ms": 24737.431091
+     },
+     "send_order_email": {
+      "count": 4977,
+      "max_wait_ms": 20144.484502,
+      "mean_ms": 6570.791449202733,
+      "median_service_ms": 35.4308,
+      "p50_ms": 4555.983671,
+      "p95_ms": 18846.242014,
+      "p99_ms": 19592.251109
+     },
+     "send_sms": {
+      "count": 1529,
+      "max_wait_ms": 20097.859503,
+      "mean_ms": 6284.681559495749,
+      "median_service_ms": 83.8769,
+      "p50_ms": 3496.750275,
+      "p95_ms": 18679.612829,
+      "p99_ms": 19763.595108
+     }
+    },
+    "shifted_class_mean_ms:deliver_webhook": 735.8255148495145,
+    "shifted_class_mean_ms:export_report": 1931.8239314615385,
+    "shifted_class_mean_ms:generate_invoice": 619.5527408872497,
+    "shifted_class_mean_ms:push_notification": 44.61613956860243,
+    "shifted_class_mean_ms:reindex_product": 38.027015775154005,
+    "shifted_class_mean_ms:reserve_inventory": 43.08290700230415,
+    "shifted_class_mean_ms:resize_image": 1595.8771780573152,
+    "shifted_class_mean_ms:send_order_email": 720.9393677747747,
+    "shifted_class_mean_ms:send_sms": 729.3133271216617,
+    "short_mean_ms": 3767.4764061811698,
+    "short_p50_ms": 63.98733,
+    "slowdown_p50": 31.737749461162625,
+    "slowdown_p95": 2908.5406987167794,
+    "slowdown_p99": 5094.802437920348,
+    "submit_errors": 0,
+    "throughput_per_s": 115.85271649189576
+   },
+   "44": {
+    "class_mean_ms:deliver_webhook": 10287.180397774282,
+    "class_mean_ms:export_report": 15695.437555534247,
+    "class_mean_ms:generate_invoice": 10569.445185386645,
+    "class_mean_ms:push_notification": 6244.32258355134,
+    "class_mean_ms:reindex_product": 5692.559342407486,
+    "class_mean_ms:reserve_inventory": 6423.68734539849,
+    "class_mean_ms:resize_image": 13331.468837775323,
+    "class_mean_ms:send_order_email": 10341.204161297484,
+    "class_mean_ms:send_sms": 10409.692923371535,
+    "cohorts": {
+     "flash_sale": {
+      "count": 12133,
+      "mean_ms": 10767.258486096925,
+      "p50_ms": 10650.134958,
+      "p99_ms": 28335.361628
+     },
+     "ramp": {
+      "count": 3922,
+      "mean_ms": 491.3746741573177,
+      "p50_ms": 44.692786,
+      "p99_ms": 6845.836315
+     },
+     "recovery": {
+      "count": 6474,
+      "mean_ms": 18822.58702560426,
+      "p50_ms": 18796.984233,
+      "p99_ms": 27770.258274
+     },
+     "shifted": {
+      "count": 7606,
+      "mean_ms": 5797.872850581646,
+      "p50_ms": 5228.076051,
+      "p99_ms": 17174.145872
+     },
+     "steady": {
+      "count": 5067,
+      "mean_ms": 57.28910435958161,
+      "p50_ms": 15.047242,
+      "p99_ms": 641.455908
+     }
+    },
+    "completed": 35202,
+    "dlq": 0,
+    "long_max_wait_ms": 28708.570107,
+    "lookup_mean_us": null,
+    "mean_latency_ms": 8488.513490169167,
+    "messages": 35202,
+    "p50_latency_ms": 6266.143609,
+    "p95_latency_ms": 23377.04512,
+    "p99_latency_ms": 26087.38848,
+    "per_class": {
+     "deliver_webhook": {
+      "count": 3655,
+      "max_wait_ms": 25829.081238,
+      "mean_ms": 10287.180397774282,
+      "median_service_ms": 45.3077,
+      "p50_ms": 8489.516954,
+      "p95_ms": 24558.871403,
+      "p99_ms": 25837.478066
+     },
+     "export_report": {
+      "count": 73,
+      "max_wait_ms": 28708.570107,
+      "mean_ms": 15695.437555534247,
+      "median_service_ms": 1314.2,
+      "p50_ms": 14820.600767,
+      "p95_ms": 28401.539614,
+      "p99_ms": 30518.299869
+     },
+     "generate_invoice": {
+      "count": 5077,
+      "max_wait_ms": 25837.072168,
+      "mean_ms": 10569.445185386645,
+      "median_service_ms": 4.52659,
+      "p50_ms": 10094.511443,
+      "p95_ms": 24489.593092,
+      "p99_ms": 25612.465237
+     },
+     "push_notification": {
+      "count": 7645,
+      "max_wait_ms": 20728.667877,
+      "mean_ms": 6244.32258355134,
+      "median_service_ms": 9.09606,
+      "p50_ms": 2855.432523,
+      "p95_ms": 18540.24048,
+      "p99_ms": 20164.968515
+     },
+     "reindex_product": {
+      "count": 3313,
+      "max_wait_ms": 20675.446945,
+      "mean_ms": 5692.559342407486,
+      "median_service_ms": 2.51083,
+      "p50_ms": 1382.740172,
+      "p95_ms": 18153.787957,
+      "p99_ms": 20067.495595
+     },
+     "reserve_inventory": {
+      "count": 6753,
+      "max_wait_ms": 20706.853458,
+      "mean_ms": 6423.68734539849,
+      "median_service_ms": 6.08185,
+      "p50_ms": 3784.27531,
+      "p95_ms": 18875.831045,
+      "p99_ms": 20270.479225
+     },
+     "resize_image": {
+      "count": 2172,
+      "max_wait_ms": 31142.181697,
+      "mean_ms": 13331.468837775323,
+      "median_service_ms": 15.51915,
+      "p50_ms": 11531.484198,
+      "p95_ms": 28847.589751,
+      "p99_ms": 30489.514744
+     },
+     "send_order_email": {
+      "count": 4891,
+      "max_wait_ms": 25812.68693,
+      "mean_ms": 10341.204161297484,
+      "median_service_ms": 35.2428,
+      "p50_ms": 9162.487333,
+      "p95_ms": 24488.305274,
+      "p99_ms": 25592.83514
+     },
+     "send_sms": {
+      "count": 1623,
+      "max_wait_ms": 25799.481117,
+      "mean_ms": 10409.692923371535,
+      "median_service_ms": 79.1799,
+      "p50_ms": 9496.538891,
+      "p95_ms": 24717.992131,
+      "p99_ms": 25687.528717
+     }
+    },
+    "shifted_class_mean_ms:deliver_webhook": 7494.187773327664,
+    "shifted_class_mean_ms:export_report": 12152.71830524,
+    "shifted_class_mean_ms:generate_invoice": 7284.1009539469305,
+    "shifted_class_mean_ms:push_notification": 3696.1400172049025,
+    "shifted_class_mean_ms:reindex_product": 3466.69201612251,
+    "shifted_class_mean_ms:reserve_inventory": 3550.569418252351,
+    "shifted_class_mean_ms:resize_image": 11590.845969817734,
+    "shifted_class_mean_ms:send_order_email": 7257.218751315619,
+    "shifted_class_mean_ms:send_sms": 7569.2955282529765,
+    "short_mean_ms": 7180.864011862823,
+    "short_p50_ms": 4819.673526,
+    "slowdown_p50": 318.67984610651325,
+    "slowdown_p95": 4790.510589783848,
+    "slowdown_p99": 7366.805389904693,
+    "submit_errors": 0,
+    "throughput_per_s": 114.78966693086733
+   },
+   "55": {
+    "class_mean_ms:deliver_webhook": 5422.542431065418,
+    "class_mean_ms:export_report": 8695.232106130436,
+    "class_mean_ms:generate_invoice": 5875.048435953262,
+    "class_mean_ms:push_notification": 2836.8719052769434,
+    "class_mean_ms:reindex_product": 2347.1452063496395,
+    "class_mean_ms:reserve_inventory": 2898.0928750289227,
+    "class_mean_ms:resize_image": 7632.8650660974745,
+    "class_mean_ms:send_order_email": 5917.62020456598,
+    "class_mean_ms:send_sms": 5953.350260312827,
+    "cohorts": {
+     "flash_sale": {
+      "count": 11762,
+      "mean_ms": 7197.653248210933,
+      "p50_ms": 6600.794596,
+      "p99_ms": 21601.322067
+     },
+     "ramp": {
+      "count": 3796,
+      "mean_ms": 183.10057072708113,
+      "p50_ms": 29.083036,
+      "p99_ms": 3427.947163
+     },
+     "recovery": {
+      "count": 6409,
+      "mean_ms": 9871.014366811827,
+      "p50_ms": 10051.473671,
+      "p99_ms": 21120.783011
+     },
+     "shifted": {
+      "count": 7586,
+      "mean_ms": 494.06197303730556,
+      "p50_ms": 35.978443,
+      "p99_ms": 6977.639705
+     },
+     "steady": {
+      "count": 5119,
+      "mean_ms": 41.82775218831803,
+      "p50_ms": 13.418244,
+      "p99_ms": 424.590034
+     }
+    },
+    "completed": 34672,
+    "dlq": 0,
+    "long_max_wait_ms": 22756.307997,
+    "lookup_mean_us": null,
+    "mean_latency_ms": 4400.647460191134,
+    "messages": 34672,
+    "p50_latency_ms": 466.657168,
+    "p95_latency_ms": 16147.502401,
+    "p99_latency_ms": 18487.390705,
+    "per_class": {
+     "deliver_webhook": {
+      "count": 3470,
+      "max_wait_ms": 17679.547687,
+      "mean_ms": 5422.542431065418,
+      "median_service_ms": 44.6344,
+      "p50_ms": 1984.151777,
+      "p95_ms": 17029.97355,
+      "p99_ms": 17649.130239
+     },
+     "export_report": {
+      "count": 46,
+      "max_wait_ms": 22756.307997,
+      "mean_ms": 8695.232106130436,
+      "median_service_ms": 1365.065,
+      "p50_ms": 3933.512577,
+      "p95_ms": 23466.452322,
+      "p99_ms": 24643.329969
+     },
+     "generate_invoice": {
+      "count": 5028,
+      "max_wait_ms": 17688.016765,
+      "mean_ms": 5875.048435953262,
+      "median_service_ms": 4.542875,
+      "p50_ms": 3006.841967,
+      "p95_ms": 16854.352947,
+      "p99_ms": 17488.584456
+     },
+     "push_notification": {
+      "count": 7525,
+      "max_wait_ms": 12585.571551,
+      "mean_ms": 2836.8719052769434,
+      "median_service_ms": 9.12254,
+      "p50_ms": 33.037787,
+      "p95_ms": 11452.745995,
+      "p99_ms": 12261.402181
+     },
+     "reindex_product": {
+      "count": 3189,
+      "max_wait_ms": 12560.810747,
+      "mean_ms": 2347.1452063496395,
+      "median_service_ms": 2.5181,
+      "p50_ms": 18.691069,
+      "p95_ms": 11298.824946,
+      "p99_ms": 12234.712176
+     },
+     "reserve_inventory": {
+      "count": 6673,
+      "max_wait_ms": 12592.67454,
+      "mean_ms": 2898.0928750289227,
+      "median_service_ms": 6.12052,
+      "p50_ms": 30.080681,
+      "p95_ms": 11415.403722,
+      "p99_ms": 12241.058194
+     },
+     "resize_image": {
+      "count": 2257,
+      "max_wait_ms": 22960.018987,
+      "mean_ms": 7632.8650660974745,
+      "median_service_ms": 15.6251,
+      "p50_ms": 5258.699692,
+      "p95_ms": 21876.177609,
+      "p99_ms": 22686.666676
+     },
+     "send_order_email": {
+      "count": 4956,
+      "max_wait_ms": 17683.205336,
+      "mean_ms": 5917.62020456598,
+      "median_service_ms": 35.26645,
+      "p50_ms": 3054.540026,
+      "p95_ms": 16914.498995,
+      "p99_ms": 17513.084165
+     },
+     "send_sms": {
+      "count": 1528,
+      "max_wait_ms": 17663.843361,
+      "mean_ms": 5953.350260312827,
+      "median_service_ms": 81.21195,
+      "p50_ms": 3025.520945,
+      "p95_ms": 16936.18674,
+      "p99_ms": 17546.338129
+     }
+    },
+    "shifted_class_mean_ms:deliver_webhook": 838.1689538278481,
+    "shifted_class_mean_ms:export_report": 4011.4238273749997,
+    "shifted_class_mean_ms:generate_invoice": 579.3658451733334,
+    "shifted_class_mean_ms:push_notification": 30.483362441267868,
+    "shifted_class_mean_ms:reindex_product": 24.47769887184874,
+    "shifted_class_mean_ms:reserve_inventory": 26.713275228017885,
+    "shifted_class_mean_ms:resize_image": 2406.5029725250783,
+    "shifted_class_mean_ms:send_order_email": 619.7512303981289,
+    "shifted_class_mean_ms:send_sms": 718.4995983145695,
+    "short_mean_ms": 3466.929486562525,
+    "short_p50_ms": 49.511859,
+    "slowdown_p50": 23.905198939960748,
+    "slowdown_p95": 2752.391218223616,
+    "slowdown_p99": 4641.200268408383,
+    "submit_errors": 0,
+    "throughput_per_s": 115.47995901999704
+   }
+  }
+ },
+ "config": "v3-brokers-prodflow-1",
+ "evaluation": {
+  "criteria": {
+   "G1_all_p99_vs_rabbitmq_fifo": {
+    "ci95": [
+     1.0741439255099414,
+     1.1195252263916755
+    ],
+    "kind": "ratio",
+    "point": 1.0968345759508085,
+    "seeds": 5,
+    "status": "pass"
+   },
+   "G2_long_max_wait_vs_rabbitmq_priority": {
+    "ci95": [
+     0.1788814601439185,
+     0.2282632130770431
+    ],
+    "kind": "ratio",
+    "point": 0.20463644829365418,
+    "seeds": 5,
+    "status": "pass"
+   },
+   "G3_no_lost_work": {
+    "status": "pass"
+   },
+   "G3b_no_lost_work_rabbitmq_fifo": {
+    "status": "pass"
+   },
+   "G3c_no_lost_work_rabbitmq_priority": {
+    "status": "pass"
+   },
+   "G3d_no_lost_work_rabbitmq_predictive": {
+    "status": "pass"
+   },
+   "G3e_no_lost_work_redis_fifo": {
+    "status": "pass"
+   },
+   "G4_throughput_vs_rabbitmq_fifo": {
+    "ci95": [
+     0.9947327925606297,
+     0.9999485844807876
+    ],
+    "kind": "ratio",
+    "point": 0.9981713235612959,
+    "seeds": 5,
+    "status": "pass"
+   },
+   "P1_mean_vs_rabbitmq_fifo": {
+    "ci95": [
+     -0.2621958761795431,
+     -0.1840304644137491
+    ],
+    "kind": "relative_delta",
+    "point": -0.21687868011863817,
+    "seeds": 5,
+    "status": "pass"
+   },
+   "P2_short_p50_vs_rabbitmq_fifo": {
+    "ci95": [
+     -0.9883540885028286,
+     -0.7547112722710393
+    ],
+    "kind": "relative_delta",
+    "point": -0.8954233779467697,
+    "seeds": 5,
+    "status": "pass"
+   },
+   "P3_mean_vs_redis_fifo": {
+    "ci95": [
+     -0.2945221128168631,
+     -0.22601402225921327
+    ],
+    "kind": "relative_delta",
+    "point": -0.25494989025468395,
+    "seeds": 5,
+    "status": "pass"
+   },
+   "P4_short_p50_vs_redis_fifo": {
+    "ci95": [
+     -0.9900100485491785,
+     -0.7798089038351369
+    ],
+    "kind": "relative_delta",
+    "point": -0.9065327689906799,
+    "seeds": 5,
+    "status": "pass"
+   },
+   "S1_fifo_equivalence_rabbitmq": {
+    "ci95": [
+     0.10428183866382525,
+     0.11614244183812138
+    ],
+    "kind": "relative_delta",
+    "point": 0.10985707524161369,
+    "seeds": 5,
+    "status": "fail"
+   },
+   "S2_fifo_equivalence_redis": {
+    "ci95": [
+     0.04922891884148092,
+     0.061658860790346014
+    ],
+    "kind": "relative_delta",
+    "point": 0.056126276618819346,
+    "seeds": 5,
+    "status": "pass"
+   },
+   "S3_transfer_rabbitmq_predictive_vs_fifo": {
+    "ci95": [
+     -0.5860762138892281,
+     -0.5677652375160489
+    ],
+    "kind": "relative_delta",
+    "point": -0.576318484480258,
+    "seeds": 5,
+    "status": "pass"
+   },
+   "S4_rabbitmq_predictive_vs_priority": {
+    "ci95": [
+     -0.3153635070500801,
+     -0.21089626765289476
+    ],
+    "kind": "relative_delta",
+    "point": -0.2631298873514874,
+    "seeds": 5,
+    "status": "pass"
+   },
+   "S5_predictive_vs_static_tuned": {
+    "ci95": [
+     -0.17108472591069784,
+     -0.10730087536735401
+    ],
+    "kind": "relative_delta",
+    "point": -0.13249514835111745,
+    "seeds": 5,
+    "status": "pass"
+   },
+   "S6_weighted_mean_vs_rabbitmq_fifo": {
+    "ci95": [
+     -0.5341951444504399,
+     -0.510478737055674
+    ],
+    "kind": "relative_delta",
+    "point": -0.524033224974787,
+    "seeds": 5,
+    "status": "pass"
+   },
+   "S7_weighted_p99_vs_rabbitmq_fifo": {
+    "ci95": [
+     1.197007577732152,
+     1.2360006583889853
+    ],
+    "kind": "ratio",
+    "point": 1.2135960727909993,
+    "seeds": 5,
+    "status": "pass"
+   },
+   "S8_rabbitmq_priority_long_wait_vs_fifo": {
+    "ci95": [
+     4.788396911419679,
+     5.545632006384189
+    ],
+    "kind": "ratio",
+    "point": 5.226092806963063,
+    "seeds": 5,
+    "status": "fail"
+   }
+  },
+  "gate_passed": true
+ }
+}

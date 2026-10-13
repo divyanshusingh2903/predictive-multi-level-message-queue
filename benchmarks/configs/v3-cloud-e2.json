@@ -1,6 +1,6 @@
 {
  "version": "v3-cloud-e2-1",
- "frozen_on": null,
+ "frozen_on": "2026-10-12",
  "issue": 26,
  "preregistration": "docs/v3-cloud-preregistration.md",
  "environment": {

@@ -367,20 +367,20 @@ The [evaluation plan](https://github.com/divyanshusingh2903/predictive-multi-lev
 
 **Build (#47)**
 - [x] Split-broker benchmark mode, so the broker and the clients run on separate hosts
-- [ ] RabbitMQ and Redis adapters, and a predictor sidecar for RabbitMQ
-- [ ] A common trace format and converters for the new datasets (format, Azure and Huawei converters done)
-- [ ] Pre-registrations: `v3-cloud`, `v3-brokers`, `v3-traces` ([`v3-traces-1`](docs/v3-traces-preregistration.md) frozen for Huawei 2025 and Azure 2021)
-- [ ] AWS runbook and scripts, with spend caps
+- [x] RabbitMQ and Redis adapters, and a predictor sidecar for RabbitMQ
+- [x] A common trace format and converters for the new datasets (Azure, Huawei and Parallel Workloads Archive)
+- [x] Pre-registrations: [`v3-cloud`](docs/v3-cloud-preregistration.md), [`v3-brokers`](docs/v3-brokers-preregistration.md), [`v3-traces-1`](docs/v3-traces-preregistration.md), [`v3-traces-2`](docs/v3-traces-2-preregistration.md)
+- [x] [AWS runbook](benchmarks/cloud/README.md) and scripts, with spend caps
 
-**Cloud runs on AWS** (`c8i.xlarge` broker host, `c8i.2xlarge` client host)
-- [ ] E1: the v2 production-flow matrix replicated on cloud hardware
-- [ ] E2 ([#26](https://github.com/divyanshusingh2903/predictive-multi-level-message-queue/issues/26)): a 30-minute run with the broker on its own host over a real network, including the mid-run job-mix shift
-- [ ] E3 ([#37](https://github.com/divyanshusingh2903/predictive-multi-level-message-queue/issues/37)): scheduling outcome on the same workload against RabbitMQ (FIFO, static priority, predictive via a sidecar) and Redis (FIFO)
-- [ ] E4 ([#37](https://github.com/divyanshusingh2903/predictive-multi-level-message-queue/issues/37)): broker cost — throughput and latency with empty handlers for Harbinger, RabbitMQ and Redis
+**Cloud runs on AWS** (`c8i.xlarge` broker host, `c8i.2xlarge` client host; [results](benchmarks/results/v3-aws/README.md))
+- [x] E1: the v2 production-flow matrix replicated on cloud hardware (gate passed: −30.8% mean vs FIFO)
+- [x] E2 ([#26](https://github.com/divyanshusingh2903/predictive-multi-level-message-queue/issues/26)): a 30-minute run with the broker on its own host over a real network, including the mid-run job-mix shift (descriptive: the gain fell to −6% to −7% under minutes-long backlogs)
+- [x] E3 ([#37](https://github.com/divyanshusingh2903/predictive-multi-level-message-queue/issues/37)): scheduling outcome on the same workload against RabbitMQ (FIFO, static priority, predictive via a sidecar) and Redis (FIFO) (gate passed: −21.7% mean vs RabbitMQ FIFO; the sidecar on RabbitMQ −57.6%)
+- [x] E4 ([#37](https://github.com/divyanshusingh2903/predictive-multi-level-message-queue/issues/37)): broker cost — throughput and latency with empty handlers for Harbinger, RabbitMQ and Redis (Harbinger peaks at about 5,300 msg/s, below both)
 
 **Trace simulations on new public datasets**
-- [ ] Huawei Cloud 2025 serverless request traces: a second serverless provider
-- [ ] Parallel Workloads Archive (HPC): learned per-key estimates against users' own runtime estimates
+- [x] Huawei Cloud 2025 serverless request traces: a second serverless provider ([v3-traces-1](benchmarks/results/v3-traces/README.md))
+- [x] Parallel Workloads Archive (HPC): two logs whose keys predict poorly ([v3-traces-2](benchmarks/results/v3-traces-2/README.md); no gate passed)
 - [ ] Alibaba GPU 2020 (PAI): recurring jobs lasting minutes to hours
 
 **Out of scope:**

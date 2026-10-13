@@ -1,0 +1,125 @@
+2026-10-12T23:06:28Z rep=1 kind=harbinger rate=0
+[brokerbench] kind=harbinger rate=0 messages=383597 lost=0 send/s=12753.2 delivered/s=6067.32 latency ms p50=17640.6 p99=25258.7 max=25381.9
+2026-10-12T23:07:27Z rep=1 kind=harbinger rate=1000
+[brokerbench] kind=harbinger rate=1000 messages=30000 lost=0 send/s=1000 delivered/s=1000 latency ms p50=0.249396 p99=0.633375 max=0.996149
+2026-10-12T23:08:00Z rep=1 kind=harbinger rate=5000
+[brokerbench] kind=harbinger rate=5000 messages=150000 lost=0 send/s=5000 delivered/s=5053.44 latency ms p50=90.7924 p99=446.304 max=477.909
+2026-10-12T23:08:34Z rep=1 kind=harbinger rate=20000
+[brokerbench] kind=harbinger rate=20000 messages=600000 lost=0 send/s=11231.5 delivered/s=5387.72 latency ms p50=30475.1 p99=39643.6 max=39697.7
+2026-10-12T23:10:11Z rep=1 kind=rabbitmq rate=0
+[brokerbench] kind=rabbitmq rate=0 messages=1809362 lost=244907 send/s=58185.6 delivered/s=6877.64 latency ms p50=49147.9 p99=65738.3 max=66653.9
+run rep=1 kind=rabbitmq rate=0 exited 3
+2026-10-12T23:11:50Z rep=1 kind=rabbitmq rate=1000
+[brokerbench] kind=rabbitmq rate=1000 messages=30000 lost=0 send/s=1000 delivered/s=1000 latency ms p50=0.229342 p99=0.493485 max=2.03426
+2026-10-12T23:12:27Z rep=1 kind=rabbitmq rate=5000
+[brokerbench] kind=rabbitmq rate=5000 messages=150000 lost=0 send/s=5000 delivered/s=4999.92 latency ms p50=0.115752 p99=0.33659 max=4.45729
+2026-10-12T23:13:04Z rep=1 kind=rabbitmq rate=20000
+[brokerbench] kind=rabbitmq rate=20000 messages=600000 lost=0 send/s=20000 delivered/s=19999.9 latency ms p50=0.234218 p99=11.357 max=28.3761
+2026-10-12T23:13:41Z rep=1 kind=redis rate=0
+[brokerbench] kind=redis rate=0 messages=1086667 lost=0 send/s=35114.2 delivered/s=22000.4 latency ms p50=11726.5 p99=18277 max=18442.9
+2026-10-12T23:14:33Z rep=1 kind=redis rate=1000
+[brokerbench] kind=redis rate=1000 messages=30000 lost=0 send/s=1000 delivered/s=1000 latency ms p50=0.096207 p99=0.342414 max=0.615871
+2026-10-12T23:15:07Z rep=1 kind=redis rate=5000
+[brokerbench] kind=redis rate=5000 messages=150000 lost=0 send/s=5000 delivered/s=5000 latency ms p50=0.095712 p99=0.305218 max=0.70295
+2026-10-12T23:15:41Z rep=1 kind=redis rate=20000
+[brokerbench] kind=redis rate=20000 messages=600000 lost=0 send/s=20000 delivered/s=20015.4 latency ms p50=0.148922 p99=46.8226 max=52.1576
+2026-10-12T23:16:15Z rep=2 kind=rabbitmq rate=0
+[brokerbench] kind=rabbitmq rate=0 messages=1793124 lost=147505 send/s=55882.3 delivered/s=7299.88 latency ms p50=49263.7 p99=64496.8 max=65297.2
+run rep=2 kind=rabbitmq rate=0 exited 3
+2026-10-12T23:17:54Z rep=2 kind=rabbitmq rate=1000
+[brokerbench] kind=rabbitmq rate=1000 messages=30000 lost=0 send/s=1000 delivered/s=1000 latency ms p50=0.150223 p99=0.516989 max=3.0312
+2026-10-12T23:18:31Z rep=2 kind=rabbitmq rate=5000
+[brokerbench] kind=rabbitmq rate=5000 messages=150000 lost=0 send/s=5000 delivered/s=4999.96 latency ms p50=0.115068 p99=0.292532 max=0.592745
+2026-10-12T23:19:08Z rep=2 kind=rabbitmq rate=20000
+[brokerbench] kind=rabbitmq rate=20000 messages=600000 lost=0 send/s=20000 delivered/s=19999.9 latency ms p50=0.24638 p99=15.9496 max=18.438
+2026-10-12T23:19:45Z rep=2 kind=redis rate=0
+[brokerbench] kind=redis rate=0 messages=1251001 lost=0 send/s=41708.6 delivered/s=20878.7 latency ms p50=16885.2 p99=26653.2 max=26869.3
+2026-10-12T23:20:46Z rep=2 kind=redis rate=1000
+[brokerbench] kind=redis rate=1000 messages=30000 lost=0 send/s=1000 delivered/s=1000 latency ms p50=0.190526 p99=0.541848 max=2.11264
+2026-10-12T23:21:20Z rep=2 kind=redis rate=5000
+[brokerbench] kind=redis rate=5000 messages=150000 lost=0 send/s=5000 delivered/s=5000 latency ms p50=0.101221 p99=0.33654 max=0.691049
+2026-10-12T23:21:54Z rep=2 kind=redis rate=20000
+[brokerbench] kind=redis rate=20000 messages=600000 lost=0 send/s=20000 delivered/s=20064.2 latency ms p50=0.45582 p99=76.6924 max=85.4323
+2026-10-12T23:22:28Z rep=2 kind=harbinger rate=0
+[brokerbench] kind=harbinger rate=0 messages=327317 lost=0 send/s=10894.2 delivered/s=5241.52 latency ms p50=17631.8 p99=24565.7 max=24802.4
+2026-10-12T23:23:27Z rep=2 kind=harbinger rate=1000
+[brokerbench] kind=harbinger rate=1000 messages=30000 lost=0 send/s=1000 delivered/s=1000 latency ms p50=0.235912 p99=0.675379 max=3.43686
+2026-10-12T23:24:00Z rep=2 kind=harbinger rate=5000
+[brokerbench] kind=harbinger rate=5000 messages=150000 lost=0 send/s=5000 delivered/s=4999.96 latency ms p50=0.301078 p99=10.63 max=29.3321
+2026-10-12T23:24:34Z rep=2 kind=harbinger rate=20000
+[brokerbench] kind=harbinger rate=20000 messages=600000 lost=0 send/s=10610.6 delivered/s=5112.8 latency ms p50=30799.5 p99=43089.4 max=43454.2
+2026-10-12T23:26:18Z rep=3 kind=redis rate=0
+[brokerbench] kind=redis rate=0 messages=1310007 lost=0 send/s=43557.9 delivered/s=20358 latency ms p50=20369.6 p99=34938.6 max=35274.2
+2026-10-12T23:27:27Z rep=3 kind=redis rate=1000
+[brokerbench] kind=redis rate=1000 messages=30000 lost=0 send/s=1000 delivered/s=1000 latency ms p50=0.229358 p99=0.598139 max=0.982921
+2026-10-12T23:28:01Z rep=3 kind=redis rate=5000
+[brokerbench] kind=redis rate=5000 messages=150000 lost=0 send/s=5000 delivered/s=5000 latency ms p50=0.090443 p99=0.297721 max=0.560032
+2026-10-12T23:28:35Z rep=3 kind=redis rate=20000
+[brokerbench] kind=redis rate=20000 messages=600000 lost=0 send/s=20000 delivered/s=20000 latency ms p50=0.225481 p99=280.218 max=287.8
+2026-10-12T23:29:09Z rep=3 kind=harbinger rate=0
+[brokerbench] kind=harbinger rate=0 messages=330050 lost=0 send/s=11024 delivered/s=5293.48 latency ms p50=16978.6 p99=23203.8 max=23303.7
+2026-10-12T23:30:06Z rep=3 kind=harbinger rate=1000
+[brokerbench] kind=harbinger rate=1000 messages=30000 lost=0 send/s=1000 delivered/s=1000 latency ms p50=0.243655 p99=0.613952 max=3.42775
+2026-10-12T23:30:40Z rep=3 kind=harbinger rate=5000
+[brokerbench] kind=harbinger rate=5000 messages=150000 lost=0 send/s=5000 delivered/s=5000.04 latency ms p50=0.29972 p99=3.79893 max=9.95032
+2026-10-12T23:31:14Z rep=3 kind=harbinger rate=20000
+[brokerbench] kind=harbinger rate=20000 messages=600000 lost=0 send/s=11087.7 delivered/s=5325.56 latency ms p50=30088.1 p99=39534.1 max=39679.5
+2026-10-12T23:32:52Z rep=3 kind=rabbitmq rate=0
+[brokerbench] kind=rabbitmq rate=0 messages=1834260 lost=244813 send/s=57585.8 delivered/s=7774.56 latency ms p50=50205.2 p99=65772.4 max=66645.6
+run rep=3 kind=rabbitmq rate=0 exited 3
+2026-10-12T23:34:31Z rep=3 kind=rabbitmq rate=1000
+[brokerbench] kind=rabbitmq rate=1000 messages=30000 lost=0 send/s=1000 delivered/s=1000 latency ms p50=0.305855 p99=0.663895 max=1.13251
+2026-10-12T23:35:08Z rep=3 kind=rabbitmq rate=5000
+[brokerbench] kind=rabbitmq rate=5000 messages=150000 lost=0 send/s=5000 delivered/s=4999.92 latency ms p50=0.122083 p99=0.359148 max=1.25869
+2026-10-12T23:35:45Z rep=3 kind=rabbitmq rate=20000
+[brokerbench] kind=rabbitmq rate=20000 messages=600000 lost=0 send/s=20000 delivered/s=20000.1 latency ms p50=0.259439 p99=13.4658 max=21.1874
+2026-10-12T23:36:22Z rep=4 kind=harbinger rate=0
+[brokerbench] kind=harbinger rate=0 messages=323328 lost=0 send/s=10636.8 delivered/s=5120.12 latency ms p50=17346.1 p99=22276.8 max=22356.5
+2026-10-12T23:37:18Z rep=4 kind=harbinger rate=1000
+[brokerbench] kind=harbinger rate=1000 messages=30000 lost=0 send/s=1000 delivered/s=1000 latency ms p50=0.238053 p99=0.616911 max=1.09804
+2026-10-12T23:37:51Z rep=4 kind=harbinger rate=5000
+[brokerbench] kind=harbinger rate=5000 messages=150000 lost=0 send/s=4999.84 delivered/s=4954.96 latency ms p50=462.129 p99=1226.8 max=1262.61
+2026-10-12T23:38:26Z rep=4 kind=harbinger rate=20000
+[brokerbench] kind=harbinger rate=20000 messages=600000 lost=0 send/s=10803.7 delivered/s=5205.6 latency ms p50=31136.1 p99=40640.8 max=40819.9
+2026-10-12T23:40:06Z rep=4 kind=rabbitmq rate=0
+[brokerbench] kind=rabbitmq rate=0 messages=1791144 lost=150122 send/s=54699.1 delivered/s=7370.76 latency ms p50=49967.5 p99=64762.9 max=65664.6
+run rep=4 kind=rabbitmq rate=0 exited 3
+2026-10-12T23:41:45Z rep=4 kind=rabbitmq rate=1000
+[brokerbench] kind=rabbitmq rate=1000 messages=30000 lost=0 send/s=1000 delivered/s=1000 latency ms p50=0.145533 p99=0.483071 max=3.51461
+2026-10-12T23:42:22Z rep=4 kind=rabbitmq rate=5000
+[brokerbench] kind=rabbitmq rate=5000 messages=150000 lost=0 send/s=5000 delivered/s=4999.96 latency ms p50=0.121192 p99=0.306739 max=4.75866
+2026-10-12T23:42:59Z rep=4 kind=rabbitmq rate=20000
+[brokerbench] kind=rabbitmq rate=20000 messages=600000 lost=0 send/s=20000 delivered/s=20000 latency ms p50=0.198728 p99=9.92147 max=26.4776
+2026-10-12T23:43:36Z rep=4 kind=redis rate=0
+[brokerbench] kind=redis rate=0 messages=1311921 lost=0 send/s=43704.5 delivered/s=21181.8 latency ms p50=18877.6 p99=30500.3 max=30746
+2026-10-12T23:44:40Z rep=4 kind=redis rate=1000
+[brokerbench] kind=redis rate=1000 messages=30000 lost=0 send/s=1000 delivered/s=1000 latency ms p50=0.112682 p99=0.52747 max=0.800743
+2026-10-12T23:45:14Z rep=4 kind=redis rate=5000
+[brokerbench] kind=redis rate=5000 messages=150000 lost=0 send/s=5000 delivered/s=5000 latency ms p50=0.09963 p99=0.333456 max=7.30344
+2026-10-12T23:45:48Z rep=4 kind=redis rate=20000
+[brokerbench] kind=redis rate=20000 messages=600000 lost=0 send/s=20000 delivered/s=20000 latency ms p50=0.152127 p99=47.7815 max=56.7686
+2026-10-12T23:46:22Z rep=5 kind=rabbitmq rate=0
+[brokerbench] kind=rabbitmq rate=0 messages=1822425 lost=216972 send/s=55695.5 delivered/s=7535.64 latency ms p50=50704.8 p99=65676.3 max=66521
+run rep=5 kind=rabbitmq rate=0 exited 3
+2026-10-12T23:48:01Z rep=5 kind=rabbitmq rate=1000
+[brokerbench] kind=rabbitmq rate=1000 messages=30000 lost=0 send/s=1000 delivered/s=1000 latency ms p50=0.142863 p99=0.610704 max=2.87679
+2026-10-12T23:48:38Z rep=5 kind=rabbitmq rate=5000
+[brokerbench] kind=rabbitmq rate=5000 messages=150000 lost=0 send/s=5000 delivered/s=4999.96 latency ms p50=0.11266 p99=0.141125 max=2.79293
+2026-10-12T23:49:15Z rep=5 kind=rabbitmq rate=20000
+[brokerbench] kind=rabbitmq rate=20000 messages=600000 lost=0 send/s=20000 delivered/s=20000.6 latency ms p50=0.160548 p99=3.54327 max=10.605
+2026-10-12T23:49:52Z rep=5 kind=redis rate=0
+[brokerbench] kind=redis rate=0 messages=1247039 lost=0 send/s=42069.8 delivered/s=21769.1 latency ms p50=15452.5 p99=26596.3 max=26798.4
+2026-10-12T23:50:53Z rep=5 kind=redis rate=1000
+[brokerbench] kind=redis rate=1000 messages=30000 lost=0 send/s=1000 delivered/s=1000 latency ms p50=0.15713 p99=0.587252 max=1.51549
+2026-10-12T23:51:27Z rep=5 kind=redis rate=5000
+[brokerbench] kind=redis rate=5000 messages=150000 lost=0 send/s=5000 delivered/s=5000 latency ms p50=0.091359 p99=0.314187 max=1.49413
+2026-10-12T23:52:01Z rep=5 kind=redis rate=20000
+[brokerbench] kind=redis rate=20000 messages=600000 lost=0 send/s=19999.3 delivered/s=20070.3 latency ms p50=1.77557 p99=288.769 max=291.496
+2026-10-12T23:52:35Z rep=5 kind=harbinger rate=0
+[brokerbench] kind=harbinger rate=0 messages=332557 lost=0 send/s=11248 delivered/s=5403.56 latency ms p50=16863.7 p99=22455.3 max=22523.3
+2026-10-12T23:53:32Z rep=5 kind=harbinger rate=1000
+[brokerbench] kind=harbinger rate=1000 messages=30000 lost=0 send/s=1000 delivered/s=1000 latency ms p50=0.264307 p99=0.622598 max=1.14573
+2026-10-12T23:54:05Z rep=5 kind=harbinger rate=5000
+[brokerbench] kind=harbinger rate=5000 messages=150000 lost=0 send/s=5000 delivered/s=5000 latency ms p50=0.301787 p99=3.66178 max=13.3815
+2026-10-12T23:54:39Z rep=5 kind=harbinger rate=20000
+[brokerbench] kind=harbinger rate=20000 messages=600000 lost=0 send/s=10871.3 delivered/s=5219.44 latency ms p50=32394 p99=42716.4 max=42942.1

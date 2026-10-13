@@ -1,0 +1,8 @@
+commit 2da0e3aaa8366ad8948a11f8b05d069e085953c3
+mode registered
+experiments e4 e3 e2 e1
+client_image sha256:8952ed0d2e6a15e3fe54edd8ded515b82c9b7034992a05d1b133418e98209677
+broker_image sha256:8952ed0d2e6a15e3fe54edd8ded515b82c9b7034992a05d1b133418e98209677
+started 2026-10-12T23:06:27Z
+stopped 2026-10-13T07:21:24Z at the E1 step by design (amendment 1, commit 1f9efe0): E1 config made unreadable; E1 ran on its own host into registered-2da0e3a-e1
+archived_by_hand 2026-10-13T14:32:41Z
