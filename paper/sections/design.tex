@@ -1,34 +1,117 @@
 \section{Design}\label{sec:design}
 
-\sys{} is a single-queue broker that speaks gRPC. Producers \texttt{Submit} messages, consumers \texttt{Pull} them and then
-\texttt{Ack} or \texttt{Nack} the result, and the broker holds them in a small number of priority levels (three in all our
-experiments) with retries, a dead-letter queue and at-least-once delivery for as long as the process runs. Consumers are
-deliberately blind to the levels: a consumer asks for work and the broker decides which message to hand over, so no client
-ever has to know that priorities exist. Everything is held in memory, which is acceptable for a research prototype and is
-the first of the limitations we return to in Section~\ref{sec:limits}.
+\sys{} is a single-queue message broker. Producers \texttt{Submit} messages over gRPC, consumers \texttt{Pull} them and
+then \texttt{Ack} or \texttt{Nack} the outcome, and between the two the broker holds each message in one of a small number
+of priority levels (three in all our experiments). Figure~\ref{fig:architecture} shows the path a message takes. On arrival
+a thin proxy stamps an identifier, the arrival time and the producer's identity, and hands the message to a single routing
+function, \texttt{route\_message()}, which decides the level. Consumers never see the levels: a consumer asks for work and
+the broker chooses which message to give it, so no client has to know that priorities exist. When the consumer
+acknowledges a message it reports how long its handler took, and that duration flows back to the predictor that decides
+where the next message of the same kind goes. The loop between the acknowledgement and the routing function is the whole
+idea of the paper; everything else in this section is either the machinery around it or an optional change we made after
+an experiment showed a weakness.
 
-The part that matters for this paper is how a message gets its level. Each message has a key, which is the identifier the
-broker assigned to its producer, optionally joined to a job-type header that the producer chooses to send. Scoping the
-header by producer means that a producer can only mislabel its own work, never claim another producer's fast history to
-jump the queue. The broker keeps, for every key, a histogram of handler durations whose older observations decay, and one
-histogram over all keys. When a consumer acknowledges a message it reports how long the handler took, and a successful,
-first-time duration is added to the message's key. When a new message arrives, a single routine looks up the key and takes
-a summary of its histogram, the median in our experiments, as the expected duration. It maps that duration to a level using boundaries that come from
-quantiles of the global histogram, so that the levels adapt to the workload instead of being set by hand. The lookup takes
-about two microseconds.
+\begin{figure}[t]
+  \centering
+  \input{figures/architecture}
+  \caption{Overview of \sys{}. Messages flow left to right. The orange path is the learning loop: the routing function
+  looks up a message's key in the per-key predictor, and each acknowledgement reports the handler's duration back to it.
+  An illustration of the design, not a measurement.}
+  \label{fig:architecture}
+\end{figure}
 
-Because the expected duration is only as good as the history behind it, a key is trusted only when its history is
-usable. A key that has too few observations, that has gone unobserved for too long, or whose durations are too spread out
-to predict from a median is sent to the middle level instead. This is a deliberate conservatism, and it follows the
-literature on estimated sizes, in which misjudging a long job as short is the costly mistake \citep{dellamico2014}. A message
-whose lease expires counts as a censored observation instead of a duration, so a key whose handlers hang is not
-mistaken for a key whose handlers are fast. State per key is bounded in memory, and the predictor can be run in a shadow
-mode that records its predictions but routes statically, which lets one measure the cost of prediction apart from its effect.
+We built the broker in stages, and the order matters because each stage was shaped by what the previous one measured. The
+first stage was an ordinary broker with no prediction at all. It has a fixed number of priority levels, an optional aging
+thread that promotes messages that have waited too long, retries on \texttt{Nack}, a dead-letter queue for messages that
+exhaust their retries or expire, and per-delivery attempt tokens and leases, so that a crashed consumer's message is
+recovered while a stale acknowledgement cannot settle a newer delivery. Delivery is at-least-once for as long as the process
+runs, and all state is in memory. Static routing, in which every message gets the same default level, is what this stage
+gives and what the broker still does by default. It is also the baseline against which every later feature is measured.
 
-Reordering by expected duration invites starvation, so the broker keeps an aging mechanism that promotes any message that has
-waited past a threshold (five seconds by default). This bounds how long a long job can wait, and it works well when
-backlogs last seconds. It does not when they last minutes or hours, because then almost every waiting message has been
-promoted to the top level and the predicted order is gone. For that regime we added an opt-in design in which worker time
-is divided among the levels by weights (we use 8:3:1) and promotion into a level is paused while that level is already
-behind its share. We call the pair \emph{weights with pausing aging}, and Section~\ref{sec:results} shows why it matters.
-The default broker still routes statically, and predictive routing is something an operator turns on.
+The second stage added prediction. We first planned a separate classifier service fed with features captured at ingress and
+with durations persisted by the broker, and we built that plumbing: a bounded, versioned capture of ingress features and a
+bounded on-disk feedback log, both optional and neither able to change delivery. We then used it to compare eight online
+learners, including River regressors and trees, against simple statistics on delayed feedback. None of the eight passed
+every frozen quality criterion, and the workload offered little for a richer model to exploit, so we chose the simplest
+option. The predictor is therefore an ordinary lookup, compiled into the broker, with no model to train or serve. Each key
+is the producer's identifier, optionally joined to a job-type header that the producer chooses to send; scoping the header by
+producer means that a producer can only mislabel its own work and cannot borrow another producer's fast history to jump the
+queue. For each key the broker keeps a histogram of handler durations, geometric from one millisecond to ten minutes, whose
+older observations decay, and one histogram over every key. A successful, first-time duration reported on an acknowledgement
+is added to the message's key. At ingress the broker takes the median of the key's histogram as the expected duration and maps
+it to a level using boundaries that come from quantiles of the global histogram, so that the levels adapt to the workload
+instead of being set by hand. The lookup costs about a hundred nanoseconds in isolation and about two microseconds inside
+the running broker.
+
+A predictor that routes on its own estimate has to know when not to trust it, and most of this stage's detail is about
+that. A key with too few observations, one that has gone unobserved for too long, or one whose tail is far above its median
+is sent to the middle level instead. The tail check looks at the ninety-ninth percentile rather than the ninetieth: a test
+showed that a key whose jobs take three milliseconds ninety-two percent of the time and three seconds the rest looks
+unremarkable at the ninetieth percentile and was routed to a fast level, which is exactly the costly mistake the literature
+warns about \citep{dellamico2014}. A delivery that overran its lease yields no duration, so it is recorded as censored, and a
+key with many censored deliveries also falls back; dropping them would have made a key whose handlers hang look fast. Memory is
+bounded, with a fixed number of keys over sharded locks, and the predictor can run in a shadow mode that records its
+predictions while routing statically, which isolates the cost of prediction from its effect. The first experiments
+(Section~\ref{sec:results}) passed on a production-style job queue but not on the Azure trace simulation, where no load passed
+its gate. Predictive routing therefore stayed an opt-in.
+
+The trace simulation also exposed a defect in the predictor, which we fixed. Staleness was measured from a key's last
+\emph{completed} job, so during a backlog lasting hours a key whose jobs were stuck in the queue completed none, and its new
+messages were judged stale and sent to the default level. The predictor switched itself off for exactly the keys caught in the
+backlog, and in an exploratory run a third to a half of the predictions made during backlogs were stale verdicts, against well
+under one percent otherwise. Activity now includes a prediction made while the key was still fresh, so keys that are waiting in
+a backlog stay predicted, though a stale key is revived only by new evidence.
+
+The third stage was size-binned keys. A per-key median ignores the fact that some jobs cost what their input costs, and a
+measurement on self-generated data with real handlers asked whether a richer model was needed to capture that. It was not.
+A per-key median was off by a typical factor of \FSPerKeyFactor{} and placed jobs in the correct level \FSPerKeyTier{} of the
+time, while appending the logarithm of the input size to the key brought the factor down to \FSBinnedFactor{} and the accuracy
+up to \FSBinnedTier{}, and a gradient-boosted model over every feature did no better at \FSBoostTier{}. So we added the bin to
+the key, not a model: an optional log$_2$ size bin, read from the payload length or from a numeric header, with a rule that a
+bin that has not yet seen enough jobs borrows its un-binned parent's estimate and never another key's, and with each job
+teaching both the bin and its parent. Under load the result was weaker than the measurement suggested. The bins improved the
+predictor's accuracy, but mean latency fell by only \SizeBinsMeanCI{} against job-type keys, short of the pre-registered
+bar, and one job type whose cost does not follow its size did \SizeBinsInvoice{} worse. They remain an opt-in.
+
+The fourth stage addressed aging. With the broker's default five-second aging, every message that waits longer than that is
+promoted to the top level, so a backlog that lasts minutes or hours collapses all levels into one FIFO and the predicted
+order disappears. This was the reason the Azure simulation did not pass, and the oracle did no better. We therefore replaced
+strict priority, as an option, with a scheme in which the levels share worker time by weights. Each level keeps a virtual
+clock, a pull serves the non-empty level with the smallest clock, and the level is charged the message's expected cost divided
+by its weight, so that with weights of 8, 3 and 1 the levels receive about two thirds, a quarter and a twelfth of worker time
+while all have work. Promotion is then paused into a level that is already behind its share, so that aging cannot refill the
+top level during a backlog. The first implementation of the pausing rule was wrong, and we corrected it before
+pre-registering the experiment. On the Azure trace it cut mean latency against FIFO by \AgingSimHalf{}, \AgingSimEight{} and
+\AgingSimNinetyFive{} at loads of 0.5, 0.8 and 0.95, and by \AgingSimVsTodayHalf{} to \AgingSimVsTodayNinetyFive{} against the
+default aging, but its gate passed only at load 0.8. On the production flow it cut mean latency by \AgingProdMeanVsPred{}
+against predictive routing with default aging, but raised all-message P99 by \AgingProdPNinetyNine{}, over its ten-percent
+guardrail, so that gate failed too. The weights and the pausing rule therefore stay opt-in. Later experiments on other
+traces and on RabbitMQ (Section~\ref{sec:results}) are the stronger evidence for them.
+
+Alongside these stages, we built the operational pieces that make the predictor safe to run: atomic, versioned snapshots of
+predictor state with a rollback copy, so that a restart does not start cold and a corrupt file is refused rather than
+trusted; counters for each fallback reason; drift signals, namely rolling agreement between predicted and actual level and a
+running average of the log error, which are informational and never change the routing; and a standalone configuration file
+with a one-line switch back to static routing. None of these changes the order in which messages are delivered. They are what
+let an operator turn prediction on in shadow mode, look at what it would have done, and turn it off again.
+
+Table~\ref{tab:optin} collects the optional features, why each was added, and what the experiments showed. The pattern is
+worth stating plainly. Each feature was added in response to a specific weakness, each was tested against a criterion set
+before the run, and none of them passed every gate it faced, which is why the broker's defaults are still static priority
+with no prediction.
+
+\begin{table}[t]
+\centering\small
+\caption{Opt-in features, why each was added and what the experiments showed. The default for every row is off.}
+\label{tab:optin}
+\begin{tabular}{p{2.9cm}p{3.6cm}p{7.6cm}}
+\toprule
+Feature & Added because & What the experiments showed \\
+\midrule
+Predictive routing & static priorities need a person who knows each job's cost & passed on the production flow and on AWS; no gate passed on the Azure trace with default aging \\
+Size-binned keys & per-key medians ignore input size & more accurate predictions, but no reliable latency gain under load; one job type got worse \\
+Weights and pausing aging & default aging collapses the levels in long backlogs & large mean-latency gains on both serverless traces and on RabbitMQ; all-message P99 rose in the production flow \\
+Ingress features and persistent feedback & to compare candidate learners offline & enabled the comparison; no learner beat per-key statistics \\
+\bottomrule
+\end{tabular}
+\end{table}
