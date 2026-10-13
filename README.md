@@ -15,7 +15,7 @@ A research messaging system that predicts each message's processing time by **st
 
 ---
 
-## Project status
+## Status
 
 **Phase 1 complete; Phase 2 implemented and evaluated.** The core gRPC broker includes multi-level priority queues, producer/consumer clients, DLQ, aging, retries, and in-flight management. Phase 2 adds an in-process [per-key duration predictor](docs/duration-predictor.md) wired into `route_message()` with shadow and opt-in predictive modes, learning from Ack settlement, snapshots, drift counters and a [standalone config file](docs/configuration.md), plus [versioned ingress features](analysis/README.md) and [bounded persistent feedback](docs/feedback.md). **Default routing stays static.**
 
