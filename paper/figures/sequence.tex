@@ -1,0 +1,35 @@
+\resizebox{\textwidth}{!}{%
+\begin{tikzpicture}[
+    font=\small,
+    head/.style={draw=hbslate, rounded corners=3pt, minimum height=0.9cm, minimum width=2.5cm, align=center, fill=white},
+    life/.style={draw=hbslate!70, dashed, line width=0.5pt},
+    msg/.style={-{Stealth[length=5pt]}, color=hbink, line width=0.6pt},
+    lrn/.style={-{Stealth[length=5pt]}, color=hbsignal, line width=0.8pt},
+    ret/.style={-{Stealth[length=5pt]}, color=hbslate, dashed, line width=0.6pt},
+    lab/.style={font=\footnotesize, fill=white, inner sep=1.5pt},
+    note/.style={draw=hbslate!60, rounded corners=2pt, fill=hbslate!7, font=\footnotesize, align=left, inner sep=3pt}
+  ]
+  % lifelines
+  \foreach \n/\x/\t in {prod/0/Producer, proxy/3.6/Proxy, rt/7.2/\texttt{route\_message()}, pr/10.8/Predictor, q/14.4/Queue and leases, cons/18.0/Consumer} {
+    \node[head] (\n) at (\x,0) {\t};
+    \draw[life] (\n.south) -- (\x,-12.0);
+  }
+  % 1-4: ingress and routing
+  \draw[msg] (0,-1.2) -- node[lab, above=1pt] {\texttt{Submit}(payload, headers)} (3.6,-1.2);
+  \node[note, anchor=west] at (3.75,-1.85) {stamp id, arrival time, producer id};
+  \draw[msg] (3.6,-2.5) -- node[lab, above=1pt] {\texttt{accept}} (7.2,-2.5);
+  \draw[lrn] (7.2,-3.3) -- node[lab, above=1pt] {\texttt{predict}(key)} (10.8,-3.3);
+  \draw[ret] (10.8,-4.1) -- node[lab, above=1pt] {level, or default if not trusted} (7.2,-4.1);
+  \draw[msg] (7.2,-4.9) -- node[lab, above=1pt] {\texttt{enqueue}(level)} (14.4,-4.9);
+  % 5-7: delivery
+  \draw[msg] (18.0,-6.0) -- node[lab, above=1pt] {\texttt{Pull}} (14.4,-6.0);
+  \draw[msg] (14.4,-6.8) -- node[lab, above=1pt] {message and attempt token; lease starts, level hidden} (18.0,-6.8);
+  \node[note, anchor=east] at (17.85,-7.55) {run handler, measure duration $t$};
+  % 8-9: settlement and learning
+  \draw[msg] (18.0,-8.4) -- node[lab, above=1pt] {\texttt{Ack}(token, \texttt{processing\_time\_ms}$=t$)} (7.2,-8.4);
+  \node[note, anchor=west] at (7.35,-9.1) {check token, lease and TTL; settle};
+  \draw[lrn] (7.2,-10.1) -- node[lab, above=1pt] {\texttt{observe}(key, $t$)} (10.8,-10.1);
+  % alternatives
+  \node[note, text width=15.5cm, anchor=north west] at (0,-10.9)
+    {\textbf{Otherwise.} A \texttt{Nack}, or a lease that expires before the \texttt{Ack}, requeues the message at its original level (to the tail) while retries remain, then dead-letters it. A \texttt{Nack} teaches the predictor nothing; an expired lease records a \emph{censored} observation instead of a duration.};
+\end{tikzpicture}}

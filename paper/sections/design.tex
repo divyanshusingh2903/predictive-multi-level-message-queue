@@ -20,6 +20,25 @@ an experiment showed a weakness.
   \label{fig:architecture}
 \end{figure}
 
+Figure~\ref{fig:sequence} follows one message through every exchange, in order. A producer's \texttt{Submit} reaches the proxy, which
+adds the identifier, the arrival time and the producer's identity and passes the message to the routing function. The routing
+function asks the predictor for the key's level and receives either that level or, when the history is not trustworthy, the
+default. It then places the message in the queue. Nothing about the level is visible from there on: a consumer's \texttt{Pull}
+returns the message with an attempt token, and the lease that bounds the delivery starts at that moment. The consumer runs
+its handler, measures how long it took, and reports that duration with its \texttt{Ack}. The broker checks the token, the lease and the
+message's time to live, settles the delivery, and only then tells the predictor the duration, which is why a late or replayed
+acknowledgement teaches nothing. The failure paths are summarised under the figure: a \texttt{Nack}, or a lease that expires first, puts the
+message back at the tail of its original level until its retries run out, and an expired lease leaves a censored observation in place of a duration.
+
+\begin{figure}[t]
+  \centering
+  \input{figures/sequence}
+  \caption{The exchanges for one message, in order. Black arrows are the ordinary delivery path, dashed arrows are returns, and the orange
+  arrows are the two calls that connect the broker to the predictor: a lookup when the message arrives and an update when its
+  acknowledgement is accepted.}
+  \label{fig:sequence}
+\end{figure}
+
 We built the broker in stages, and the order matters because each stage was shaped by what the previous one measured. The
 first stage was an ordinary broker with no prediction at all. It has a fixed number of priority levels, an optional aging
 thread that promotes messages that have waited too long, retries on \texttt{Nack}, a dead-letter queue for messages that
@@ -27,6 +46,19 @@ exhaust their retries or expire, and per-delivery attempt tokens and leases, so 
 recovered while a stale acknowledgement cannot settle a newer delivery. Delivery is at-least-once for as long as the process
 runs, and all state is in memory. Static routing, in which every message gets the same default level, is what this stage
 gives and what the broker still does by default. It is also the baseline against which every later feature is measured.
+
+Figure~\ref{fig:states} shows the delivery states that this stage defines. A message is queued until a \texttt{Pull} selects it, and it is then in
+flight, owned by one consumer under one attempt token. An acknowledgement within the lease completes it; a \texttt{Nack} or an expired lease
+returns it to the tail of its original level while retries remain; and exhausting its retries, or the expiry of its time to live, sends it to the dead-letter
+queue. The state machine is the same with or without prediction, which is what lets the predictor be added without changing delivery semantics.
+
+\begin{figure}[t]
+  \centering
+  \input{figures/states}
+  \caption{Delivery states of a message. The orange arrow is the retry path; its destination is the message's original level, which under
+  predictive routing is the level the predictor chose.}
+  \label{fig:states}
+\end{figure}
 
 The second stage added prediction. We first planned a separate classifier service fed with features captured at ingress and
 with durations persisted by the broker, and we built that plumbing: a bounded, versioned capture of ingress features and a
@@ -42,6 +74,35 @@ is added to the message's key. At ingress the broker takes the median of the key
 it to a level using boundaries that come from quantiles of the global histogram, so that the levels adapt to the workload
 instead of being set by hand. The lookup costs about a hundred nanoseconds in isolation and about two microseconds inside
 the running broker.
+
+Figure~\ref{fig:predictor} lays out the two paths through the predictor. The learning path is the one at the left: only an accepted settlement
+contributes, the key's histogram and the global histogram both grow, and the boundaries are recomputed periodically and move only when they
+have shifted by more than a small margin, so that a single unusual job cannot reshuffle the levels. The routing path at the right is a short
+sequence of questions, each of which can send the message to the default level, and only a message that passes all of them is routed by its estimate.
+
+\begin{figure}[t]
+  \centering
+  \input{figures/predictor}
+  \caption{Inside the predictor. Left: what happens when a delivery settles. Right: how a level is chosen when a message arrives. Orange boxes
+  touch learned state, and the dashed box is where every failed check lands.}
+  \label{fig:predictor}
+\end{figure}
+
+Figure~\ref{fig:histogram} shows how the pieces fit on a concrete example. The top panel is the pooled histogram of every key, and its tertiles, shown by
+the dashed lines, are the two boundaries that divide three levels. Below it are four keys. A key whose handlers take a few milliseconds has its median to the left of the
+first boundary and is routed to the highest-priority level, one whose handlers take tens to hundreds of milliseconds falls in the middle, and one that takes seconds goes to the
+lowest. The last key is the case the tail check exists for. Ninety-two percent of its jobs are fast, so its median would put it in the top level, but eight percent take thousands of
+times longer, and routing it by its median would let those jobs delay everything behind them. Its ninety-ninth percentile is far above sixteen times its median, so it is
+routed to the default level instead.
+
+\begin{figure}[t]
+  \centering
+  \input{figures/histogram}
+  \caption{An illustration of how a key's history becomes a level. Bars are decayed duration histograms on a logarithmic axis; the orange
+  triangle marks each key's median and the short bar its ninety-ninth percentile. The key shapes are made up, and the boundaries and levels are
+  computed from them by the rule of Section~\ref{sec:equations}.}
+  \label{fig:histogram}
+\end{figure}
 
 A predictor that routes on its own estimate has to know when not to trust it, and most of this stage's detail is about
 that. A key with too few observations, one that has gone unobserved for too long, or one whose tail is far above its median
@@ -79,7 +140,7 @@ order disappears. This was the reason the Azure simulation did not pass, and the
 strict priority, as an option, with a scheme in which the levels share worker time by weights. Each level keeps a virtual
 clock, a pull serves the non-empty level with the smallest clock, and the level is charged the message's expected cost divided
 by its weight, so that with weights of 8, 3 and 1 the levels receive about two thirds, a quarter and a twelfth of worker time
-while all have work. Promotion is then paused into a level that is already behind its share, so that aging cannot refill the
+while all have work. Figure~\ref{fig:weights} applies the rule to a backlog in which every level always has work. Promotion is then paused into a level that is already behind its share, so that aging cannot refill the
 top level during a backlog. The first implementation of the pausing rule was wrong, and we corrected it before
 pre-registering the experiment. On the Azure trace it cut mean latency against FIFO by \AgingSimHalfAbs{}, \AgingSimEightAbs{} and
 \AgingSimNinetyFiveAbs{} at loads of 0.5, 0.8 and 0.95, and by \AgingSimVsTodayHalfAbs{} to \AgingSimVsTodayNinetyFiveAbs{} against the
@@ -87,6 +148,15 @@ default aging, but its gate passed only at load 0.8. On the production flow it c
 against predictive routing with default aging, but raised all-message P99 by \AgingProdPNinetyNine{}, over its ten-percent
 guardrail, so that gate failed too. The weights and the pausing rule therefore stay opt-in. Later experiments on other
 traces and on RabbitMQ (Section~\ref{sec:results}) are the stronger evidence for them.
+
+\begin{figure}[t]
+  \centering
+  \input{figures/weights}
+  \caption{The weighted-share rule applied to a backlog in which all three levels always have work and every message costs the same. The
+  top strip shows the first 48 pulls in the order the rule serves them; the bars show each level's share of pulls against its ideal share $w_\ell/\sum_j w_j$ (orange mark).
+  A computed illustration of the rule, not a measurement.}
+  \label{fig:weights}
+\end{figure}
 
 Alongside these stages, we built the operational pieces that make the predictor safe to run: atomic, versioned snapshots of
 predictor state with a rollback copy, so that a restart does not start cold and a corrupt file is refused rather than
