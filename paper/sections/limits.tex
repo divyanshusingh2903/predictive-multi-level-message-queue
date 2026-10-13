@@ -5,7 +5,7 @@ have no production workload. The production-flow scenario was written by us, and
 simulated: arrivals are reconstructed where a trace does not record them, and the Huawei timestamps are completion times,
 so the arrival process we replay is an inference. The experiments ran in one cloud provider, one region, one placement
 group and two instance types, which gives a low-latency network and says nothing about a wide-area deployment. The
-thirty-minute run has only two repetitions, so its checks are per repetition and carry no intervals.
+thirty-minute run has only two repetitions, so its checks are per repetition and carry no intervals. The local production-flow results depend on CPU speed, as the comparison with the original run in Section~\ref{sec:results} shows, so that run's absolute effect sizes should not be carried to other hardware.
 
 Some limitations come from how the design learns. Durations are learned from handlers that succeeded, so a key whose
 slow cases fail looks faster than it is. The budgets of the first experiment were set after seeing earlier offline
@@ -23,5 +23,6 @@ throughput. Kafka, Pulsar, managed queues and durable modes were out of scope, a
 
 Finally, the code, configurations, pre-registrations and result files are in the repository at
 \url{https://github.com/divyanshusingh2903/predictive-multi-level-message-queue}, with the raw per-message data archived
-outside git and hashed with SHA-256. \todo{record the release tag and archive identifier}
-\todo{Disclose AI-assisted drafting per the venue's current policy (issue \#27).}
+outside git and hashed with SHA-256, so that the published files can be checked against them. The version described here is the release tagged \texttt{v0.1.0-preprint}.
+
+\paragraph{Use of AI assistance.} Claude, a large language model from Anthropic, was used to help draft and edit the text of this paper and to help write the code and analysis scripts behind it. The author directed the work, reviewed the results and the text, and is responsible for the content.

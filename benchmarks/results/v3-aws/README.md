@@ -37,22 +37,22 @@ Every production-flow run (E1 35, E2 8, E3 40) completed every message, with no 
 
 ## E1: v2 replicated on cloud hardware ([report](e1/report.md))
 
-**Gate passed.** Against the published `v2-prodflow-1`:
+**Gate passed.** Against the quiet-machine re-run of `v2-prodflow-1` (the original run's numbers are in [the re-run README](../rerun-2026-10-12/README.md)):
 
-| Criterion | `v2-prodflow-1` | E1 (AWS) | Result |
+| Criterion | `v2-prodflow-1` re-run | E1 (AWS) | Result |
 |---|---|---|---|
-| P1 mean vs FIFO (≤ −15%) | −27.9% [−31.9, −24.7] | **−30.8%** [−35.3, −27.1] | pass |
-| P2 short-class P50 vs FIFO (≤ −30%) | −88.4% [−99.0, −72.6] | **−94.8%** [−99.0, −86.5] | pass |
-| G1 all-message P99 vs FIFO (≤ 1.25) | 1.04× [1.02, 1.06] | 1.03× [1.02, 1.05] | pass |
-| G2 export max wait vs FIFO (≤ 2.0, no run > 60 s) | 1.02× [0.96, 1.05] | 0.99× [0.90, 1.05] | pass |
+| P1 mean vs FIFO (≤ −15%) | −25.6% [−29.4, −21.8] | **−30.8%** [−35.3, −27.1] | pass |
+| P2 short-class P50 vs FIFO (≤ −30%) | −57.7% [−70.0, −45.3] | **−94.8%** [−99.0, −86.5] | pass |
+| G1 all-message P99 vs FIFO (≤ 1.25) | 1.02× [1.00, 1.05] | 1.03× [1.02, 1.05] | pass |
+| G2 export max wait vs FIFO (≤ 2.0, no run > 60 s) | 0.99× [0.95, 1.03] | 0.99× [0.90, 1.05] | pass |
 | G3 no lost work | pass | pass | pass |
 | G4 throughput vs FIFO (≥ 0.98) | 1.00× | 1.00× [1.00, 1.00] | pass |
-| S1 vs `static_tuned` (≤ +10%) | −10.9% | −14.4% | pass |
-| S2 vs `static_misconfigured` | −33.8% | −36.8% | pass |
-| S3 shadow overhead (±5%) | −0.6% | −0.1% | pass |
-| S4 producer-only keys vs FIFO (≤ −5%) | −15.4% | −15.7% | pass |
+| S1 vs `static_tuned` (≤ +10%) | −11.1% | −14.4% | pass |
+| S2 vs `static_misconfigured` | −30.1% | −36.8% | pass |
+| S3 shadow overhead (±5%) | +0.1% | −0.1% | pass |
+| S4 producer-only keys vs FIFO (≤ −5%) | −10.5% | −15.7% | pass |
 
-Every v2 verdict holds, and P1 and P2 fall inside the v2 intervals. By the arms' medians the oracle is 32% below FIFO
+Every v2 verdict holds, and P1 falls inside the v2 re-run's interval. P2 is higher on AWS (−94.8% against −57.7%, outside its interval), since the AWS CPU is about 2× faster than the re-run's, so the load is lighter. By the arms' medians the oracle is 32% below FIFO
 and `predictive` 29%, so the predictor is close to its ceiling. Prediction lookups take 1.9 µs on average.
 
 ## E3: Harbinger against RabbitMQ and Redis ([report](e3/report.md))
