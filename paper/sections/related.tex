@@ -1,28 +1,74 @@
-\section{Related work}
+\section{Related work}\label{sec:related}
 
-\paragraph{Size-based scheduling.}
-Shortest remaining processing time is optimal for mean response time on a single server \citep{schrage1968}, and
-size-based policies improve web server response times without starving large requests in practice
-\citep{harchol2003}. The SOAP framework analyses a broad class of age-based policies, including priority classes and
-Gittins-style indices \citep{scully2018soap}. \sys{} is a non-preemptive, queue-level instance: it can reorder only
-what has not started.
+We organise prior work by the assumption it makes about job sizes, which is the axis on which \sys{} differs.
 
-\paragraph{Scheduling with estimated sizes.}
-Estimates can be good enough: \citet{dellamico2014} show that even imprecise size estimates beat size-oblivious
-policies unless the size distribution is highly skewed, and that under-estimation is far more harmful than
-over-estimation. \citet{mitzenmacher2019} analyses queues that schedule by predicted service times and defines a
-price of misprediction. In HPC, replacing user runtime estimates with the average of a user's last two runtimes
-improves backfilling \citep{tsafrir2007}. \sys{} applies the same idea, per-key history as the prediction, to a
-general message queue, and measures where it fails.
+\subsection{Scheduling when sizes are known}
+Shortest remaining processing time (SRPT) minimises mean response time \citep{schrage1968}. The SOAP framework gives a
+single analysis for a broad class of age-based policies, including priority classes, SRPT and Gittins-style indices
+\citep{scully2018soap}. The main objection to size-based policies is that they penalise long jobs. Analyses of SRPT
+find that, for realistic heavy-tailed sizes, large jobs are hurt much less than feared \citep{bansal2001}, and
+unfairness has been classified formally \citep{wierman2003}. In practice, serving small web requests first improved
+response times with little loss to large ones \citep{harchol2003}. For multi-server systems, size-interval task
+assignment sends jobs of similar size to the same host \citep{harchol1999sita}, and size-aware sharding applies the same
+idea to key-value stores to avoid head-of-line blocking \citep{didona2019minos}. \sys{} sits at a single queue shared by
+many workers and is non-preemptive; it can only reorder what has not started, and so inherits the long-job penalty
+(Section~\ref{sec:results}).
 
-\paragraph{Workloads.}
-We use the Azure Functions 2021 invocation trace \citep{zhang2021harvest} (see also \citep{shahrad2020}), the Huawei
-Cloud 2025 request traces \citep{joosen2024}, and two logs from the Parallel Workloads Archive
-\citep{feitelson2014}.
+\subsection{Scheduling when sizes are unknown}
+When sizes are unknown but their distribution is known, the Gittins index minimises mean response time
+\citep{gittins1979}, and it remains near-optimal on multiple servers \citep{scully2020gittins}. With no information,
+foreground--background (least attained service) favours young jobs \citep{nuyens2008}. Tiresias uses a discretised
+Gittins index, falling back to least attained service, to schedule GPU training jobs whose durations are unpredictable
+\citep{gu2019tiresias}. These policies learn from the age of a running job. \sys{} cannot: a queue decides before the
+job starts, and handlers cannot be preempted, so it learns from the \emph{history of the same kind of job} instead.
 
-\paragraph{Learned predictors.}
-Before settling on statistics, we compared eight online regressors and statistics offline, including River models
-\citep{montiel2021}; none passed every frozen quality gate, and per-key statistics then passed the downstream
-scheduling gate (Section~\ref{sec:results}).
+\subsection{Scheduling with estimated or predicted sizes}
+Inaccurate size information has been studied since \citet{lu2004}. \citet{dellamico2014} show that size-based policies
+tolerate error unless the size distribution is highly skewed, and that under-estimation causes most of the harm:
+over-estimation delays one job, under-estimation can let a long job block many. \citet{mitzenmacher2019} analyses queues
+that use predicted service times and introduces the price of misprediction; \citet{scully2022uniform} give a variant
+of SRPT whose approximation ratio tends to one as estimation error tends to zero, uniformly. The broader programme of
+algorithms with predictions \citep{mitzenmacher2022cacm}, and its application to queues and LLM serving
+\citep{mitzenmacher2025queueing}, takes a prediction as given. We take a complementary, systems view: how a broker
+obtains a prediction without configuration, from the durations it already observes, and where that prediction fails.
 
-\todo{Add queueing-system related work: RabbitMQ priority queues, SQS/Pub/Sub; verify each reference before citing (issue \#29).}
+\subsection{Runtime prediction in clusters and supercomputers}
+HFSP brings size-based scheduling with aging to Hadoop, estimating job sizes online while jobs run, and shows
+tolerance to estimation error \citep{pastorelli2013}. In HPC, user-supplied runtime estimates are
+notoriously inaccurate; replacing them with the mean of the user's last two runtimes improved backfilling
+\citep{tsafrir2007}, and machine-learned predictors with purpose-built cost functions improved it further \citep{gaussier2015}. Decima learns
+cluster schedules with reinforcement learning \citep{mao2019decima}. These systems schedule long, batch-like jobs in
+cluster managers with a job identity (a user or a job template). \sys{} applies the per-history idea to a general queue
+of short jobs, where the key must be inferred from the producer and a job-type header, and measures it on traces
+where keys do recur (serverless functions) and where they do not (two HPC logs).
+
+\subsection{Serverless and microsecond-scale schedulers}
+Serverless platforms face the same short-versus-long mix. Hermod studies scheduling policies for serverless functions
+and finds that common choices such as late binding and random load balancing are sub-optimal for typical duration
+distributions \citep{kaffes2022hermod}. SFS and ALPS schedule functions inside a host's operating system to approximate
+SRTF/SRPT, and ALPS learns priorities from recent workload behaviour \citep{fu2022sfs,fu2024alps}. Shinjuku achieves
+microsecond-scale tail latency with fast preemption \citep{kaffes2019shinjuku}. These work at the CPU-scheduling or
+function-placement layer and rely on preemption or processor control. \sys{} operates one layer up, on the order in
+which a broker hands messages to workers, and needs neither.
+
+\subsection{Message brokers}
+The common brokers expose no learning. SQS has no priority \citep{sqstypes}; Kafka orders a partition by offset
+\citep{kreps2011kafka}; RabbitMQ lets publishers set a priority per message, which works only with a small consumer
+prefetch, and its quorum queues use strict priority, which can starve low-priority messages \citep{rabbitmqpriority}. We are not aware of a
+general-purpose broker that learns message cost and uses it to route, though our search was not exhaustive. Our
+RabbitMQ experiments use \sys{}'s predictor as an external sidecar that sets those priorities, showing the idea is not
+tied to our broker.
+
+\subsection{Workloads}
+We use the Azure Functions 2021 invocation trace \citep{zhang2021harvest} (the earlier Azure characterisation is
+\citep{shahrad2020}), the Huawei Cloud 2025 request traces \citep{joosen2024}, and two logs from the Parallel Workloads
+Archive \citep{feitelson2014}. Eight online learners, including River models \citep{montiel2021}, were compared offline
+with per-key statistics; none passed every frozen gate, and statistics then passed the scheduling gate
+(Section~\ref{sec:results}).
+
+\subsection{Positioning}
+In sum, \sys{} takes the size-based scheduling result that is well established when sizes are known, replaces the
+assumption with a per-key estimate learned from acknowledgements, and places the whole mechanism in the broker, with
+aging to bound the damage of bad estimates. What is new here is not the policy but the zero-configuration loop, the
+evidence of when it helps (production-style job queues; serverless traces under an overload-aware aging design), and
+the evidence of when it does not.

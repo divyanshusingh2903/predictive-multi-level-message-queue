@@ -1,26 +1,66 @@
-\section{Introduction}
+\section{Introduction}\label{sec:intro}
 
-Background work (e-mail, image resizing, report exports, webhooks) usually shares one queue, and jobs of very
-different cost wait behind each other. If service times were known, serving the shortest first would lower mean
-latency \citep{schrage1968}. Production queues rarely know them: operators split queues or assign priorities by hand,
-per endpoint, and must keep that map correct as code and traffic change. A mistaken map is worse than none; in our
-benchmark a plausible misconfiguration was slower than FIFO.
+Most applications push background work through a queue: e-mail and push notifications, image resizing, search
+re-indexing, webhook delivery, report exports. A single queue often carries jobs whose costs differ by orders of
+magnitude. A report export that needs tens of seconds sits in front of a notification that needs a few milliseconds,
+and under load the cheap job waits for the expensive one. This is head-of-line blocking, and it is the same mechanism
+that makes tail latency hard in interactive services \citep{dean2013tail}. Mean and median latency suffer too, because
+most jobs are the cheap ones.
 
-We ask whether a broker can learn the map itself. \sys{} keeps, for each message key (the producer, optionally joined
-to a job-type header), a decaying histogram of the handler durations reported on acknowledgement. At ingress it looks
-up the key's expected duration and maps it to a priority level using boundaries taken from global quantiles. Cold,
-stale or high-variance keys take a default level. The predictor is plain statistics inside the broker; no model is
-trained or served.
+\paragraph{What theory says to do.}
+If each job's processing time were known, serving the shortest first would minimise mean response time on one server
+\citep{schrage1968}. The result is old and robust. The same idea underlies web servers that favour small requests
+\citep{harchol2003}, schedulers for data-processing clusters \citep{pastorelli2013}, and size-interval task
+assignment across servers \citep{harchol1999sita}. It also has a known price: favouring short jobs delays long ones,
+and the literature has spent considerable effort on whether and when that is unfair
+\citep{bansal2001,wierman2003}. When sizes are unknown but their distribution is, the Gittins index is optimal
+\citep{gittins1979,scully2020gittins}, and when nothing is known, the foreground--background policy favours jobs that
+have received the least service \citep{nuyens2008}; GPU cluster managers use both ideas \citep{gu2019tiresias}.
+
+\paragraph{What queues do today.}
+Message queues largely do not use any of this. Amazon SQS offers standard and FIFO queues and no message priority
+\citep{sqstypes}. Kafka is a log, and a partition is consumed in order \citep{kreps2011kafka}. RabbitMQ does support
+per-message priorities \citep{rabbitmqpriority}, but the priority is a number the publisher must supply, and it only
+reorders messages that are still queued: with consumer prefetch too high, messages are already handed out and
+cannot be overtaken. So the burden falls on the operator, who splits queues or hand-assigns priorities per endpoint.
+That requires knowing each endpoint's cost, goes stale when code or traffic changes, and can backfire: in our
+benchmark a plausible misconfigured map was slower than doing nothing.
+
+\paragraph{The gap.}
+The scheduling literature mostly assumes that sizes are known, or that an estimate is given. The systems that
+do estimate sizes work at other layers: per-job estimates inside a cluster scheduler \citep{pastorelli2013}, runtime
+predictions for batch jobs in supercomputers \citep{tsafrir2007,gaussier2015}, or CPU scheduling inside a serverless
+host \citep{fu2022sfs,fu2024alps}. A general-purpose message broker, whose handlers are arbitrary code, has no
+declared job sizes, and no mechanism to learn them. Yet the broker sees something valuable: it delivers every message
+and receives the acknowledgement, so it can measure how long each kind of message actually took.
+
+\paragraph{Our approach.}
+\sys{} closes that loop inside the broker. For each message key (the producer, optionally joined to a job-type
+header) it maintains a decaying histogram of handler durations reported on acknowledgement. At ingress it looks up the
+key's expected duration and maps it to one of a few priority levels, using boundaries taken from global quantiles. Cold,
+stale or high-spread keys take a default level. No model is trained or served, and the operator configures no
+priorities. Estimates will be wrong, and the literature says how: over-estimation is mild and under-estimation is
+dangerous \citep{dellamico2014}. We therefore keep aging, so a long job misjudged as short, or one that has waited a
+long time, cannot starve.
+
+\paragraph{What we find.}
+We evaluate with experiments whose configurations and pass criteria were frozen before the registered runs, and we
+report the cases where the gate failed. In short: on a production-style workload the approach beats FIFO, hand-tuned
+priorities and misconfigured priorities; the benefit replicates on separate cloud hardware and transfers to RabbitMQ
+through a sidecar; and it breaks down in identifiable regimes: backlogs lasting hours (where aging erases the order),
+workloads whose keys do not recur, and workloads where long jobs carry most of the work.
 
 \paragraph{Contributions.}
 \begin{itemize}
-  \item A broker design with an in-process per-key duration predictor, shadow and predictive routing modes, and an
-        opt-in worker-time weighting with pausing aging for sustained overload (Section~\ref{sec:design}).
-  \item A pre-registered evaluation with an oracle reference, hand-tuned and misconfigured static baselines, and an
-        independent-host AWS replication and comparison with RabbitMQ and Redis (Section~\ref{sec:results}).
-  \item Trace-driven simulations on four public traces from two serverless providers and two HPC logs, with the
-        negative results kept: where the gate failed, and why (Section~\ref{sec:results}).
-  \item The scheduling trade-off stated plainly: for non-preemptive queues, shortest-expected-first lowers median and
-        mean latency but does not improve P99 when long jobs are common, and costs long jobs.
+  \item A broker design in which per-key duration statistics, learned from acknowledgements, drive multi-level priority
+        scheduling with no operator configuration; an opt-in worker-time weighting with pausing aging for sustained
+        overload (Section~\ref{sec:design}).
+  \item A pre-registered evaluation with an oracle reference, hand-tuned and misconfigured baselines, an AWS replication
+        on separate hardware, and a comparison with RabbitMQ and Redis (Sections~\ref{sec:method}--\ref{sec:results}).
+  \item Trace-driven simulation on four public traces from two serverless providers and two HPC logs, with the negative
+        results kept and explained.
+  \item A plain statement of the trade-off: for a non-preemptive queue, shortest-expected-first lowers median and mean
+        latency but does not improve P99 when long jobs are common, and long jobs can lose.
 \end{itemize}
-We do not claim a tail-latency improvement, and all evidence is synthetic or trace-driven (Section~\ref{sec:limits}).
+All evidence is synthetic or trace-driven; we make no claim of a tail-latency gain or of production readiness
+(Section~\ref{sec:limits}).
