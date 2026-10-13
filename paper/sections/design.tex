@@ -70,8 +70,8 @@ up to \FSBinnedTier{}, and a gradient-boosted model over every feature did no be
 the key, not a model: an optional log$_2$ size bin, read from the payload length or from a numeric header, with a rule that a
 bin that has not yet seen enough jobs borrows its un-binned parent's estimate and never another key's, and with each job
 teaching both the bin and its parent. Under load the result was weaker than the measurement suggested. The bins improved the
-predictor's accuracy, but mean latency fell by only \SizeBinsMeanCI{} against job-type keys, short of the pre-registered
-bar, and one job type whose cost does not follow its size did \SizeBinsInvoice{} worse. They remain an opt-in.
+predictor's accuracy, but mean latency changed by only \SizeBinsMeanCI{} against job-type keys, short of the pre-registered
+bar, and one job type whose cost does not follow its size did \SizeBinsInvoiceAbs{} worse. They remain an opt-in.
 
 The fourth stage addressed aging. With the broker's default five-second aging, every message that waits longer than that is
 promoted to the top level, so a backlog that lasts minutes or hours collapses all levels into one FIFO and the predicted
@@ -81,9 +81,9 @@ clock, a pull serves the non-empty level with the smallest clock, and the level 
 by its weight, so that with weights of 8, 3 and 1 the levels receive about two thirds, a quarter and a twelfth of worker time
 while all have work. Promotion is then paused into a level that is already behind its share, so that aging cannot refill the
 top level during a backlog. The first implementation of the pausing rule was wrong, and we corrected it before
-pre-registering the experiment. On the Azure trace it cut mean latency against FIFO by \AgingSimHalf{}, \AgingSimEight{} and
-\AgingSimNinetyFive{} at loads of 0.5, 0.8 and 0.95, and by \AgingSimVsTodayHalf{} to \AgingSimVsTodayNinetyFive{} against the
-default aging, but its gate passed only at load 0.8. On the production flow it cut mean latency by \AgingProdMeanVsPred{}
+pre-registering the experiment. On the Azure trace it cut mean latency against FIFO by \AgingSimHalfAbs{}, \AgingSimEightAbs{} and
+\AgingSimNinetyFiveAbs{} at loads of 0.5, 0.8 and 0.95, and by \AgingSimVsTodayHalfAbs{} to \AgingSimVsTodayNinetyFiveAbs{} against the
+default aging, but its gate passed only at load 0.8. On the production flow it cut mean latency by \AgingProdMeanVsPredAbs{}
 against predictive routing with default aging, but raised all-message P99 by \AgingProdPNinetyNine{}, over its ten-percent
 guardrail, so that gate failed too. The weights and the pausing rule therefore stay opt-in. Later experiments on other
 traces and on RabbitMQ (Section~\ref{sec:results}) are the stronger evidence for them.
@@ -115,3 +115,47 @@ Ingress features and persistent feedback & to compare candidate learners offline
 \bottomrule
 \end{tabular}
 \end{table}
+
+\subsection{The mechanism in equations}\label{sec:equations}
+
+The routing rule is simple enough to state exactly, and stating it removes any doubt about what the experiments measured.
+Write $x_{k,1},\dots,x_{k,n_k}$ for the successful handler durations observed so far for key $k$, in the order they were
+acknowledged, and let $H_k$ be the key's histogram over a fixed set of geometric duration bins $b$. With a decay factor
+$d<1$, each observation's weight shrinks by $d$ every time a newer one arrives,
+\begin{equation}
+  H_k(b) \;=\; \sum_{i=1}^{n_k} d^{\,n_k-i}\,\mathbf{1}\!\left[x_{k,i}\in b\right],
+  \qquad
+  \hat{x}_k \;=\; Q_{1/2}(H_k),
+  \label{eq:histogram}
+\end{equation}
+where $Q_q(\cdot)$ is the $q$-quantile of a histogram, and the median $\hat{x}_k$ is the key's expected duration. After
+$h = \ln(1/2)/\ln d$ new observations an old regime carries half the weight, which is how quickly the predictor forgets (about
+138 observations for $d=0.995$). A second histogram $G$ pools every key. With $L$ levels, its quantiles supply the boundaries,
+and the level is the number of boundaries that the estimate has reached,
+\begin{equation}
+  \beta_j \;=\; Q_{j/L}(G),\quad j=1,\dots,L-1,
+  \qquad
+  \ell(k) \;=\; \bigl|\{\,j : \beta_j \le \hat{x}_k\,\}\bigr|,
+  \label{eq:level}
+\end{equation}
+so that level $0$, the highest priority, holds the shortest expected jobs. The estimate is used only when it is trustworthy.
+Otherwise the message takes the default (middle) level $\ell_0$. The key must have at least $n_{\min}$ observations; it must have
+been active within the last $\tau$ (thirty minutes); its tail must be close to its median, $Q_{0.99}(H_k)\le\kappa\,Q_{1/2}(H_k)$ with
+$\kappa=16$; and the decayed share $c_k$ of its deliveries that overran their lease must not exceed $\gamma=5\%$. Only a message that passes all four is
+routed by Equation~\eqref{eq:level}. Time-based decay, eviction and the hysteresis that stops boundaries from jittering are omitted
+here for clarity.
+
+The opt-in weights replace strict priority with a share of worker time. Each level $\ell$ has a weight $w_\ell$ and a virtual
+clock $v_\ell$, starting at zero. A pull serves the non-empty level with the smallest clock and charges that level the
+message's expected cost $\hat{c}$ divided by its weight,
+\begin{equation}
+  \ell^{\star} \;=\; \arg\min_{\ell\,:\,\text{level }\ell\text{ non-empty}} v_\ell,
+  \qquad
+  v_{\ell^{\star}} \;\leftarrow\; v_{\ell^{\star}} + \frac{\hat{c}}{w_{\ell^{\star}}},
+  \label{eq:clock}
+\end{equation}
+so that, while every level has work, level $\ell$ receives a fraction $w_\ell/\sum_{j} w_j$ of worker time: two thirds, a
+quarter and a twelfth for the weights $(8,3,1)$ that we use. An empty level cannot save credit for later. Pausing aging then skips
+the promotion of a message from level $\ell$ to $\ell-1$ for as long as level $\ell-1$ is behind, meaning that it still holds
+promoted messages and its oldest message has waited at least the aging threshold, which is what keeps aging from refilling the top
+level during a backlog.

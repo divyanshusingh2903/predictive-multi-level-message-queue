@@ -54,8 +54,8 @@ place, so a long job that was misjudged, or simply waited a long time, still mov
 We evaluated this design the way one should evaluate a claim that could easily be wrong: with experiments whose
 configurations and pass criteria were frozen before the registered runs, with an oracle as a reference, and with the
 failures reported alongside the successes. On a production-style job queue the approach reduced mean latency by
-\EOneMeanVsFifo{} against FIFO on AWS, beat hand-tuned priorities, and, unlike a misconfigured map, did not make
-things worse. Run as a sidecar next to RabbitMQ, the same predictor cut mean latency by \EThreeSidecar{}, so the idea
+\EOneMeanVsFifoAbs{} against FIFO on AWS, beat hand-tuned priorities, and, unlike a misconfigured map, did not make
+things worse. Run as a sidecar next to RabbitMQ, the same predictor cut mean latency by \EThreeSidecarAbs{}, so the idea
 does not depend on our broker. It also has clear limits, which the traces make visible: when backlogs last for hours the
 broker's own aging erases the predicted order; when keys do not recur, as in two HPC logs, there is nothing to learn
 from; and when long jobs carry most of the work, favouring short ones can make the overall result worse. Because the

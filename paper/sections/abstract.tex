@@ -5,9 +5,9 @@ each message's expected processing time from the durations it has already observ
 per-key histogram fed by acknowledgements) and routes it into a multi-level queue, so that short expected work is
 served first without configuration. We evaluate it with experiments whose configurations and pass criteria were frozen
 before the registered runs: a production-style job-queue benchmark, a replication of it on AWS, a comparison with
-RabbitMQ and Redis, and trace-driven simulations on four public traces. Predictive routing cut mean latency
-\EOneMeanVsFifo{} against FIFO on AWS (\VTwoMeanVsFifo{} locally) and beat a hand-tuned static priority map; the same
-predictor running as a sidecar on RabbitMQ cut mean latency \EThreeSidecar{}. We also report where it does not work.
+RabbitMQ and Redis, and trace-driven simulations on four public traces. Predictive routing cut mean latency by
+\EOneMeanVsFifoAbs{} against FIFO on AWS (\VTwoMeanVsFifoAbs{} locally) and beat a hand-tuned static priority map; the same
+predictor running as a sidecar on RabbitMQ cut mean latency by \EThreeSidecarAbs{}. We also report where it does not work.
 Under hours-long backlogs, the broker's default aging erases the predictor's ordering; an opt-in weighted design
 recovers the gain on two serverless traces but harms long jobs on one HPC log; and on logs whose keys do not recur,
 the predictor has nothing to learn from. We make no claim of tail-latency improvement. \todo{final abstract after Alibaba/limits decision}

@@ -4,7 +4,14 @@ A scheduling claim is easy to overstate, so we fixed what would count as success
 support it. Each experiment has a configuration and a set of pass criteria committed to the repository before its first
 registered run, and the commit that froze them is recorded alongside the results. A criterion compares an arm against a
 baseline as a paired difference, per seed or per time window, with a bootstrap 95\% interval, and a gate passes only when
-every primary criterion does. The primary criteria concern mean latency and the median latency of short jobs. All-message
+every primary criterion does. Concretely, for a metric $M$ such as mean latency, the unit of pairing is a seed (or, in a simulation, a time window) $u$, and a
+relative-delta criterion is the average of the paired differences,
+\begin{equation}
+  \Delta \;=\; \frac{1}{|U|}\sum_{u\in U}\frac{M_u^{\text{arm}}-M_u^{\text{FIFO}}}{M_u^{\text{FIFO}}},
+  \label{eq:delta}
+\end{equation}
+with its interval taken by resampling the units; a ratio criterion averages $M_u^{\text{arm}}/M_u^{\text{FIFO}}$ in the same way. Slowdown is a job's
+latency divided by its own service time. The primary criteria concern mean latency and the median latency of short jobs. All-message
 P99 and the longest wait of a long job are guardrails, which a design must not break, and are not goals. We should be
 honest about the limits of this discipline: the budgets for the first (v2) experiment were chosen after we had seen data
 from an earlier offline study, so they are not independent of it. Amendments made during the AWS runs are listed with the
