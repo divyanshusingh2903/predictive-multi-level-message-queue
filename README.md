@@ -7,412 +7,77 @@
 
 # Harbinger — Predictive Multi-Level Message Queue
 
-*Harbinger — the queue that knows what's coming: it learns each kind of message's cost, then prioritizes.*
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
-A research messaging system that predicts each message's processing time by **statistical analysis of the durations it has already observed for that kind of message** (a per-key, decaying duration histogram), not with a trained machine-learning model, and uses the prediction for **multi-level priority scheduling**. Operators do not have to classify heavy and light endpoints by hand or benchmark them in advance.
+*The queue that knows what's coming: it learns each kind of message's cost, then prioritizes.*
 
-**Research hypothesis (revised):** Learning each key's duration distribution from observed handler times and routing short-expected work first reduces median and mean latency and head-of-line blocking relative to FIFO, and matches a well-configured static priority map without hand configuration. It is expected to stay robust where a static map is wrong or stale. Tail (P99) latency is *not* expected to improve when long jobs are common; see [Design direction](#design-direction).
+Harbinger is a gRPC message broker that estimates each message's processing time from the durations it has already
+observed for that kind of message (a per-key, decaying duration histogram, not a trained model) and uses the estimate
+for multi-level priority scheduling. Operators do not have to classify heavy and light work by hand. Predictive routing
+is opt-in; the default is static priority.
 
----
+**Project page:** <https://divyanshusingh.site/harbinger> · **Source:** <https://github.com/divyanshusingh2903/predictive-multi-level-message-queue>
 
 ## Status
 
-**Phase 1 complete; Phase 2 implemented and evaluated.** The core gRPC broker includes multi-level priority queues, producer/consumer clients, DLQ, aging, retries, and in-flight management. Phase 2 adds an in-process [per-key duration predictor](docs/duration-predictor.md) wired into `route_message()` with shadow and opt-in predictive modes, learning from Ack settlement, snapshots, drift counters and a [standalone config file](docs/configuration.md), plus [versioned ingress features](analysis/README.md) and [bounded persistent feedback](docs/feedback.md). **Default routing stays static.**
+Research prototype, in-memory only. The implementation and the evaluation are complete:
 
-[Phase 2 results](docs/phase2-report.md), against criteria [frozen before any run](docs/v2-preregistration.md):
+- **Broker:** multi-level priority queues with aging, in-flight tracking, retries, a dead-letter queue, and producer and consumer clients.
+- **Predictor:** in-process C++ per-key duration statistics, with shadow and predictive routing modes, snapshots and drift counters.
+- **Evaluation:** pre-registered experiments on synthetic workloads, public traces and AWS, including comparisons with RabbitMQ and Redis. Results are in [`benchmarks/results/`](benchmarks/results/).
+- **Next:** a preprint describing the design and the evaluation.
 
-- **Production-flow benchmark (gate passed).** On a realistic e-commerce job queue (real CPU work, flash-sale overload, mid-run cost shift; 5 seeds × 7 arms), predictive routing cut mean latency 28% and short-job median latency 88% versus FIFO, beat a hand-tuned static map by 11% and a misconfigured one by 34%, with all-message P99 +4%, no lost work and no throughput change. Without job labels (producer-only keys) it still cut mean latency 15%.
-- **Azure Functions trace simulation (gate not passed).** With the broker's 5 s aging and hours-long backlogs from the trace's bursts, every policy, including the oracle, was within 1–3% of FIFO. Exploratory runs without aging separate the policies.
-- **Aging under sustained overload (#40, opt-in).** Worker-time level weights with pausing aging keep priority meaningful in long backlogs. On the Azure trace they cut mean latency 14.6–27.3% versus FIFO, passing the frozen gate at load 0.8 but not at 0.5 or 0.95. In the production flow they cut mean latency a further 42% versus today's predictive routing, at the cost of all-message P99 +12% (just over its 10% guardrail). They stay off by default ([results](benchmarks/results/v3-aging/README.md)).
-- **Real data:** on the same trace a per-key median predicts held-out durations with a median error factor of 1.3, versus 29 for a single global median.
+Not provided: durable storage, TLS or authentication, backpressure, metrics. See
+[broker guarantees and limits](docs/internals.md#delivery-guarantees-and-limits).
 
-The earlier offline comparison (issue #5) found no qualifying model under its frozen v1 gates; v2 replaced those budgets, as documented in the pre-registration.
-
----
-
-## Design direction
-
-Evidence so far, and the resulting Phase 2 plan:
-
-- **Synthetic evidence only.** The workloads use one 3-value categorical header and a fixed 16-byte payload, so a per-key average is close to the best possible predictor there. These results do not show whether richer features help on real traffic.
-- **Shortest-job-first trade-off.** With a non-preemptive scheduler, prioritizing short jobs lowers median latency (about 40–60% in the bimodal cells) and leaves P95 flat or makes P99 worse when long jobs are a large fraction of messages. Reordering cannot reduce a long job's own service time. Primary metrics are therefore per-class percentiles, slowdown, mean latency, and long-job starvation, with all-message P99 as a guardrail.
-- **Predictor: per-key duration statistics, in C++.** Each message has a *key*: the broker-assigned producer id, optionally joined to a producer-supplied `job_type` header (there is no queue/topic name; the broker is one logical queue). The broker keeps a decaying duration histogram per key plus a global histogram, estimates a message's duration from its key at ingress inside `route_message()`, and maps it to a tier using boundaries derived from global quantiles. Cold or high-variance keys use the middle tier; aging is unchanged. Only successful, non-replayed handler durations are learned. Per-key state is bounded in memory.
-- **Statistics, not machine learning.** In an offline comparison (issue #5), none of eight candidates passed every frozen quality gate. The candidates were learned models (River regressors and trees) and simple statistics (per-key means, EWMA). The broker therefore uses the simplest option, per-key statistics, which then passed the v2 production-flow gate. It serves no learned model. Python code lives in [`analysis/`](analysis/README.md) as offline tooling and never runs with the broker. Learned models would be reconsidered only if real workloads show the per-key statistics losing.
-- **Not yet shown.** Generalization beyond one real trace and one synthetic production workload, and comparison with production queues (RabbitMQ, Redis). Both are planned in Phase 3 ([evaluation plan](https://github.com/divyanshusingh2903/predictive-multi-level-message-queue/issues/46)). Predictive routing stays opt-in.
-
----
-
-## Architecture
-
-```
-Producer::send()
-      │
-      ▼  gRPC Submit
- ┌─────────────────────────────────────────────────────────────────┐
- │  HarbingerService (Broker)                                      │
- │                                                                 │
- │  Proxy::accept()  →  route_message()  →  MultiLevelQueue        │
- │    stamp ID              ▲                  Level 0 (HIGH)      │
- │    arrival_time    per-key duration         Level 1 (MED)       │
- │    producer_id     statistics pick          Level 2 (LOW)       │
- │                    the level                     │              │
- │                                            aging thread         │
- │                                            (promotes stale msgs)│
- │                                                  │              │
- │  Consumer Pull() ◄───────────────────────────────┘              │
- │  (tier-blind)                                                   │
- │       │                                                         │
- │  Ack / Nack  ──  processing_time_ms  ──►  (updates statistics)  │
- │       │                                                         │
- │  DeadLetterQueue (max retries / TTL expired)                    │
- └─────────────────────────────────────────────────────────────────┘
-```
-
-### Key design decisions
-
-- **Consumers are tier-blind** — the broker picks which message each `Pull()` receives; consumers never see queue levels.
-- **Proxy is narrowly scoped** — stamps ID and `arrival_time`, stores `producer_id` in headers, then hands off to `route_message()`.
-- **In-flight tracking** — messages are held in an `unordered_map` between `Pull` and `Ack/Nack`; on `Nack` they are re-queued or DLQ'd.
-- **Phase 2 hook** — `route_message()` in `harbinger_service.cpp` is the single injection point for the per-key duration predictor; opt-in feedback persists accepted `processing_time_ms` observations and actual outcomes without changing delivery semantics. The C++ [per-key predictor](docs/duration-predictor.md) runs there in shadow or opt-in predictive mode; offline tooling consumes validated temporal exports.
-- **`harbinger_rpc` proto package** — kept distinct from the `harbinger` C++ namespace to avoid symbol collisions.
-
----
-
-## Documentation
-
-- [Documentation index](docs/README.md) — choose a guide by role.
-- [Producer guide](docs/producers.md) — connect, send messages, set TTL, and understand Submit outcomes.
-- [Consumer guide](docs/consumers.md) — handlers, delivery leases, acknowledgements, retries, and shutdown.
-- [Broker and queue internals](docs/internals.md) — state transitions, priority ordering, aging, expiry, and recovery.
-- [Ingress features and encoding](analysis/README.md) — implemented opt-in C++ capture and matching Python representation.
-- [Persistent feedback](docs/feedback.md) — embedded static-mode collection, JSONL storage, retention, loss counters, and durability/shutdown limits.
-- [Synthetic baselines and feedback export](benchmarks/README.md) — seeded open-loop gRPC replay, outcome/fairness accounting, paired uncertainty, and frozen experiment budgets.
-- [Online predictors](docs/online-predictor.md) — cited literature, eight candidates, delayed validation, readiness/fallback, and the frozen v1 selection budgets (result: no qualifier).
-- [ML contract](docs/ml-contract.md), [architecture decision](docs/adr/0001-phase2-ml-contract.md), and [validation plan](docs/phase2-validation.md) — Phase 2 boundaries. Their classifier-service transport is superseded by the in-process statistical predictor; their feature, feedback and versioning rules still apply.
-
----
-
-## Repository layout
-
-```
-harbinger/
-├── assets/brand/              # Logo, icon, social preview, usage guide
-├── docs/                      # Producer, consumer, and broker internals guides
-├── proto/harbinger.proto          # Broker service definition (package harbinger_rpc)
-├── include/
-│   ├── harbinger_service.hpp      # HarbingerService : harbinger_rpc::Broker::Service
-│   ├── proxy/proxy.hpp
-│   ├── queue/
-│   │   ├── message.hpp        # Message, AgingConfig, DLQEntry
-│   │   ├── multi_level_queue.hpp
-│   │   └── dead_letter_queue.hpp
-│   ├── producer/producer.hpp  # gRPC client: connect() → send()
-│   └── consumer/consumer.hpp  # gRPC client: connect() → start() / stop()
-├── src/                       # C++ implementations
-├── server/main.cpp            # harbinger_server binary (SIGINT/SIGTERM graceful shutdown)
-├── demo/main.cpp              # End-to-end demo (embedded broker + 2 producers + 2 consumers)
-├── tests/
-│   └── unit/                  # GoogleTest sources; built as harbinger_unit_tests
-│                              # (queue, DLQ, proxy — no gRPC) and
-│                              # harbinger_integration_tests (broker, client over gRPC)
-├── analysis/                 # Offline Python tools (formats, studies); not run by the broker
-├── benchmarks/                # Opt-in cleanup + synthetic scheduler baselines and dataset export
-└── CMakeLists.txt
-```
-
----
-
-## Building
-
-**Dependencies**
+## Build
 
 ```bash
 # Ubuntu
 sudo apt install -y libgrpc++-dev protobuf-compiler-grpc libprotobuf-dev
-
 # macOS
 brew install grpc protobuf
-```
 
-**Build**
-
-```bash
 cmake -B build -DCMAKE_BUILD_TYPE=Release
 cmake --build build -j$(nproc)
 ```
 
-The build prefers Protobuf and gRPC CMake CONFIG packages from a compatible
-installation, with FindProtobuf fallback for the matching Ubuntu packages.
-Do not mix dependency installations. For sanitizer verification, configure with
-`-DHARBINGER_SANITIZER=address`, `undefined`, or `thread`.
-
-CI runs the full suite under ASan/UBSan and queue tests under TSan. Transport
-tests under TSan require a compatible, TSan-instrumented gRPC/Protobuf stack;
-prebuilt libraries can hide synchronization and produce unusable reports.
-
-`-DHARBINGER_WARNINGS_AS_ERRORS=ON` makes warnings fail first-party builds;
-it defaults to OFF locally and is enabled in CI. Generated protobuf sources and
-fetched dependencies are excluded from this policy. For reproducible queue and
-loopback delivery measurements, enable `-DHARBINGER_BUILD_BENCHMARKS=ON` (default
-OFF) and follow [the benchmark guide](benchmarks/README.md).
-
-**Targets**
-
-| Binary | Description |
-|---|---|
-| `build/harbinger_server` | Standalone broker process |
-| `build/tests/harbinger_unit_tests` | Internal tests (no gRPC required) |
-| `build/tests/harbinger_integration_tests` | Full gRPC round-trip tests |
-| `build/demo/harbinger_demo` | End-to-end demo |
-
----
-
 ## Running
 
-**Standalone broker** (default `0.0.0.0:50051`, accepts an address override as `argv[1]`):
-
 ```bash
-./build/harbinger_server
-# or
-./build/harbinger_server 127.0.0.1:50051
-```
+./build/harbinger_server                  # broker on 0.0.0.0:50051
+./build/harbinger_server 127.0.0.1:50051  # or pick an address
+./build/demo/harbinger_demo               # embedded broker, 2 producers, 2 consumers
 
-**End-to-end demo** (embedded broker + 2 producers + 2 consumers, demonstrates retries; the DLQ path is exercised in the integration tests):
-
-```bash
-./build/demo/harbinger_demo
-```
-
-**Tests**
-
-```bash
 ./build/tests/harbinger_unit_tests
 ./build/tests/harbinger_integration_tests
-# or, when configured with CMake testing
-ctest --test-dir build --output-on-failure
 ```
 
----
+Server options and the config file are in [configuration](docs/configuration.md).
 
 ## Client API
 
 ```cpp
-// Producer
 auto producer = harbinger::Producer::connect("127.0.0.1:50051");
-std::string msg_id = producer->send(
-    {0x01, 0x02},                          // payload bytes
-    {{"job_type", "resize"}, {"src", "a"}} // headers (job_type keys the duration predictor)
-);
+std::string id = producer->send({0x01, 0x02}, {{"job_type", "resize"}});
 
-// Consumer
 auto consumer = harbinger::Consumer::connect(
     "127.0.0.1:50051",
-    [](const harbinger::ReceivedMessage& msg) -> harbinger::AckResult {
+    [](const harbinger::ReceivedMessage& msg) {
         // process msg.payload / msg.headers
-        return harbinger::AckResult::SUCCESS; // or FAILURE to trigger retry / DLQ
-    }
-);
+        return harbinger::AckResult::SUCCESS;  // FAILURE retries, then dead-letters
+    });
 consumer->start();
 // ...
 consumer->stop();
 ```
 
----
+## Documentation
 
-## Configuration (`HarbingerConfig`)
+See the [documentation index](docs/README.md): [producers](docs/producers.md), [consumers](docs/consumers.md),
+[internals](docs/internals.md), [configuration](docs/configuration.md), the
+[duration predictor](docs/duration-predictor.md), and the [benchmark guide](benchmarks/README.md).
 
-| Field | Default | Description |
-|---|---|---|
-| `num_levels` | `3` | Number of priority queue levels (0 = highest) |
-| `aging` | `nullopt` (off) | `AgingConfig{threshold 5000 ms, interval 500 ms}` when enabled; `nullopt` = strict-priority with no aging thread (`server/main.cpp` and the demo enable aging explicitly). `pause_when_behind` (unset = on with `level_weights`) pauses promotion into a level that is behind ([details](docs/configuration.md#level-weights-and-pausing-aging-issue-40)) |
-| `level_weights` | `nullopt` (strict priority) | Opt-in worker-time share per level, e.g. `{8, 3, 1}`; one weight in [1, 1000] per level. Not combinable with the round-robin benchmark policy |
-| `default_max_retries` | `3` | Nack attempts before the message moves to the DLQ |
-| `default_ttl` | `0` (off) | TTL from arrival; `0` = no expiry |
-| `default_priority` | `1` (medium) | Level for static routing, and for predictive routing when a key has no usable estimate (cold, stale or high-spread) |
-| `max_pull_wait` | `5000 ms` | Server-side cap on consumer pull timeout |
-| `ttl_sweep_interval` | `100 ms` | Background TTL sweep interval; `0` disables it |
-| `delivery_lease` | `30000 ms` | Fixed ownership lease per delivery; no renewal |
-| `lease_sweep_interval` | `100 ms` | Reclaims abandoned deliveries, independent of queue TTL sweeping |
-| `completion_retention` | `60000 ms` | Maximum retention for replayable Ack/Nack outcomes |
-| `completion_cache_max_entries` | `10000` | Hard cap on retained delivery outcomes |
-| `maintenance_batch_size` | `256` | Maximum messages reclaimed per TTL/lease batch |
-| `ingress_features` | `nullopt` | Opt-in bounded static ingress snapshots; programmatic embedded configuration |
+## License
 
-Configuration is validated at broker construction. Levels and retry count must
-be positive, durations must use their documented non-negative/off semantics,
-and an enabled aging policy requires positive threshold and interval values.
-
-### Standalone server recovery options
-
-Embedded brokers can set these fields in `HarbingerConfig` before constructing
-`HarbingerService`. The standalone server accepts the corresponding options:
-
-| Option | Default |
-|---|---:|
-| `--delivery-lease-ms` | 30000 |
-| `--lease-sweep-interval-ms` | 100 |
-| `--completion-retention-ms` | 60000 |
-| `--completion-cache-max-entries` | 10000 |
-| `--maintenance-batch-size` | 256 |
-| `--ttl-sweep-interval-ms` | 100 |
-
-```bash
-./build/harbinger_server 0.0.0.0:50051 \
-  --delivery-lease-ms 120000 \
-  --completion-retention-ms 300000 \
-  --completion-cache-max-entries 100000
-./build/harbinger_server --help
-```
-
-Omitted options retain their defaults. Values are unsigned decimal integers;
-durations are milliseconds. All six settings must be positive except
-`--ttl-sweep-interval-ms`, which accepts `0` to disable background queued-TTL
-cleanup. Invalid, missing, out-of-range, or unknown options cause a nonzero exit
-before listening. Options use `--name value` syntax and may appear before or
-after the optional address; repeated options use the last value. Settings apply
-at startup, and effective values are printed before the readiness message.
-
-The example is illustrative, not a recommended production profile. Size both
-retention and capacity for peak attempt-completion volume and expected settlement
-delays; increasing retention alone cannot prevent capacity eviction. See the
-[consumer system boundary](docs/consumers.md#system-boundary-delivery-safety-and-consumer-recovery).
-
-### Delivery and shutdown semantics
-
-Every Pull returns a fresh `attempt_token`; Ack/Nack must echo it. Upgrade the
-broker and clients together. The bundled consumer handles tokens internally.
-Expired leases recover messages abandoned by crashes or lost Pull responses.
-Lease expiry counts as a failed delivery, just like Nack; an expired TTL instead
-sends the message to the DLQ without incrementing its retry count. With
-`default_max_retries=1`, the first failure goes to the DLQ.
-
-Duplicate accepted Ack/Nack requests replay OK without repeating the mutation.
-This guarantee lasts until completion retention expires or the cache evicts the
-record, whichever happens first. Stale attempt tokens cannot settle a newer
-delivery, even after cache eviction. Known conflicting or expired attempts return
-`FAILED_PRECONDITION`. After history is gone, a late settlement can instead return
-`NOT_FOUND` or `PERMISSION_DENIED`, depending on current delivery ownership.
-
-The consumer retries transient settlement errors up to three times, using
-5-second RPC deadlines and 100/200 ms backoff, without rerunning the handler.
-Settlement `FAILED_PRECONDITION` counts once in `leases_lost()` and polling
-continues without a confirmed outcome. Other final settlement errors, including
-retry exhaustion, stop the worker; `last_rpc_status()` exposes the terminal error
-and `rpc_failures()` counts failed settlement calls. Ack/Nack counters count only
-confirmed outcomes. Pull retries use interruptible 200 ms backoff.
-
-**Stale-token safety does not guarantee automatic consumer recovery.** Completion
-history is bounded by both time and capacity; late `NOT_FOUND` or
-`PERMISSION_DENIED` results remain terminal. There is no automatic worker restart.
-See the [consumer system boundary](docs/consumers.md#system-boundary-delivery-safety-and-consumer-recovery)
-for expected results, history sizing, and application/operator responsibilities.
-
-Consumer destruction joins the worker; restart after a stopped worker is safe.
-`stop()` cancels pending Pull, but waits for an active handler and settlement.
-A handler may call `stop()` to request shutdown, but must not destroy its own
-consumer. Handlers cannot be forcibly interrupted. Set the delivery lease above
-the expected handler duration plus settlement overhead; lease renewal is not
-implemented. Handlers must tolerate duplicate processing after lease expiry.
-
-TTL reclamation uses a deadline index and bounded batches, avoiding full-backlog
-scans on delivery. Large expired backlogs take multiple passes to reclaim;
-aging skips wholly not-yet-due levels but still scans due levels fully. The standalone POSIX server handles SIGINT/SIGTERM
-using `sigwait` and shuts down with a five-second grace deadline.
-
-### Current production boundary
-
-The broker is currently an in-memory research prototype. Before deployment
-beyond a trusted local network, add queue/DLQ/payload
-limits and backpressure, TLS/authentication, idempotent Submit retries,
-operator authorization, and metrics/tracing. All queue, lease, and completion
-state is in memory and lost on restart. Delivery recovery provides at-least-once
-processing while the broker runs, not exactly-once application effects. Submit
-idempotency and durable storage are not implemented.
-
----
-
-## Development phases
-
-### Phase 1 — Core queuing (complete)
-- [x] gRPC broker with `Submit / Pull / Ack / Nack`
-- [x] Multi-level priority queue (strict priority + optional aging)
-- [x] Proxy: ID generation, arrival-time stamping
-- [x] Competitive consumption (single consumer processes each message)
-- [x] In-flight tracking; retry on `Nack`
-- [x] Dead Letter Queue (max retries exceeded, TTL expired)
-- [x] Producer and Consumer gRPC clients
-- [x] Unit + integration test suite
-
-### Phase 2 — Statistical duration prediction (implemented and evaluated)
-
-The [Phase 2 tracker](https://github.com/divyanshusingh2903/predictive-multi-level-message-queue/issues/11) sequences implementation from the [ML contract](docs/ml-contract.md). Prediction begins in shadow mode; explicit predictive routing requires the [synthetic validation gate](docs/phase2-validation.md).
-
-- [x] Versioned, bounded ingress features and immutable routing context with C++/Python fixtures
-- [x] In-process C++ per-key duration predictor (decaying histograms, adaptive tier boundaries, bounded key state)
-- [x] Shadow and predictive routing injected into `route_message()` in `harbinger_service.cpp`
-- [x] `processing_time_ms` feedback from Ack (and censoring from lease expiry) updates the per-key statistics
-- [x] Predictor snapshots (atomic, versioned, rollback copy), drift counters and a stats line
-- [x] Standalone `--config` file, `--routing-mode` and `--stats-interval-ms` ([configuration](docs/configuration.md))
-- [x] Seeded synthetic workloads, real-broker FIFO/static-priority/round-robin baselines, temporal feedback export, and frozen numerical budgets
-- [x] Offline delayed online-predictor comparison, readiness/fallback checks, and versioned model-selection evidence (v1 result: no qualifier)
-- [x] Pre-registered v2 matrix ([v2 pre-registration](docs/v2-preregistration.md)): production-flow benchmark with oracle, well-configured/misconfigured/stale static priority, per-class and slowdown metrics; Azure Functions trace simulation
-- [x] Per-key predictability on a real trace (Azure Functions 2021)
-- [x] Feature signal on self-generated data (`feature-signal-v1`) and opt-in log2 size-binned keys with cold-bin parent fallback ([size bins](docs/duration-predictor.md#size-bins-issue-35)); under load they did not pass their pre-registered gate ([v3-sizebins-1](benchmarks/results/v3-sizebins/README.md))
-- [x] v2 activation gate: passed on the production-flow benchmark; not passed on the Azure trace simulation ([Phase 2 report](docs/phase2-report.md))
-- [x] Opt-in worker-time level weights with pausing aging for sustained overload ([v3-aging-1](benchmarks/results/v3-aging/README.md), #40)
-
-### Phase 3 — Benchmarking & validation (in progress)
-
-The [evaluation plan](https://github.com/divyanshusingh2903/predictive-multi-level-message-queue/issues/46) lists every experiment, and the [pre-AWS build](https://github.com/divyanshusingh2903/predictive-multi-level-message-queue/issues/47) lists the work they need first. Each experiment is pre-registered before its first run. The Azure Functions 2021 trace simulation and the production-flow benchmark from Phase 2 are the baseline.
-
-**Build (#47)**
-- [x] Split-broker benchmark mode, so the broker and the clients run on separate hosts
-- [x] RabbitMQ and Redis adapters, and a predictor sidecar for RabbitMQ
-- [x] A common trace format and converters for the new datasets (Azure, Huawei and Parallel Workloads Archive)
-- [x] Pre-registrations: [`v3-cloud`](docs/v3-cloud-preregistration.md), [`v3-brokers`](docs/v3-brokers-preregistration.md), [`v3-traces-1`](docs/v3-traces-preregistration.md), [`v3-traces-2`](docs/v3-traces-2-preregistration.md)
-- [x] [AWS runbook](benchmarks/cloud/README.md) and scripts, with spend caps
-
-**Cloud runs on AWS** (`c8i.xlarge` broker host, `c8i.2xlarge` client host; [results](benchmarks/results/v3-aws/README.md))
-- [x] E1: the v2 production-flow matrix replicated on cloud hardware (gate passed: −30.8% mean vs FIFO)
-- [x] E2 ([#26](https://github.com/divyanshusingh2903/predictive-multi-level-message-queue/issues/26)): a 30-minute run with the broker on its own host over a real network, including the mid-run job-mix shift (descriptive: the gain fell to −6% to −7% under minutes-long backlogs)
-- [x] E3 ([#37](https://github.com/divyanshusingh2903/predictive-multi-level-message-queue/issues/37)): scheduling outcome on the same workload against RabbitMQ (FIFO, static priority, predictive via a sidecar) and Redis (FIFO) (gate passed: −21.7% mean vs RabbitMQ FIFO; the sidecar on RabbitMQ −57.6%)
-- [x] E4 ([#37](https://github.com/divyanshusingh2903/predictive-multi-level-message-queue/issues/37)): broker cost — throughput and latency with empty handlers for Harbinger, RabbitMQ and Redis (Harbinger peaks at about 5,300 msg/s, below both)
-
-**Trace simulations on new public datasets**
-- [x] Huawei Cloud 2025 serverless request traces: a second serverless provider ([v3-traces-1](benchmarks/results/v3-traces/README.md))
-- [x] Parallel Workloads Archive (HPC): two logs whose keys predict poorly ([v3-traces-2](benchmarks/results/v3-traces-2/README.md); no gate passed)
-- [ ] Alibaba GPU 2020 (PAI): recurring jobs lasting minutes to hours
-
-**Out of scope:**
-- Kafka: it is a log, with no per-message priority.
-- Pulsar.
-- Managed cloud queues such as SQS.
-- Durable broker modes.
-
-### Phase 4 — Enhancements (optional)
-- [ ] Streaming mode (persistent events, multi-consumer replay)
-- [ ] Multi-tenancy
-- [ ] Learned-model challengers, only if real workloads show per-key statistics losing
-
----
-
-## Key metrics
-
-| Metric | Description |
-|---|---|
-| Latency percentiles | P50/P95/P99 end-to-end latency overall and per job class, plus mean latency and slowdown (latency / service time) |
-| Throughput (msg/s) | Sustained message processing rate |
-| Prediction quality | Duration MAE/RMSE, bucket accuracy, severe underestimates, and coverage |
-| Queue starvation rate | Rate at which lower-priority queues are starved |
-
----
-
-## Tech stack
-
-- **Core:** C++20 — concepts, `std::atomic`, lock-free where possible, header-only libraries preferred
-- **IPC:** gRPC + Protocol Buffers
-- **Predictor:** C++ per-key duration statistics inside the broker
-- **Offline evaluation:** Python — delayed-feedback replay and metrics; pinned River 0.22.0 candidates and dependency-free baselines (implemented)
-- **Tests:** GoogleTest (fetched via CMake `FetchContent`)
-- **Metrics (planned):** Prometheus / StatsD
-- **Tracing (planned):** Jaeger / Zipkin
+[MIT](LICENSE) © 2026 Divyanshu Singh
