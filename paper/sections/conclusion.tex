@@ -1,6 +1,7 @@
 \section{Conclusion}
-Learning each message key's duration from acknowledgements is enough to schedule shortest-expected-first with no
-per-endpoint configuration, and it beats both FIFO and hand-tuned priorities on a production-style workload, including
-on separate cloud hardware and against RabbitMQ and Redis. The gain depends on the regime: it needs keys that recur,
-and in long backlogs it needs an aging design that does not flatten the order. Where keys do not recur, or long
-jobs carry most of the work, it does not help and can hurt. Learned models remain untested against these workloads.
+Learning each message key's duration from the acknowledgements a broker already receives is enough to schedule
+shortest-expected-first without any per-endpoint configuration. On a production-style workload it beats FIFO and hand-tuned
+priorities, and it does so on separate cloud hardware and against RabbitMQ and Redis. The gain has conditions. It needs keys
+that recur, which serverless functions have and two HPC logs do not, and under sustained backlogs it needs an aging design that
+does not flatten the predicted order. Where keys do not recur, or where long jobs carry most of the work, it does not help and
+can hurt. We make no claim about tail latency, and learned models remain untested against workloads rich enough to need them.

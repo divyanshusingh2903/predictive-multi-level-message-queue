@@ -1,25 +1,34 @@
 \section{Design}\label{sec:design}
 
-\sys{} is a single-queue gRPC broker (\texttt{Submit}, \texttt{Pull}, \texttt{Ack}, \texttt{Nack}) with three
-priority levels, retries, a dead-letter queue and at-least-once delivery while the process runs. Consumers are
-tier-blind: the broker decides which message each \texttt{Pull} returns. State is in memory.
+\sys{} is a single-queue broker that speaks gRPC. Producers \texttt{Submit} messages, consumers \texttt{Pull} them and then
+\texttt{Ack} or \texttt{Nack} the result, and the broker holds them in a small number of priority levels (three in all our
+experiments) with retries, a dead-letter queue and at-least-once delivery for as long as the process runs. Consumers are
+deliberately blind to the levels: a consumer asks for work and the broker decides which message to hand over, so no client
+ever has to know that priorities exist. Everything is held in memory, which is acceptable for a research prototype and is
+the first of the limitations we return to in Section~\ref{sec:limits}.
 
-\paragraph{Keys and prediction.}
-A message's key is the producer id, optionally joined to a producer-supplied \texttt{job\_type} header. Each key has a
-decaying histogram of handler durations; there is also a global histogram. On \texttt{Ack}, the consumer's reported
-\texttt{processing\_time\_ms} is added to the key's histogram; only successful, non-replayed durations are learned.
-At ingress, \texttt{route\_message()} looks up the key's median and maps it to a level using boundaries derived from
-global quantiles. A key with too few samples, a stale history, or high spread takes the default (middle) level.
-Per-key state is bounded. A lookup takes about 2\,$\mu$s.
+The part that matters for this paper is how a message gets its level. Each message has a key, which is the identifier the
+broker assigned to its producer, optionally joined to a job-type header that the producer chooses to send. Scoping the
+header by producer means that a producer can only mislabel its own work, never claim another producer's fast history to
+jump the queue. The broker keeps, for every key, a histogram of handler durations whose older observations decay, and one
+histogram over all keys. When a consumer acknowledges a message it reports how long the handler took, and a successful,
+first-time duration is added to the message's key. When a new message arrives, a single routine looks up the key and takes
+a summary of its histogram, the median in our experiments, as the expected duration. It maps that duration to a level using boundaries that come from
+quantiles of the global histogram, so that the levels adapt to the workload instead of being set by hand. The lookup takes
+about two microseconds.
 
-\paragraph{Aging.}
-Strict priority starves long jobs, so the broker promotes messages that wait past a threshold (default 5\,s). This
-bounds long-job waits, but under backlogs lasting minutes or hours it promotes almost everything to the top level
-and erases the predictor's ordering (Section~\ref{sec:results}). For that regime we added an opt-in design: worker
-time is shared across levels by weights (e.g.\ 8:3:1), and promotion into a level pauses while that level is behind
-its share (\emph{pausing aging}).
+Because the expected duration is only as good as the history behind it, a key is trusted only when its history is
+usable. A key that has too few observations, that has gone unobserved for too long, or whose durations are too spread out
+to predict from a median is sent to the middle level instead. This is a deliberate conservatism, and it follows the
+literature on estimated sizes, in which misjudging a long job as short is the costly mistake \citep{dellamico2014}. A message
+whose lease expires counts as a censored observation instead of a duration, so a key whose handlers hang is not
+mistaken for a key whose handlers are fast. State per key is bounded in memory, and the predictor can be run in a shadow
+mode that records its predictions but routes statically, which lets one measure the cost of prediction apart from its effect.
 
-\paragraph{Modes.}
-\emph{Static} routing uses a fixed default level and has no predictor. \emph{Shadow} mode records predictions but
-routes statically, which isolates the cost of prediction. \emph{Predictive} mode routes by prediction. Default routing
-remains static.
+Reordering by expected duration invites starvation, so the broker keeps an aging mechanism that promotes any message that has
+waited past a threshold (five seconds by default). This bounds how long a long job can wait, and it works well when
+backlogs last seconds. It does not when they last minutes or hours, because then almost every waiting message has been
+promoted to the top level and the predicted order is gone. For that regime we added an opt-in design in which worker time
+is divided among the levels by weights (we use 8:3:1) and promotion into a level is paused while that level is already
+behind its share. We call the pair \emph{weights with pausing aging}, and Section~\ref{sec:results} shows why it matters.
+The default broker still routes statically, and predictive routing is something an operator turns on.

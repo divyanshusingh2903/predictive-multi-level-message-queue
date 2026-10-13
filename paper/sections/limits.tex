@@ -1,19 +1,27 @@
 \section{Limitations and threats to validity}\label{sec:limits}
-\begin{itemize}
-  \item All evidence is synthetic or trace-driven. There is no production workload, and the production-flow scenario was
-        written by the author.
-  \item One cloud provider and region, two instance types, one placement group (a low-latency network).
-  \item The v2 budgets were set after seeing earlier offline data. Trace simulations reconstruct arrivals where the
-        trace lacks them, and Huawei timestamps are completion times.
-  \item Durations are learned from successful handlers only (success-conditioned labels).
-  \item The broker is a prototype: in-memory, no durability, authentication or backpressure, and the lowest throughput
-        of the three brokers tested. E2 has two repetitions, so its checks have no intervals.
-  \item Shortest-expected-first with a non-preemptive scheduler cannot shorten a long job's own service time; we make no
-        tail-latency claim, and long jobs can lose (Section~\ref{sec:results}).
-  \item Alibaba GPU traces and Kafka, Pulsar and managed queues are out of scope.
-\end{itemize}
-\paragraph{Reproducibility.} Code, configurations, pre-registrations and result files are in the repository
-(\url{https://github.com/divyanshusingh2903/predictive-multi-level-message-queue}); raw per-message data is archived
-outside git with SHA-256 sums. \todo{record the release tag and archive identifier.}
 
-\paragraph{AI assistance.} \todo{Disclose AI-assisted drafting per the venue's current policy (issue \#27).}
+The most important limitation is the kind of evidence. Everything in this paper is synthetic or trace-driven, and we
+have no production workload. The production-flow scenario was written by us, and the traces, though real, are
+simulated: arrivals are reconstructed where a trace does not record them, and the Huawei timestamps are completion times,
+so the arrival process we replay is an inference. The experiments ran in one cloud provider, one region, one placement
+group and two instance types, which gives a low-latency network and says nothing about a wide-area deployment. The
+thirty-minute run has only two repetitions, so its checks are per repetition and carry no intervals.
+
+Some limitations come from how the design learns. Durations are learned from handlers that succeeded, so a key whose
+slow cases fail looks faster than it is. The budgets of the first experiment were set after seeing earlier offline
+data, as Section~\ref{sec:method} says, so that gate is less independent than the later ones. And the evidence about
+learned models is narrow: the offline comparison used a workload whose only feature was a three-valued category, which
+leaves a per-key average close to the best possible predictor and little for a richer model to find. We conclude that
+statistics were enough for these workloads, not that models never help.
+
+Others come from the scheduler. A non-preemptive queue cannot shorten a long job's own service time, so we make no claim that
+tail latency improves, and where long jobs carry most of the work, favouring short ones can make the overall result worse, as
+the DAS2 log shows. The broker is a prototype with in-memory state and no durability, authentication or backpressure, and it
+had the lowest throughput of the three brokers we measured. The comparison with RabbitMQ is also bounded by our
+configuration: RabbitMQ ran with a prefetch of one, which is how priorities take effect at all, and which limits its
+throughput. Kafka, Pulsar, managed queues and durable modes were out of scope, and we did not run Alibaba's GPU traces.
+
+Finally, the code, configurations, pre-registrations and result files are in the repository at
+\url{https://github.com/divyanshusingh2903/predictive-multi-level-message-queue}, with the raw per-message data archived
+outside git and hashed with SHA-256. \todo{record the release tag and archive identifier}
+\todo{Disclose AI-assisted drafting per the venue's current policy (issue \#27).}

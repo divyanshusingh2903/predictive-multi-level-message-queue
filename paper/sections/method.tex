@@ -1,28 +1,38 @@
 \section{Evaluation method}\label{sec:method}
 
-\paragraph{Pre-registration.}
-Each experiment has a configuration and pass criteria committed before its first registered run (the repository
-records the freeze commit for each). Criteria are paired per-seed or per-window deltas against FIFO with bootstrap 95\%
-intervals; a gate passes only if every primary criterion does. Primary guardrails bound all-message P99 and long-job
-maximum wait. The v2 budgets were chosen after we had seen data from the earlier offline study, so they are not
-independent of it. \todo{List every deviation and amendment (e.g.\ v3-cloud Amendment~1) in an appendix.}
+A scheduling claim is easy to overstate, so we fixed what would count as success before running the experiments that
+support it. Each experiment has a configuration and a set of pass criteria committed to the repository before its first
+registered run, and the commit that froze them is recorded alongside the results. A criterion compares an arm against a
+baseline as a paired difference, per seed or per time window, with a bootstrap 95\% interval, and a gate passes only when
+every primary criterion does. The primary criteria concern mean latency and the median latency of short jobs. All-message
+P99 and the longest wait of a long job are guardrails, which a design must not break, and are not goals. We should be
+honest about the limits of this discipline: the budgets for the first (v2) experiment were chosen after we had seen data
+from an earlier offline study, so they are not independent of it. Amendments made during the AWS runs are listed with the
+results.
 
-\paragraph{Metrics.}
-Mean latency, per-class medians, slowdown, long-job maximum wait and all-message P99. P99 is a guardrail, not a goal.
+The arms follow the questions the experiments ask. FIFO is the default behaviour of most queues. Two static-priority
+baselines stand for what an operator would do by hand: one set by someone who knows each job type's cost, and one set badly
+but plausibly, in which an expensive and a cheap job share a level. Shadow mode measures the cost of prediction without its
+effect, and predictive mode routes by prediction, with or without job-type labels. An oracle that ranks messages by their
+true planned cost shows how much room a perfect predictor would leave. We treat the oracle as a reference rather than an
+optimum, since it ranks by fixed terciles and costs are only approximate under contention.
 
-\paragraph{Arms.}
-FIFO; static priority, well configured by hand and deliberately misconfigured; shadow; predictive (with and without
-job-type labels); and an oracle that ranks by the true planned cost. The oracle is a reference rather than an optimum:
-it uses fixed terciles, and costs are approximate under contention.
+The main workload is a synthetic production flow that we designed to look like the background work of an online shop. Five
+services produce nine job types, from cheap jobs such as stock reservation to long report exports, and
+the handlers do real CPU work through the real producer and consumer clients. Load follows a steady phase at about
+sixty percent utilisation, a flash-sale overload at about one hundred twenty-five percent, a recovery, and a mid-run change
+in job costs, with about thirty-five thousand messages per run and five seeds. We ran it locally, then on AWS with the
+broker and the clients on separate hosts (\texttt{c8i.xlarge} and \texttt{c8i.2xlarge} instances in one placement group),
+and replicated the original single-host run on a second instance of the larger type. The same workload then ran against
+RabbitMQ with FIFO, with static priorities, and with \sys{}'s predictor acting as a sidecar that sets the priorities, and
+against Redis with FIFO, with the same producers, handlers, workers, arrivals and seeds so that only the broker and its
+policy change. A thirty-minute run, in two repetitions, tests whether the benefit survives long backlogs.
 
-\paragraph{Experiments.}
-\begin{itemize}
-  \item \textbf{Production flow.} Five services emit nine job types of real CPU work through the real clients, with a
-        steady phase, a flash-sale overload, a recovery and a mid-run cost shift; 5 seeds. Run locally and replicated on
-        AWS (\texttt{c8i} instances, one placement group). The AWS broker comparison runs the same workload against
-        RabbitMQ (FIFO, static priority, and \sys{}'s predictor as a sidecar) and Redis (FIFO).
-  \item \textbf{Trace simulations.} A discrete-event simulator replays Azure Functions 2021, Huawei 2025, and two
-        Parallel Workloads Archive logs at offered loads 0.5, 0.8 and 0.95, with arrivals reconstructed where the trace
-        lacks them. Gate~A is predictive routing as built; gate~B adds weights and pausing aging.
-\end{itemize}
-Every number below is generated from the committed result files by \texttt{paper/gen\_numbers.py}.
+Real traces test what a synthetic workload cannot: whether keys recur and how heavy the tails are in practice. A
+discrete-event simulator replays the Azure Functions 2021 trace, the Huawei Cloud 2025 request traces and two Parallel
+Workloads Archive logs at offered loads of 0.5, 0.8 and 0.95, using the same predictor code as the broker and a common
+trace format. Arrivals are reconstructed where a trace lacks them, and one of the traces records completion times instead
+of arrival times, which we discuss with the limitations. Two gates are defined for each trace. Gate~A asks whether
+predictive routing, as built and with the default aging, beats FIFO. Gate~B asks the same of the design with weights
+and pausing aging. Every number in this section and the next is generated from the committed result files by a script in
+the paper's repository, and the guardrails are judged on the upper end of their intervals.
