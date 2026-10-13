@@ -1,0 +1,14 @@
+\begin{abstract}
+Message queues deliver work first-come-first-served unless an operator hand-assigns priorities per endpoint, which
+needs knowledge of each job type's cost and goes stale when costs change. We present \sys{}, a gRPC broker that learns
+each message's expected processing time from the durations it has already observed for the same key (a decaying
+per-key histogram fed by acknowledgements) and routes it into a multi-level queue, so that short expected work is
+served first without configuration. We evaluate it with experiments whose configurations and pass criteria were frozen
+before the registered runs: a production-style job-queue benchmark, a replication of it on AWS, a comparison with
+RabbitMQ and Redis, and trace-driven simulations on four public traces. Predictive routing cut mean latency by
+\EOneMeanVsFifoAbs{} against FIFO on AWS (\VTwoMeanVsFifoAbs{} in a local run) and beat a hand-tuned static priority map; the same
+predictor running as a sidecar on RabbitMQ cut mean latency by \EThreeSidecarAbs{}. We also report where it does not work.
+Under hours-long backlogs, the broker's default aging erases the predictor's ordering; an opt-in weighted design
+recovers the gain on two serverless traces but harms long jobs on one HPC log; and on logs whose keys rarely recur or predict poorly,
+the predictor has little to learn from. All evidence is synthetic or trace-driven, and we make no claim of tail-latency improvement or of production readiness.
+\end{abstract}
