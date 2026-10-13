@@ -1,0 +1,311 @@
+{
+ "config": "v3-brokers-cost-1",
+ "brokers": {
+  "harbinger": {
+   "0.0": {
+    "repetitions": 5,
+    "lost": 0,
+    "publish_errors": 0,
+    "duplicates": 0,
+    "send_rate_per_s": 11024,
+    "delivery_rate_per_s": 5293.48,
+    "delivery_rate_range": [
+     5120.12,
+     6067.32
+    ],
+    "latency_ms": {
+     "p50": 17346.1,
+     "p90": 22533,
+     "p99": 23203.8,
+     "p999": 23289.2,
+     "max": 23303.7
+    },
+    "latency_p99_range": [
+     22276.8,
+     25258.7
+    ],
+    "lateness_p99_ms": null,
+    "kept_up": 0
+   },
+   "1000.0": {
+    "repetitions": 5,
+    "lost": 0,
+    "publish_errors": 0,
+    "duplicates": 0,
+    "send_rate_per_s": 1000,
+    "delivery_rate_per_s": 1000,
+    "delivery_rate_range": [
+     1000,
+     1000
+    ],
+    "latency_ms": {
+     "p50": 0.243655,
+     "p90": 0.425348,
+     "p99": 0.622598,
+     "p999": 0.827306,
+     "max": 1.14573
+    },
+    "latency_p99_range": [
+     0.613952,
+     0.675379
+    ],
+    "lateness_p99_ms": 0.178727,
+    "kept_up": 5
+   },
+   "5000.0": {
+    "repetitions": 5,
+    "lost": 0,
+    "publish_errors": 0,
+    "duplicates": 0,
+    "send_rate_per_s": 5000,
+    "delivery_rate_per_s": 5000,
+    "delivery_rate_range": [
+     4954.96,
+     5053.44
+    ],
+    "latency_ms": {
+     "p50": 0.301787,
+     "p90": 0.964281,
+     "p99": 10.63,
+     "p999": 28.1803,
+     "max": 29.3321
+    },
+    "latency_p99_range": [
+     3.66178,
+     1226.8
+    ],
+    "lateness_p99_ms": 0.076716,
+    "kept_up": 5
+   },
+   "20000.0": {
+    "repetitions": 5,
+    "lost": 0,
+    "publish_errors": 0,
+    "duplicates": 0,
+    "send_rate_per_s": 10871.3,
+    "delivery_rate_per_s": 5219.44,
+    "delivery_rate_range": [
+     5112.8,
+     5387.72
+    ],
+    "latency_ms": {
+     "p50": 30799.5,
+     "p90": 38512.9,
+     "p99": 40640.8,
+     "p999": 40813,
+     "max": 40819.9
+    },
+    "latency_p99_range": [
+     39534.1,
+     43089.4
+    ],
+    "lateness_p99_ms": 25124.5,
+    "kept_up": 0
+   }
+  },
+  "rabbitmq": {
+   "0.0": {
+    "repetitions": 5,
+    "lost": 1004319,
+    "publish_errors": 0,
+    "duplicates": 0,
+    "send_rate_per_s": 55882.3,
+    "delivery_rate_per_s": 7370.76,
+    "delivery_rate_range": [
+     6877.64,
+     7774.56
+    ],
+    "latency_ms": {
+     "p50": 49967.5,
+     "p90": 62373.5,
+     "p99": 65676.3,
+     "p999": 66345.5,
+     "max": 66521
+    },
+    "latency_p99_range": [
+     64496.8,
+     65772.4
+    ],
+    "lateness_p99_ms": null,
+    "kept_up": 0
+   },
+   "1000.0": {
+    "repetitions": 5,
+    "lost": 0,
+    "publish_errors": 0,
+    "duplicates": 0,
+    "send_rate_per_s": 1000,
+    "delivery_rate_per_s": 1000,
+    "delivery_rate_range": [
+     1000,
+     1000
+    ],
+    "latency_ms": {
+     "p50": 0.150223,
+     "p90": 0.372831,
+     "p99": 0.516989,
+     "p999": 0.71769,
+     "max": 2.87679
+    },
+    "latency_p99_range": [
+     0.483071,
+     0.663895
+    ],
+    "lateness_p99_ms": 0.158843,
+    "kept_up": 5
+   },
+   "5000.0": {
+    "repetitions": 5,
+    "lost": 0,
+    "publish_errors": 0,
+    "duplicates": 0,
+    "send_rate_per_s": 5000,
+    "delivery_rate_per_s": 4999.96,
+    "delivery_rate_range": [
+     4999.92,
+     4999.96
+    ],
+    "latency_ms": {
+     "p50": 0.115752,
+     "p90": 0.137736,
+     "p99": 0.306739,
+     "p999": 0.366136,
+     "max": 2.79293
+    },
+    "latency_p99_range": [
+     0.141125,
+     0.359148
+    ],
+    "lateness_p99_ms": 0.072357,
+    "kept_up": 5
+   },
+   "20000.0": {
+    "repetitions": 5,
+    "lost": 0,
+    "publish_errors": 0,
+    "duplicates": 0,
+    "send_rate_per_s": 20000,
+    "delivery_rate_per_s": 20000,
+    "delivery_rate_range": [
+     19999.9,
+     20000.6
+    ],
+    "latency_ms": {
+     "p50": 0.234218,
+     "p90": 1.33806,
+     "p99": 11.357,
+     "p999": 19.1599,
+     "max": 21.1874
+    },
+    "latency_p99_range": [
+     3.54327,
+     15.9496
+    ],
+    "lateness_p99_ms": 0.077304,
+    "kept_up": 5
+   }
+  },
+  "redis": {
+   "0.0": {
+    "repetitions": 5,
+    "lost": 0,
+    "publish_errors": 0,
+    "duplicates": 0,
+    "send_rate_per_s": 42069.8,
+    "delivery_rate_per_s": 21181.8,
+    "delivery_rate_range": [
+     20358,
+     22000.4
+    ],
+    "latency_ms": {
+     "p50": 16885.2,
+     "p90": 24712.4,
+     "p99": 26653.2,
+     "p999": 26848.1,
+     "max": 26869.3
+    },
+    "latency_p99_range": [
+     18277,
+     34938.6
+    ],
+    "lateness_p99_ms": null,
+    "kept_up": 0
+   },
+   "1000.0": {
+    "repetitions": 5,
+    "lost": 0,
+    "publish_errors": 0,
+    "duplicates": 0,
+    "send_rate_per_s": 1000,
+    "delivery_rate_per_s": 1000,
+    "delivery_rate_range": [
+     1000,
+     1000
+    ],
+    "latency_ms": {
+     "p50": 0.15713,
+     "p90": 0.329091,
+     "p99": 0.541848,
+     "p999": 0.687918,
+     "max": 0.982921
+    },
+    "latency_p99_range": [
+     0.342414,
+     0.598139
+    ],
+    "lateness_p99_ms": 0.180868,
+    "kept_up": 5
+   },
+   "5000.0": {
+    "repetitions": 5,
+    "lost": 0,
+    "publish_errors": 0,
+    "duplicates": 0,
+    "send_rate_per_s": 5000,
+    "delivery_rate_per_s": 5000,
+    "delivery_rate_range": [
+     5000,
+     5000
+    ],
+    "latency_ms": {
+     "p50": 0.095712,
+     "p90": 0.194365,
+     "p99": 0.314187,
+     "p999": 0.415989,
+     "max": 0.70295
+    },
+    "latency_p99_range": [
+     0.297721,
+     0.33654
+    ],
+    "lateness_p99_ms": 0.072142,
+    "kept_up": 5
+   },
+   "20000.0": {
+    "repetitions": 5,
+    "lost": 0,
+    "publish_errors": 0,
+    "duplicates": 0,
+    "send_rate_per_s": 20000,
+    "delivery_rate_per_s": 20015.4,
+    "delivery_rate_range": [
+     20000,
+     20070.3
+    ],
+    "latency_ms": {
+     "p50": 0.225481,
+     "p90": 35.02,
+     "p99": 76.6924,
+     "p999": 84.2954,
+     "max": 85.4323
+    },
+    "latency_p99_range": [
+     46.8226,
+     288.769
+    ],
+    "lateness_p99_ms": 3.54613,
+    "kept_up": 3
+   }
+  }
+ }
+}
