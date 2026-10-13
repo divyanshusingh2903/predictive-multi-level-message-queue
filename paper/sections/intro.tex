@@ -1,68 +1,33 @@
 \section{Introduction}\label{sec:intro}
 
-Almost every large service is built around queues. A web request that would take too long to finish synchronously is
-turned into a message, and a pool of workers picks it up later. The pattern has become so standard that the cloud
-vendors document it as a design principle: a queue between a task and the service it calls smooths bursts of demand
-that would otherwise overload the service \citep{azureleveling}. It is also how serverless platforms connect to the
-rest of the cloud, with a managed fleet of pollers that read from a queue and invoke a function for each message
-\citep{lambdasqs}. Inside large companies the same idea runs at a scale that is hard to picture; Meta describes an
-internal queueing service that processes close to a trillion items a day, with backlogs reaching hundreds of billions,
-on behalf of notifications, integrity checks, video encoding and the many other tasks that microservices hand to one
-another asynchronously \citep{foqs2021}. Queues also carry the machinery of reliability: retries after failure,
-separate retry queues so that one bad message does not block a batch, and dead-letter queues for the ones that never
-succeed \citep{uberdlq}. In short, when the work behind a service is not the work a user is waiting on, it is in a queue.
+Almost every large service is built around queues. A web request that would take too long to finish synchronously becomes a message, and a pool of workers picks it up
+later. Cloud vendors document the pattern as a design principle, because a queue between a task and the service it calls smooths bursts of demand that would otherwise
+overload the service \citep{azureleveling}, and serverless platforms use it to connect functions to the rest of the cloud, with a managed fleet of pollers that read from a queue and invoke a
+function for each message \citep{lambdasqs}. Inside large companies it runs at a scale that is hard to picture: Meta describes an internal queueing service that processes close to a trillion items a day, on behalf of
+notifications, integrity checks, video encoding and the many other tasks that microservices hand to one another asynchronously \citep{foqs2021}. Queues also carry the machinery of reliability, namely retries,
+separate retry queues so that one bad message does not block a batch, and dead-letter queues for the messages that never succeed \citep{uberdlq}. When the work behind a service is not what a user is waiting on, it is in a queue.
 
-The trouble is that one queue usually carries very different kinds of work. A notification that takes a few
-milliseconds shares a queue, and often a pool of workers, with a report export that takes tens of seconds, and when
-load rises the cheap job waits behind the expensive one. This is head-of-line blocking, the same mechanism that makes
-tail latency so hard to control in interactive services \citep{dean2013tail}, and it is a known weakness of
-microservice applications in which many such calls compose \citep{gan2019deathstar}. It hurts the mean and the median
-as well as the tail, because most jobs are the cheap ones.
+The trouble is that one queue usually carries very different kinds of work. A notification that takes a few milliseconds shares a queue, and often a pool of workers, with a report export that takes tens of seconds, and when load rises the cheap
+job waits behind the expensive one. This is head-of-line blocking, the same mechanism that makes tail latency so hard to control in interactive services \citep{dean2013tail}, and a known weakness of microservice applications in which
+many such calls compose \citep{gan2019deathstar}. It hurts the mean and the median as well as the tail, because most jobs are the cheap ones.
 
-Practitioners have a standard answer, which is to prioritise. The Azure Architecture Center describes a priority-queue
-pattern in which the producer assigns each message a priority and consumers handle higher priorities first, or in
-which separate queues are kept per priority, sometimes with larger worker pools behind the urgent ones
-\citep{azurepriority}. Meta's queue lets producers set a priority on every item \citep{foqs2021}, and RabbitMQ lets
-publishers do so too \citep{rabbitmqpriority}. Other services offer no priority at all: Amazon SQS has none
-\citep{sqstypes}, and a Kafka partition is consumed in offset order \citep{kreps2011kafka}. Even where priorities
-exist, they put the burden on a person. Someone has to know what each endpoint costs, decide where it belongs, and
-revisit that decision when code or traffic changes. The same guidance warns that strict priority can delay low-priority
-work indefinitely and suggests raising the priority of old messages over time \citep{azurepriority}. Getting the map
-wrong is not harmless: in our benchmark a plausible but misconfigured map was slower than doing nothing at all.
+Practitioners have a standard answer, which is to prioritise. The Azure Architecture Center describes a pattern in which the producer assigns each message a priority and consumers handle higher priorities first, or in which separate queues are kept per priority
+\citep{azurepriority}; Meta's queue and RabbitMQ also let producers set a priority on every item \citep{foqs2021,rabbitmqpriority}, whereas SQS has none \citep{sqstypes} and a Kafka partition is consumed in offset order \citep{kreps2011kafka}. Even where priorities exist, they put the
+burden on a person. Someone has to know what each endpoint costs, decide where it belongs, and revisit that decision when code or traffic changes, and getting it wrong is not harmless: in our benchmark a plausible but misconfigured map was slower than doing nothing at all.
 
-Scheduling theory suggests a different route that does not need a person to classify the work. If a job's processing
-time is known, serving the shortest first minimises mean response time on one server \citep{schrage1968}, an idea that
-underlies web servers that favour small requests \citep{harchol2003}, schedulers for data-processing clusters
-\citep{pastorelli2013}, and policies that route jobs of similar size to the same host \citep{harchol1999sita}. The
-price is that long jobs wait longer, and whether that is unfair has been argued at length
-\citep{bansal2001,wierman2003}. When sizes are not known but their distribution is, the Gittins index takes over
-\citep{gittins1979,scully2020gittins}, and with no information at all the foreground--background policy favours the
-jobs that have received the least service \citep{nuyens2008}; GPU cluster managers use both \citep{gu2019tiresias}.
-All of these assume that the scheduler either knows a job's size or can watch the job run. A message broker can do
-neither. The handler is arbitrary code behind a network call, it cannot be preempted, and nobody declared its cost.
+Scheduling theory suggests a route that needs no such person. If a job's processing time is known, serving the shortest first minimises mean response time \citep{schrage1968}, and that idea has been put to work in web servers \citep{harchol2003}, data-processing clusters \citep{pastorelli2013} and
+GPU cluster managers \citep{gu2019tiresias}. All of these assume that the scheduler knows a job's size or can watch the job run. A message broker can do neither. The handler is arbitrary code behind a network call, it cannot be preempted, and nobody declared its cost. This gap is what the paper addresses.
 
-What the broker can do is remember. It delivers every message and receives the acknowledgement, so it can measure how
-long each kind of message actually took and use that history to predict the next one. This is the idea we explore
-with \sys{}. For each message key, the producer optionally joined to a job-type header, the broker keeps a decaying
-histogram of handler durations reported on acknowledgement. When a message arrives it looks up the key's expected
-duration and places the message in one of a few priority levels. A key with too little history, a stale history or a
-wide spread of durations goes to a default level instead. Nothing is trained, and the operator configures no
-priorities. The literature also tells us what to guard against: estimates will be wrong, and under-estimating a long
-job does far more damage than over-estimating a short one \citep{dellamico2014}. \sys{} therefore keeps aging in
-place, so a long job that was misjudged, or simply waited a long time, still moves forward.
+What a broker can do is remember. It delivers every message and receives the acknowledgement, so it can measure how long each kind of message actually took and use that history to predict the next one. We build this into \sys{}. For each message key, the producer optionally joined to a job-type header, the broker keeps a decaying histogram of
+handler durations reported on acknowledgement, looks up the key's expected duration when a message arrives, and places the message in one of a few priority levels. A key with too little, too old or too variable a history goes to a default level instead. Nothing is trained and the operator configures no priorities. Because estimates will be wrong, and under-estimating a long job does far more damage
+than over-estimating a short one \citep{dellamico2014}, \sys{} keeps aging in place, so a long job that was misjudged, or simply waited a long time, still moves forward.
 
-We evaluated this design the way one should evaluate a claim that could easily be wrong: with experiments whose
-configurations and pass criteria were frozen before the registered runs, with an oracle as a reference, and with the
-failures reported alongside the successes. On a production-style job queue the approach reduced mean latency by
-\EOneMeanVsFifoAbs{} against FIFO on AWS, beat hand-tuned priorities, and, unlike a misconfigured map, did not make
-things worse. Run as a sidecar next to RabbitMQ, the same predictor cut mean latency by \EThreeSidecarAbs{}, so the idea
-does not depend on our broker. It also has clear limits, which the traces make visible: when backlogs last for hours the
-broker's own aging erases the predicted order; when keys do not recur, as in two HPC logs, there is nothing to learn
-from; and when long jobs carry most of the work, favouring short ones can make the overall result worse. Because the
-broker cannot preempt, it cannot shorten a long job's own service time, and we make no claim that tail latency
-improves.
+We evaluate the design the way one should evaluate a claim that could easily be wrong: with experiments whose configurations and pass criteria were frozen before the registered runs, with an oracle as a reference, and with the failures reported next to the successes. On a production-style job queue the approach reduced mean latency by \EOneMeanVsFifoAbs{} against FIFO on AWS, beat hand-tuned priorities, and, unlike a
+misconfigured map, did not make things worse. Run as a sidecar next to RabbitMQ, the same predictor cut mean latency by \EThreeSidecarAbs{}, so the idea does not depend on our broker. It also has clear limits, which the traces make visible: when backlogs last for hours the broker's own aging erases the predicted order; when keys do not recur, as in two HPC logs, there is nothing to learn from; and when long jobs
+carry most of the work, favouring short ones can make the overall result worse. Because the broker cannot preempt, it cannot shorten a long job's own service time, and we make no claim that tail latency improves.
 
-The rest of the paper follows this argument. Section~\ref{sec:related} places the work among earlier approaches to
-scheduling with unknown or estimated sizes, and Section~\ref{sec:design} describes the broker and its predictor. We
-explain the pre-registered method in Section~\ref{sec:method}, report the results, successes and failures alike, in
-Section~\ref{sec:results}, and state what our evidence does not show in Section~\ref{sec:limits}.
+This paper makes four contributions. First, it presents a broker design in which per-key duration statistics, learned from the acknowledgements the broker already receives, drive multi-level priority scheduling with no operator configuration, together with an opt-in worker-time weighting that keeps the order meaningful under sustained overload. Second, it reports a pre-registered evaluation with an oracle reference, hand-tuned and misconfigured
+baselines, a replication on separate AWS hardware, and a comparison with RabbitMQ and Redis. Third, it reports trace-driven simulations on four public traces from two serverless providers and two HPC logs, keeping the negative results and explaining them. Fourth, it gives a plain account of the trade-off, including a short queueing explanation of why the mean falls while the tail does not. All evidence is synthetic or trace-driven, and we make no claim of production readiness
+(Section~\ref{sec:limits}).
+
+The rest of the paper follows this argument. Section~\ref{sec:related} places the work among earlier approaches to scheduling with unknown or estimated sizes, and Section~\ref{sec:design} describes the broker, its predictor and each optional feature. Section~\ref{sec:method} explains the pre-registered method, Section~\ref{sec:results} reports the results, successes and failures alike, and Section~\ref{sec:limits} states what our evidence does not show.

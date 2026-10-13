@@ -36,8 +36,8 @@ against Redis with FIFO, with the same producers, handlers, workers, arrivals an
 policy change. A thirty-minute run, in two repetitions, tests whether the benefit survives long backlogs.
 
 Real traces test what a synthetic workload cannot: whether keys recur and how heavy the tails are in practice. A
-discrete-event simulator replays the Azure Functions 2021 trace, the Huawei Cloud 2025 request traces and two Parallel
-Workloads Archive logs at offered loads of 0.5, 0.8 and 0.95, using the same predictor code as the broker and a common
+discrete-event simulator replays the Azure Functions 2021 trace \citep{zhang2021harvest} (its earlier characterisation is \citet{shahrad2020}), the Huawei Cloud 2025 request traces \citep{joosen2024} and two Parallel
+Workloads Archive logs \citep{feitelson2014} at offered loads of 0.5, 0.8 and 0.95, using the same predictor code as the broker and a common
 trace format. Arrivals are reconstructed where a trace lacks them, and one of the traces records completion times instead
 of arrival times, which we discuss with the limitations. Two gates are defined for each trace. Gate~A asks whether
 predictive routing, as built and with the default aging, beats FIFO. Gate~B asks the same of the design with weights

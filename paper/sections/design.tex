@@ -71,7 +71,7 @@ queue. The state machine is the same with or without prediction, which is what l
 
 The second stage was meant to add a learned classifier. We first planned a separate service fed with features captured at ingress and with durations persisted by the
 broker, and we built that plumbing: a bounded, versioned capture of ingress features and a bounded on-disk feedback log, both optional and neither able to change
-delivery. We then used it to compare eight online learners, including River regressors and trees, against simple statistics, replaying the recorded workloads with the
+delivery. We then used it to compare eight online learners, including River regressors and trees \citep{montiel2021}, against simple statistics, replaying the recorded workloads with the
 delay that real feedback has. None of the eight passed every frozen quality criterion. The rule was strict, requiring a model to be no worse than both arithmetic
 baselines on both metrics in every cell with no tolerance for noise, and the workload offered little for a richer model to exploit, because its only feature was a
 three-valued category and a per-key average is then close to the best possible predictor. We read the result narrowly. It did not show that learning cannot help, but it
@@ -233,17 +233,17 @@ Table~\ref{tab:optin} collects the optional features, why each was added, and wh
 defaults are still static priority with no prediction.
 
 \begin{table}[t]
-\centering\small
+\centering
 \caption{Opt-in features, why each was added and what the experiments showed. The default for every row is off.}
 \label{tab:optin}
-\begin{tabular}{p{2.9cm}p{3.6cm}p{7.6cm}}
+\begin{tabularx}{\textwidth}{>{\raggedright\arraybackslash}p{3.1cm}>{\raggedright\arraybackslash}p{4.0cm}L}
 \toprule
-Feature & Added because & What the experiments showed \\
+\rowcolor{hbslate!14} \textbf{Feature} & \textbf{Added because} & \textbf{What the experiments showed} \\
 \midrule
 Predictive routing & static priorities need a person who knows each job's cost & passed on the production flow and on AWS; no gate passed on the Azure trace with default aging \\
 Size-binned keys & per-key medians ignore input size & more accurate predictions, but no reliable latency gain under load; one job type got worse \\
 Weights and pausing aging & default aging collapses the levels in long backlogs & large mean-latency gains on both serverless traces and on RabbitMQ; all-message P99 rose in the production flow \\
 Ingress features and persistent feedback & to compare candidate learners offline & enabled the comparison; no learner beat per-key statistics \\
 \bottomrule
-\end{tabular}
+\end{tabularx}
 \end{table}

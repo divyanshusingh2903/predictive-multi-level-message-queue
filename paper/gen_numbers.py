@@ -22,7 +22,8 @@ def load(rel):
 
 def pct(c, ci=True):
     """relative_delta -> '-30.8\\%' (with interval)."""
-    s = f"{c['point'] * 100:+.1f}\\%".replace("-", "$-$").replace("+", "$+$")
+    v = c["point"] * 100
+    s = "$0.0$\\%" if abs(v) < 0.05 else f"{v:+.1f}\\%".replace("-", "$-$").replace("+", "$+$")
     if ci and c.get("ci95"):
         lo, hi = (x * 100 for x in c["ci95"])
         s += f" [{lo:+.1f}, {hi:+.1f}]".replace("-", "$-$").replace("+", "$+$")
@@ -37,7 +38,7 @@ def ratio(c, ci=True):
 
 
 def verdict(c):
-    return {"pass": "pass", "fail": "fail"}.get(c["status"], c["status"])
+    return {"pass": "\\hbpass{}", "fail": "\\hbfail{}"}.get(c["status"], c["status"])
 
 
 macros = []
@@ -73,13 +74,29 @@ macro("EThreeStaticLongWait", f"{e3['S8_rabbitmq_priority_long_wait_vs_fifo']['p
 tables = []
 
 
-def table(caption, label, header, rows, spec):
+def hb(cell):
+    """Bold a plain header cell; leave \\multicolumn cells to the caller."""
+    return cell if cell.startswith("\\multicolumn") or not cell else f"\\textbf{{{cell}}}"
+
+
+def table(caption, label, header, rows, spec, rules=(), size="small"):
+    """header: list of header rows (each a list of cells). rules: cmidrule strings after the first header row."""
+    if header and isinstance(header[0], str):
+        header = [header]
+    head_rows = []
+    for i, hr in enumerate(header):
+        line = "\\rowcolor{hbslate!14} " + " & ".join(hb(c) for c in hr) + " \\\\"
+        if i == 0 and rules:
+            line += "\n" + "".join(rules)
+        head_rows.append(line)
     body = "\n".join(" & ".join(r) + " \\\\" for r in rows)
+    env = "tabularx" if "L" in spec else "tabular"
+    width = "{\\textwidth}" if env == "tabularx" else ""
     tables.append((label.split(":")[1],
-        "\\begin{table}[t]\n\\centering\\small\n"
+        f"\\begin{{table}}[t]\n\\centering\\{size}\n"
         f"\\caption{{{caption}}}\\label{{{label}}}\n"
-        f"\\begin{{tabular}}{{{spec}}}\n\\toprule\n{' & '.join(header)} \\\\\n\\midrule\n{body}\n"
-        "\\bottomrule\n\\end{tabular}\n\\end{table}\n"
+        f"\\begin{{{env}}}{width}{{{spec}}}\n\\toprule\n" + "\n".join(head_rows) + f"\n\\midrule\n{body}\n"
+        f"\\bottomrule\n\\end{{{env}}}\n\\end{{table}}\n"
     ))
 
 
@@ -96,7 +113,8 @@ for key, name, fn, bar in [
     rows.append([name, bar, fn(v2[key]), verdict(v2[key]), fn(e1[key]), verdict(e1[key])])
 table("Production-flow benchmark: local run (\\texttt{v2-prodflow-1}) and its replication on AWS "
       "(\\texttt{v3-cloud-e1-1}). Point estimates with 95\\% bootstrap intervals, paired over five seeds.",
-      "tab:prodflow", ["Criterion", "Bar", "Local", "", "AWS", ""], rows, "llrcrc")
+      "tab:prodflow", [["Criterion", "Bar", "\\multicolumn{2}{c}{\\textbf{Local run}}", "\\multicolumn{2}{c}{\\textbf{AWS replication}}"]],
+      rows, "Llrcrc", rules=("\\cmidrule(lr){3-4}", "\\cmidrule(lr){5-6}"), size="footnotesize")
 
 rows = []
 for key, name, fn, bar in [
@@ -112,7 +130,7 @@ for key, name, fn, bar in [
     c = e3[key]
     rows.append([name, bar, (ratio if c["kind"] == "ratio" else pct)(c), verdict(c)])
 table("Harbinger against RabbitMQ and Redis on the same workload (\\texttt{v3-brokers-prodflow-1}, AWS).",
-      "tab:brokers", ["Criterion", "Bar", "Estimate [95\\% CI]", ""], rows, "llrc")
+      "tab:brokers", ["Criterion", "Bar", "Estimate [95\\% CI]", "Result"], rows, "Llrc", size="footnotesize")
 
 
 def trace_rows(name, summ):
@@ -122,8 +140,8 @@ def trace_rows(name, summ):
         cr = ev["criteria"]
         a, b = cr["A_P1_mean_latency_vs_fifo"], cr["B_P1_mean_latency_vs_fifo"]
         g = ev["gates_passed"]
-        rows.append([name, load_, pct(a, ci=False), "yes" if g["A_predictive_routing"] else "no",
-                     pct(b, ci=False), "yes" if g["B_overload_design"] else "no"])
+        rows.append([name, load_, pct(a, ci=False), "\\hbyes{}" if g["A_predictive_routing"] else "\\hbno{}",
+                     pct(b, ci=False), "\\hbyes{}" if g["B_overload_design"] else "\\hbno{}"])
     return rows
 
 
@@ -133,7 +151,9 @@ for name, rel in [("Azure 2021", "v3-traces/azure2021"), ("Huawei 2025", "v3-tra
     rows += trace_rows(name, load(rel + "/summary.json"))
 table("Trace simulations, mean latency against FIFO and whether each pre-registered gate passed. "
       "A: predictive routing as built. B: with worker-time weights and pausing aging.",
-      "tab:traces", ["Trace", "Load", "A: mean", "A gate", "B: mean", "B gate"], rows, "lrrcrc")
+      "tab:traces", [["", "", "\\multicolumn{2}{c}{\\textbf{Gate A: strict priority}}", "\\multicolumn{2}{c}{\\textbf{Gate B: weights, pausing aging}}"],
+                     ["Trace", "Load", "Mean vs FIFO", "Passed", "Mean vs FIFO", "Passed"]],
+      rows, "llrcrc", rules=("\\cmidrule(lr){3-4}", "\\cmidrule(lr){5-6}"))
 
 pr = load("azure2021/predictability.json")["held_out"]
 rows = [
@@ -144,7 +164,7 @@ rows = [
 ]
 table("Predicting held-out Azure Functions durations: median absolute $\\log_2$ error, share within a factor of 2, "
       "and tier accuracy.", "tab:predictability", ["Predictor", "Median $|\\log_2|$ error", "Within 2$\\times$", "Tier acc."],
-      rows, "lrrr")
+      rows, "Lrrr")
 macro("AzureGlobalErrFactor", f"{2 ** pr['global_median']['median_abs_log2_error']:.0f}")
 macro("AzurePerKeyErrFactor", f"{2 ** pr['per_key_median_all_keys']['median_abs_log2_error']:.1f}")
 
@@ -235,7 +255,9 @@ for p_short, ratio in ((0.9, 10), (0.9, 100), (0.5, 100)):
 table("Mean waiting time under non-preemptive priority, relative to FIFO, from the closed forms of "
       "Section~\\ref{sec:analysis}. An illustration of the model, not a measurement. Short-job share $p$, "
       "long-to-short size ratio $r$, load $\\rho$, and the short class's share of the work $\\pi$.",
-      "tab:cobham", ["$p$", "$r$", "$\\rho$", "$\\pi$", "Short class", "Long class", "All jobs"], rows, "rrrrrrr")
+      "tab:cobham", [["", "", "", "", "\\multicolumn{3}{c}{\\textbf{Mean wait relative to FIFO}}"],
+                     ["$p$", "$r$", "$\\rho$", "$\\pi$", "Short class", "Long class", "All jobs"]],
+      rows, "ccccccc", rules=("\\cmidrule(lr){5-7}",))
 macro("CobhamExampleShort", f"{two_class(0.9, 100, 0.8)[1]:.2f}")
 macro("CobhamExampleLong", f"{two_class(0.9, 100, 0.8)[2]:.2f}")
 macro("CobhamExampleMean", f"{two_class(0.9, 100, 0.8)[3]:.2f}")

@@ -2,22 +2,24 @@
 \begin{table}[t]
 \centering\small
 \caption{Trace simulations, mean latency against FIFO and whether each pre-registered gate passed. A: predictive routing as built. B: with worker-time weights and pausing aging.}\label{tab:traces}
-\begin{tabular}{lrrcrc}
+\begin{tabular}{llrcrc}
 \toprule
-Trace & Load & A: mean & A gate & B: mean & B gate \\
+\rowcolor{hbslate!14}  &  & \multicolumn{2}{c}{\textbf{Gate A: strict priority}} & \multicolumn{2}{c}{\textbf{Gate B: weights, pausing aging}} \\
+\cmidrule(lr){3-4}\cmidrule(lr){5-6}
+\rowcolor{hbslate!14} \textbf{Trace} & \textbf{Load} & \textbf{Mean vs FIFO} & \textbf{Passed} & \textbf{Mean vs FIFO} & \textbf{Passed} \\
 \midrule
-Azure 2021 & 0.5 & $-$0.7\% & no & $-$15.4\% & yes \\
-Azure 2021 & 0.8 & $-$0.9\% & no & $-$22.8\% & yes \\
-Azure 2021 & 0.95 & $-$1.2\% & no & $-$25.3\% & yes \\
-Huawei 2025 & 0.5 & $-$4.8\% & no & $-$4.3\% & no \\
-Huawei 2025 & 0.8 & $-$15.0\% & yes & $-$46.5\% & yes \\
-Huawei 2025 & 0.95 & $-$7.9\% & no & $-$49.9\% & yes \\
-LPC-EGEE & 0.5 & $+$0.0\% & no & $+$1.0\% & no \\
-LPC-EGEE & 0.8 & $-$0.0\% & no & $+$1.9\% & no \\
-LPC-EGEE & 0.95 & $-$0.0\% & no & $+$8.5\% & no \\
-DAS2-fs2 & 0.5 & $-$0.0\% & no & $+$2.7\% & no \\
-DAS2-fs2 & 0.8 & $-$0.0\% & no & $+$88.8\% & no \\
-DAS2-fs2 & 0.95 & $+$0.0\% & no & $+$72.2\% & no \\
+Azure 2021 & 0.5 & $-$0.7\% & \hbno{} & $-$15.4\% & \hbyes{} \\
+Azure 2021 & 0.8 & $-$0.9\% & \hbno{} & $-$22.8\% & \hbyes{} \\
+Azure 2021 & 0.95 & $-$1.2\% & \hbno{} & $-$25.3\% & \hbyes{} \\
+Huawei 2025 & 0.5 & $-$4.8\% & \hbno{} & $-$4.3\% & \hbno{} \\
+Huawei 2025 & 0.8 & $-$15.0\% & \hbyes{} & $-$46.5\% & \hbyes{} \\
+Huawei 2025 & 0.95 & $-$7.9\% & \hbno{} & $-$49.9\% & \hbyes{} \\
+LPC-EGEE & 0.5 & $0.0$\% & \hbno{} & $+$1.0\% & \hbno{} \\
+LPC-EGEE & 0.8 & $0.0$\% & \hbno{} & $+$1.9\% & \hbno{} \\
+LPC-EGEE & 0.95 & $0.0$\% & \hbno{} & $+$8.5\% & \hbno{} \\
+DAS2-fs2 & 0.5 & $0.0$\% & \hbno{} & $+$2.7\% & \hbno{} \\
+DAS2-fs2 & 0.8 & $0.0$\% & \hbno{} & $+$88.8\% & \hbno{} \\
+DAS2-fs2 & 0.95 & $0.0$\% & \hbno{} & $+$72.2\% & \hbno{} \\
 \bottomrule
 \end{tabular}
 \end{table}

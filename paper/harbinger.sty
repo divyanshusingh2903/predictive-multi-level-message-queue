@@ -6,6 +6,10 @@
 \RequirePackage{titlesec}
 \RequirePackage{fancyhdr}
 \RequirePackage{etoolbox}
+\RequirePackage{array}
+\RequirePackage{tabularx}
+\RequirePackage{booktabs}
+\RequirePackage{caption}
 
 \definecolor{hbink}{HTML}{15171C}
 \definecolor{hbslate}{HTML}{5B616E}
@@ -14,9 +18,19 @@
 \titleformat{\section}{\normalfont\Large\bfseries\color{hbink}}{\thesection}{0.8em}{}
 \titleformat{\subsection}{\normalfont\large\bfseries\color{hbink}}{\thesubsection}{0.8em}{}
 
-% Booktabs rules in slate.
+% Tables: slate rules, a tinted bold header row, light zebra body rows, tinted captions, one look everywhere.
 \AtBeginEnvironment{tabular}{\arrayrulecolor{hbslate}}
-\setlength{\heavyrulewidth}{0.08em}
+\AtBeginEnvironment{tabularx}{\arrayrulecolor{hbslate}}
+\setlength{\heavyrulewidth}{0.09em}
+\setlength{\lightrulewidth}{0.04em}
+\setlength{\cmidrulewidth}{0.04em}
+\newcolumntype{L}{>{\raggedright\arraybackslash}X}
+\AtBeginEnvironment{table}{\small\renewcommand{\arraystretch}{1.25}\rowcolors{2}{white}{hbslate!6}}
+\captionsetup{font=small,labelfont={bf,color=hbink},labelsep=period,justification=raggedright,singlelinecheck=false,skip=6pt}
+\newcommand{\hbpass}{\textcolor{hbslate}{pass}}
+\newcommand{\hbfail}{\textbf{fail}}
+\newcommand{\hbyes}{\textbf{yes}}
+\newcommand{\hbno}{\textcolor{hbslate}{no}}
 
 % Running header: wordmark-free, just the short title and page number in slate.
 \pagestyle{fancy}
