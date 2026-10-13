@@ -1,0 +1,19 @@
+\section{Limitations and threats to validity}\label{sec:limits}
+\begin{itemize}
+  \item All evidence is synthetic or trace-driven. There is no production workload, and the production-flow scenario was
+        written by the author.
+  \item One cloud provider and region, two instance types, one placement group (a low-latency network).
+  \item The v2 budgets were set after seeing earlier offline data. Trace simulations reconstruct arrivals where the
+        trace lacks them, and Huawei timestamps are completion times.
+  \item Durations are learned from successful handlers only (success-conditioned labels).
+  \item The broker is a prototype: in-memory, no durability, authentication or backpressure, and the lowest throughput
+        of the three brokers tested. E2 has two repetitions, so its checks have no intervals.
+  \item Shortest-expected-first with a non-preemptive scheduler cannot shorten a long job's own service time; we make no
+        tail-latency claim, and long jobs can lose (Section~\ref{sec:results}).
+  \item Alibaba GPU traces and Kafka, Pulsar and managed queues are out of scope.
+\end{itemize}
+\paragraph{Reproducibility.} Code, configurations, pre-registrations and result files are in the repository
+(\url{https://github.com/divyanshusingh2903/predictive-multi-level-message-queue}); raw per-message data is archived
+outside git with SHA-256 sums. \todo{record the release tag and archive identifier.}
+
+\paragraph{AI assistance.} \todo{Disclose AI-assisted drafting per the venue's current policy (issue \#27).}

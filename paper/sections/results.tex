@@ -1,0 +1,40 @@
+\section{Results}\label{sec:results}
+\input{generated/tables}
+\todo{Place tables near their paragraphs; tables are currently collected here.}
+
+\subsection{Production flow and its replication}
+Predictive routing passed the local gate (Table~\ref{tab:prodflow}): mean latency \VTwoMeanVsFifo{} and short-class
+median \VTwoShortPFiftyVsFifo{} against FIFO, with all-message P99 at \VTwoPNinetyNine{}. It beat the hand-tuned static
+map (\VTwoVsTuned{}) and the misconfigured one (\VTwoVsMisconf{}), and with no job labels it still gained
+\VTwoZeroConfig{}. The AWS replication on a separate host reproduced every verdict (mean \EOneMeanVsFifo{}, short-class
+median \EOneShortPFiftyVsFifo{}). The predictor is statistically close to the oracle reference.
+
+\subsection{Against RabbitMQ and Redis}
+On the same workload (Table~\ref{tab:brokers}), \sys{}'s predictive arm cut mean latency \EThreeVsRabbit{} against
+RabbitMQ FIFO and \EThreeVsRedis{} against Redis FIFO. \sys{}'s own FIFO is slower than RabbitMQ's by
+\EThreeFifoGap{}, outside the pre-registered equivalence bar, which narrows the gain. The predictor transfers: running
+as a sidecar on RabbitMQ it cut mean latency \EThreeSidecar{}, more than the in-broker arm, plausibly because RabbitMQ
+priorities never age; this is an explanation, not a measured cause. Static priorities without aging starved the long
+class (maximum wait \EThreeStaticLongWait{} FIFO's). With weights and pausing aging, \sys{} reached \EThreeWeighted{}.
+In a broker-cost microbenchmark \sys{} had the lowest peak throughput of the three (about 5,300 deliveries/s versus
+7,400 for RabbitMQ and 21,000 for Redis).
+
+\subsection{Long runs}
+Over 30 minutes with the broker on its own host, the mean-latency gain fell to $-6\%$ and $-7\%$ in the two
+repetitions and missed its bar, while P99 and long-job waits stayed level with FIFO. Backlogs lasting minutes make
+default aging promote nearly everything. \todo{generate E2 numbers from summary.json}
+
+\subsection{Traces}
+Table~\ref{tab:traces} shows the pattern. With default aging (gate~A) the predictor passes only once; on hours-long
+backlogs even the oracle is within 1--3\% of FIFO. With weights and pausing aging (gate~B), the gate passes on five of
+six Azure and Huawei cells. On the two HPC logs no gate passes: on LPC-EGEE most keys are stale or cold when a job
+arrives, so most jobs take the default level; on DAS2-fs2 gate~B helps short jobs several-fold but long jobs, which
+carry most of the work, wait longer, and the P99 and long-job guardrails fail. The oracle with the same scheduler
+improves every window there, so the loss is in prediction, not in the scheduler. On Azure, a per-key median predicts
+held-out durations to within a factor of \AzurePerKeyErrFactor{} (median) against \AzureGlobalErrFactor{} for a
+single global median (Table~\ref{tab:predictability}).
+
+\subsection{Negative results}
+Size-binned keys (for jobs whose cost depends on payload size) lowered mean latency only 1.5\% against job-type keys,
+below the pre-registered bar. In the offline comparison, none of eight candidates passed every frozen quality gate.
+\todo{generate these two from v3-sizebins and issue5-v1 summaries.}

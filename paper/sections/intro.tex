@@ -1,0 +1,26 @@
+\section{Introduction}
+
+Background work (e-mail, image resizing, report exports, webhooks) usually shares one queue, and jobs of very
+different cost wait behind each other. If service times were known, serving the shortest first would lower mean
+latency \citep{schrage1968}. Production queues rarely know them: operators split queues or assign priorities by hand,
+per endpoint, and must keep that map correct as code and traffic change. A mistaken map is worse than none; in our
+benchmark a plausible misconfiguration was slower than FIFO.
+
+We ask whether a broker can learn the map itself. \sys{} keeps, for each message key (the producer, optionally joined
+to a job-type header), a decaying histogram of the handler durations reported on acknowledgement. At ingress it looks
+up the key's expected duration and maps it to a priority level using boundaries taken from global quantiles. Cold,
+stale or high-variance keys take a default level. The predictor is plain statistics inside the broker; no model is
+trained or served.
+
+\paragraph{Contributions.}
+\begin{itemize}
+  \item A broker design with an in-process per-key duration predictor, shadow and predictive routing modes, and an
+        opt-in worker-time weighting with pausing aging for sustained overload (Section~\ref{sec:design}).
+  \item A pre-registered evaluation with an oracle reference, hand-tuned and misconfigured static baselines, and an
+        independent-host AWS replication and comparison with RabbitMQ and Redis (Section~\ref{sec:results}).
+  \item Trace-driven simulations on four public traces from two serverless providers and two HPC logs, with the
+        negative results kept: where the gate failed, and why (Section~\ref{sec:results}).
+  \item The scheduling trade-off stated plainly: for non-preemptive queues, shortest-expected-first lowers median and
+        mean latency but does not improve P99 when long jobs are common, and costs long jobs.
+\end{itemize}
+We do not claim a tail-latency improvement, and all evidence is synthetic or trace-driven (Section~\ref{sec:limits}).

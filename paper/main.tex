@@ -1,0 +1,36 @@
+\documentclass[11pt]{article}
+\usepackage[margin=1in]{geometry}
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}
+\usepackage{microtype}
+\usepackage{booktabs}
+\usepackage{amsmath}
+\usepackage[numbers]{natbib}
+\usepackage[hidelinks]{hyperref}
+\usepackage{xcolor}
+
+\input{generated/numbers}
+
+\newcommand{\sys}{Harbinger}
+\newcommand{\todo}[1]{\textcolor{red}{[TODO: #1]}}
+
+\title{Harbinger: Zero-Configuration Size-Based Scheduling\\for Message Queues with Per-Key Duration Statistics}
+\author{Divyanshu Singh\\\small\texttt{divyanshusingh2903@gmail.com}}
+\date{Draft \today}
+
+\begin{document}
+\maketitle
+
+\input{sections/abstract}
+\input{sections/intro}
+\input{sections/related}
+\input{sections/design}
+\input{sections/method}
+\input{sections/results}
+\input{sections/limits}
+\input{sections/conclusion}
+
+\bibliographystyle{plainnat}
+\bibliography{references}
+
+\end{document}

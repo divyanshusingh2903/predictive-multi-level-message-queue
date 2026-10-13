@@ -1,0 +1,28 @@
+\section{Evaluation method}\label{sec:method}
+
+\paragraph{Pre-registration.}
+Each experiment has a configuration and pass criteria committed before its first registered run (the repository
+records the freeze commit for each). Criteria are paired per-seed or per-window deltas against FIFO with bootstrap 95\%
+intervals; a gate passes only if every primary criterion does. Primary guardrails bound all-message P99 and long-job
+maximum wait. The v2 budgets were chosen after we had seen data from the earlier offline study, so they are not
+independent of it. \todo{List every deviation and amendment (e.g.\ v3-cloud Amendment~1) in an appendix.}
+
+\paragraph{Metrics.}
+Mean latency, per-class medians, slowdown, long-job maximum wait and all-message P99. P99 is a guardrail, not a goal.
+
+\paragraph{Arms.}
+FIFO; static priority, well configured by hand and deliberately misconfigured; shadow; predictive (with and without
+job-type labels); and an oracle that ranks by the true planned cost. The oracle is a reference rather than an optimum:
+it uses fixed terciles, and costs are approximate under contention.
+
+\paragraph{Experiments.}
+\begin{itemize}
+  \item \textbf{Production flow.} Five services emit nine job types of real CPU work through the real clients, with a
+        steady phase, a flash-sale overload, a recovery and a mid-run cost shift; 5 seeds. Run locally and replicated on
+        AWS (\texttt{c8i} instances, one placement group). The AWS broker comparison runs the same workload against
+        RabbitMQ (FIFO, static priority, and \sys{}'s predictor as a sidecar) and Redis (FIFO).
+  \item \textbf{Trace simulations.} A discrete-event simulator replays Azure Functions 2021, Huawei 2025, and two
+        Parallel Workloads Archive logs at offered loads 0.5, 0.8 and 0.95, with arrivals reconstructed where the trace
+        lacks them. Gate~A is predictive routing as built; gate~B adds weights and pausing aging.
+\end{itemize}
+Every number below is generated from the committed result files by \texttt{paper/gen\_numbers.py}.

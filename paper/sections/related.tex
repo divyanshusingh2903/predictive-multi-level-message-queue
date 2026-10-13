@@ -1,0 +1,28 @@
+\section{Related work}
+
+\paragraph{Size-based scheduling.}
+Shortest remaining processing time is optimal for mean response time on a single server \citep{schrage1968}, and
+size-based policies improve web server response times without starving large requests in practice
+\citep{harchol2003}. The SOAP framework analyses a broad class of age-based policies, including priority classes and
+Gittins-style indices \citep{scully2018soap}. \sys{} is a non-preemptive, queue-level instance: it can reorder only
+what has not started.
+
+\paragraph{Scheduling with estimated sizes.}
+Estimates can be good enough: \citet{dellamico2014} show that even imprecise size estimates beat size-oblivious
+policies unless the size distribution is highly skewed, and that under-estimation is far more harmful than
+over-estimation. \citet{mitzenmacher2019} analyses queues that schedule by predicted service times and defines a
+price of misprediction. In HPC, replacing user runtime estimates with the average of a user's last two runtimes
+improves backfilling \citep{tsafrir2007}. \sys{} applies the same idea, per-key history as the prediction, to a
+general message queue, and measures where it fails.
+
+\paragraph{Workloads.}
+We use the Azure Functions 2021 invocation trace \citep{zhang2021harvest} (see also \citep{shahrad2020}), the Huawei
+Cloud 2025 request traces \citep{joosen2024}, and two logs from the Parallel Workloads Archive
+\citep{feitelson2014}.
+
+\paragraph{Learned predictors.}
+Before settling on statistics, we compared eight online regressors and statistics offline, including River models
+\citep{montiel2021}; none passed every frozen quality gate, and per-key statistics then passed the downstream
+scheduling gate (Section~\ref{sec:results}).
+
+\todo{Add queueing-system related work: RabbitMQ priority queues, SQS/Pub/Sub; verify each reference before citing (issue \#29).}
