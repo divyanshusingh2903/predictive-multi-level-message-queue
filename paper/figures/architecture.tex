@@ -1,31 +1,35 @@
+\resizebox{\textwidth}{!}{%
 \begin{tikzpicture}[
-    font=\scriptsize,
-    box/.style={draw=hbslate, rounded corners=2pt, minimum height=1.3cm, text width=2.0cm, align=center, fill=white},
-    flow/.style={-{Stealth[length=4pt]}, color=hbink, line width=0.5pt},
-    fb/.style={-{Stealth[length=4pt]}, color=hbsignal, line width=0.7pt},
-    lvl/.style={fill=hbink, minimum height=0.16cm, inner sep=0pt, anchor=west}
+    font=\small,
+    box/.style={draw=hbslate, rounded corners=3pt, minimum height=2.3cm, text width=2.4cm, align=center, fill=white},
+    flow/.style={-{Stealth[length=5pt]}, color=hbink, line width=0.6pt},
+    fb/.style={-{Stealth[length=5pt]}, color=hbsignal, line width=0.9pt},
+    lvl/.style={fill=hbink, minimum height=0.2cm, inner sep=0pt, anchor=west}
   ]
-  \node[box] (prod) at (0,0) {Producer\\[2pt]\texttt{Submit}};
-  \node[box] (proxy) at (2.7,0) {Proxy\\[2pt]stamps id, arrival time, producer id};
-  \node[box] (route) at (5.4,0) {\texttt{route\_message()}\\[2pt]key $\to$ expected duration $\to$ level};
-  \node[box, minimum height=2.0cm, text width=2.3cm] (queue) at (8.3,0) {};
-  \node[anchor=north] at ([yshift=-0.08cm]queue.north) {Multi-level queue};
-  \foreach \i/\w/\l in {0/1.4/L0, 1/1.0/L1, 2/0.6/L2} {
-    \node[font=\tiny, text=hbslate, anchor=east] at ([xshift=0.55cm, yshift=0.12cm-\i*0.27cm]queue.west) {\l};
-    \node[lvl, minimum width=\w cm] at ([xshift=0.65cm, yshift=0.12cm-\i*0.27cm]queue.west) {};
+  \node[box] (prod)  at (0,0)     {Producer\\[4pt]\texttt{Submit}};
+  \node[box] (proxy) at (4.3,0)   {Proxy\\[4pt]stamps id, arrival time, producer id};
+  \node[box] (route) at (8.6,0)   {\texttt{route\_message()}\\[4pt]maps the message's key to a level};
+  \node[box, text width=2.9cm] (queue) at (12.9,0)  {};
+  \node[box] (cons)  at (17.4,0)  {Consumer\\[4pt]\texttt{Pull}, handler, \texttt{Ack}/\texttt{Nack}};
+
+  % queue contents: title, three level bars, footer
+  \node[anchor=north] at ([yshift=-0.14cm]queue.north) {Multi-level queue};
+  \foreach \i/\w/\l in {0/1.5/L0, 1/1.1/L1, 2/0.7/L2} {
+    \node[font=\scriptsize, text=hbslate, anchor=east] at ([xshift=0.6cm, yshift=0.2cm-\i*0.34cm]queue.west) {\l};
+    \node[lvl, minimum width=\w cm] at ([xshift=0.72cm, yshift=0.2cm-\i*0.34cm]queue.west) {};
   }
-  \node[anchor=south] at ([yshift=0.08cm]queue.south) {aging / weights};
-  \node[box] (cons) at (11.7,0) {Consumer\\[2pt]\texttt{Pull}, handler, \texttt{Ack}/\texttt{Nack}};
+  \node[anchor=south, text=hbslate, font=\scriptsize] at ([yshift=0.14cm]queue.south) {aging, weights};
+
   \draw[flow] (prod) -- (proxy);
   \draw[flow] (proxy) -- (route);
   \draw[flow] (route) -- (queue);
-  \draw[flow] (queue) -- node[above, font=\tiny, text=hbslate] {tier-blind} (cons);
+  \draw[flow] (queue) -- node[above, font=\scriptsize, text=hbslate] {tier-blind} (cons);
 
-  \node[draw=hbsignal, rounded corners=2pt, fill=hbsignal!6, minimum height=1.3cm, text width=4.4cm, align=center] (pred) at (4.0,-3.0)
-    {Per-key predictor\\[2pt]decaying duration histograms\\tier boundaries from global quantiles};
-  \node[draw=hbslate, dashed, rounded corners=2pt, minimum height=0.8cm, text width=2.2cm, align=center] (dlq) at (8.3,-3.0) {Dead-letter queue};
-
-  \draw[fb] ([xshift=-0.6cm]route.south) -- node[left, font=\tiny, text=hbsignal] {lookup} ([xshift=0.8cm]pred.north);
-  \draw[flow, color=hbslate] (queue.south) -- node[right, font=\tiny, text=hbslate] {retries exhausted, TTL} (dlq.north);
-  \draw[fb] (cons.south) -- (11.7,-4.3) -- node[below, font=\tiny, text=hbsignal] {\texttt{processing\_time\_ms} on \texttt{Ack}: learn} (4.0,-4.3) -- (pred.south);
-\end{tikzpicture}
+  % predictor, dead-letter queue, learning loop
+  \node[draw=hbsignal, rounded corners=3pt, fill=hbsignal!6, minimum height=1.8cm, text width=4.6cm, align=center] (pred) at (8.6,-4.2)
+    {Per-key predictor\\[4pt]decaying duration histograms,\\tier boundaries from\\global quantiles};
+  \node[draw=hbslate, dashed, rounded corners=3pt, minimum height=1.1cm, text width=2.4cm, align=center] (dlq) at (12.9,-4.2) {Dead-letter queue};
+  \draw[fb, <->] (route.south) -- node[left, font=\scriptsize, text=hbsignal] {lookup} (route.south |- pred.north);
+  \draw[flow, color=hbslate] (queue.south) -- node[right, font=\scriptsize, text=hbslate, align=left] {retries exhausted,\\TTL expired} (dlq.north);
+  \draw[fb] (cons.south) -- (17.4,-6.0) -- node[below, font=\scriptsize, text=hbsignal] {\texttt{processing\_time\_ms} on \texttt{Ack}: learn} (8.6,-6.0) -- (pred.south);
+\end{tikzpicture}}
