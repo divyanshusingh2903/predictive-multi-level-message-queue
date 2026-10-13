@@ -5,7 +5,9 @@ Both are computed from the rules in Section 3, not measured: the histogram shape
 hand-chosen examples whose medians, p99s and boundaries are then derived by the same
 quantile rules the broker uses, and the share strip applies the virtual-clock rule.
 """
+import collections
 import pathlib
+import random
 
 OUT = pathlib.Path(__file__).resolve().parent / "figures"
 NB = 14  # bins [2^i, 2^(i+1)) ms for i = 0..13
@@ -108,6 +110,128 @@ def weights_figure():
     (OUT / "weights.tex").write_text("\n".join(lines) + "\n")
 
 
+def run(mode, seed=7, T=150.0, dt=0.05, lam=24.0, probs=(0.5, 0.3, 0.2), theta=5.0, interval=0.5, w=(8, 3, 1)):
+    rng = random.Random(seed)
+    lv = [collections.deque() for _ in range(3)]
+    v = [0.0, 0.0, 0.0]
+    t, nxt_age = 0.0, interval
+    comp, waits = [], collections.defaultdict(list)
+    next_sample = 0.0
+    while t < T:
+        # arrivals (Bernoulli approximation of Poisson at this dt)
+        n = 0
+        p = lam * dt
+        while p > 0:
+            if rng.random() < min(p, 1.0): n += 1
+            p -= 1.0
+        for _ in range(n):
+            o = rng.choices((0, 1, 2), probs)[0]
+            lv[o].append({"arr": t, "enq": t, "orig": o, "prom": False})
+        # aging pass
+        if t >= nxt_age:
+            nxt_age += interval
+            for L in (2, 1):
+                T_ = L - 1
+                if mode == "plain":
+                    keep = collections.deque()
+                    for m in lv[L]:
+                        if t - m["enq"] >= theta:
+                            m["enq"], m["prom"] = t, True
+                            lv[T_].append(m)
+                        else:
+                            keep.append(m)
+                    lv[L] = keep
+                else:
+                    behind = any(m["prom"] for m in lv[T_]) and lv[T_] and (t - lv[T_][0]["arr"] >= theta)
+                    if behind:
+                        continue
+                    for i, m in enumerate(lv[L]):
+                        if t - m["enq"] >= theta:
+                            del lv[L][i]
+                            m["enq"], m["prom"] = t, True
+                            lv[T_].append(m)
+                            break
+        # one pull per dt (service time dt)
+        nonempty = [i for i in range(3) if lv[i]]
+        if nonempty:
+            if mode == "plain":
+                l = nonempty[0]
+            else:
+                vt = min(v[i] for i in nonempty)
+                for i in range(3):
+                    if not lv[i]: v[i] = max(v[i], vt)
+                l = min(nonempty, key=lambda i: (v[i], i))
+                v[l] += 1.0 / w[l]
+            m = lv[l].popleft()
+            waits[int(t // 5)].append((m["orig"], t - m["arr"]))
+        if t >= next_sample:
+            next_sample += 1.0
+            tot = len(lv[0])
+            promoted = sum(1 for m in lv[0] if m["orig"] > 0)
+            comp.append((t, promoted / tot if tot else 0.0, [len(q) for q in lv]))
+        t += dt
+    return comp, waits
+
+
+
+def aging_figure():
+    """Toy model of the two promotion rules under sustained overload (120% load, 150 s)."""
+    plain, wp = run("plain")
+    paus, wq = run("pausing")
+    T = 150.0
+
+    def smooth(series, k=5):
+        out = []
+        for i in range(len(series)):
+            seg = series[max(0, i - k + 1): i + 1]
+            out.append(sum(seg) / len(seg))
+        return out
+
+    def waits_series(waits):
+        pts = []
+        for b in range(int(T // 5)):
+            o0 = [x for o, x in waits.get(b, []) if o == 0]
+            if o0:
+                pts.append((b * 5 + 2.5, sum(o0) / len(o0)))
+        return pts
+
+    a_plain = list(zip([c[0] for c in plain], smooth([c[1] for c in plain])))
+    a_paus = list(zip([c[0] for c in paus], smooth([c[1] for c in paus])))
+    c_plain = [(c[0], c[2][2]) for c in plain]
+    c_paus = [(c[0], c[2][2]) for c in paus]
+    panels = [
+        ("(a) promoted work in the top level", a_plain, a_paus, 1.0, "share"),
+        ("(b) wait of jobs predicted short (s)", waits_series(wp), waits_series(wq), None, "s"),
+        ("(c) messages in the lowest level", c_plain, c_paus, None, "n"),
+    ]
+    W, H, gap = 4.6, 2.6, 1.5
+    lines = ["\\resizebox{\\textwidth}{!}{%", "\\begin{tikzpicture}[font=\\small]"]
+    for k, (title, d1, d2, ymax, kind) in enumerate(panels):
+        x0 = k * (W + gap)
+        top = ymax or max(max(y for _, y in d1), max(y for _, y in d2)) * 1.1
+        step = {"share": 0.25, "s": 5, "n": 100}[kind]
+        top = (int(top / step) + 1) * step if ymax is None else ymax
+        lines.append(f"  \\node[font=\\footnotesize\\bfseries, anchor=south west] at ({x0:.2f},{H + 0.15:.2f}) {{{title}}};")
+        lines.append(f"  \\draw[hbslate!60] ({x0:.2f},0) -- ({x0 + W:.2f},0); \\draw[hbslate!60] ({x0:.2f},0) -- ({x0:.2f},{H:.2f});")
+        for xt in (0, 50, 100, 150):
+            lines.append(f"  \\node[font=\\scriptsize, text=hbslate, anchor=north] at ({x0 + xt / T * W:.2f},-0.05) {{{xt}}};")
+        nt = int(round(top / step))
+        for i in range(0, nt + 1, max(1, nt // 4)):
+            yv = i * step
+            lab = f"{yv:.2f}".rstrip("0").rstrip(".") if kind == "share" else f"{yv:.0f}"
+            lines.append(f"  \\node[font=\\scriptsize, text=hbslate, anchor=east] at ({x0 - 0.05:.2f},{yv / top * H:.2f}) {{{lab}}};")
+        for data, col, wd in ((d1, "hbink", "0.9pt"), (d2, "hbsignal", "1.2pt")):
+            pts = " -- ".join(f"({x0 + x / T * W:.3f},{min(y, top) / top * H:.3f})" for x, y in data)
+            lines.append(f"  \\draw[{col}, line width={wd}] {pts};")
+        lines.append(f"  \\node[font=\\scriptsize, text=hbslate, anchor=north] at ({x0 + W / 2:.2f},-0.4) {{time (s)}};")
+    lx = 0.0
+    lines.append(f"  \\draw[hbink, line width=0.9pt] ({lx:.2f},-1.2) -- ({lx + 0.7:.2f},-1.2); \\node[anchor=west, font=\\footnotesize] at ({lx + 0.85:.2f},-1.2) {{strict priority with plain aging (today's default)}};")
+    lines.append(f"  \\draw[hbsignal, line width=1.2pt] ({lx + 8.2:.2f},-1.2) -- ({lx + 8.9:.2f},-1.2); \\node[anchor=west, font=\\footnotesize] at ({lx + 9.05:.2f},-1.2) {{weights 8:3:1 with pausing aging}};")
+    lines.append("\\end{tikzpicture}}")
+    (OUT / "aging.tex").write_text("\n".join(lines) + "\n")
+
+
 histogram_figure()
 weights_figure()
-print("wrote figures/histogram.tex and figures/weights.tex")
+aging_figure()
+print("wrote histogram, weights and aging figures")
