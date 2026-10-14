@@ -67,6 +67,7 @@ macro("EThreeVsRabbit", pct(e3["P1_mean_vs_rabbitmq_fifo"], ci=False))
 macro("EThreeVsRedis", pct(e3["P3_mean_vs_redis_fifo"], ci=False))
 macro("EThreeSidecar", pct(e3["S3_transfer_rabbitmq_predictive_vs_fifo"], ci=False))
 macro("EThreeWeighted", pct(e3["S6_weighted_mean_vs_rabbitmq_fifo"], ci=False))
+macro("EThreeWeightedPNinetyNine", f"{e3['S7_weighted_p99_vs_rabbitmq_fifo']['point']:.2f}$\\times$")
 macro("EThreeFifoGap", pct(e3["S1_fifo_equivalence_rabbitmq"], ci=False))
 macro("EThreeStaticLongWait", f"{e3['S8_rabbitmq_priority_long_wait_vs_fifo']['point']:.1f}$\\times$")
 
@@ -111,8 +112,8 @@ for key, name, fn, bar in [
     ("S4_zero_config_vs_fifo", "S4 producer-only keys vs FIFO", pct, "$\\le -5\\%$"),
 ]:
     rows.append([name, bar, fn(v2[key]), verdict(v2[key]), fn(e1[key]), verdict(e1[key])])
-table("Production-flow benchmark: local quiet-machine re-run (\\texttt{v2-prodflow-1}) and its replication on AWS "
-      "(\\texttt{v3-cloud-e1-1}). Point estimates with 95\\% bootstrap intervals, paired over five seeds.",
+table("Production-flow benchmark: local quiet-machine re-run and its replication on AWS. "
+      " Point estimates with 95\\% bootstrap intervals, paired over five seeds.",
       "tab:prodflow", [["Criterion", "Bar", "\\multicolumn{2}{c}{\\textbf{Local run}}", "\\multicolumn{2}{c}{\\textbf{AWS replication}}"]],
       rows, "Llrcrc", rules=("\\cmidrule(lr){3-4}", "\\cmidrule(lr){5-6}"), size="footnotesize")
 
@@ -129,7 +130,7 @@ for key, name, fn, bar in [
 ]:
     c = e3[key]
     rows.append([name, bar, (ratio if c["kind"] == "ratio" else pct)(c), verdict(c)])
-table("Harbinger against RabbitMQ and Redis on the same workload (\\texttt{v3-brokers-prodflow-1}, AWS).",
+table("Harbinger against RabbitMQ and Redis on the same workload, on AWS.",
       "tab:brokers", ["Criterion", "Bar", "Estimate [95\\% CI]", "Result"], rows, "Llrc", size="footnotesize")
 
 
