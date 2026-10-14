@@ -1,11 +1,10 @@
-# Aging and size-bin production flows on AWS: pre-registration (`v4-cloud-reruns`) — DRAFT, NOT FROZEN
+# Aging and size-bin production flows on AWS: pre-registration (`v4-cloud-reruns`)
 
-**Status: draft.** It becomes a pre-registration only when the commit that freezes it exists, before any registered
-run. After freezing, changing anything requires a new version, and these results stay published.
+**Frozen 2026-10-14, before any registered run.** Changing anything below after results exist requires a new version, and these results stay published, as in the earlier registrations. The freeze commit is the one that sets `frozen_on` in both configs.
 
 | | |
 |---|---|
-| Issue | TBD (create before freezing) |
+| Issue | none |
 | Configurations | [`v4-cloud-aging.json`](../benchmarks/configs/v4-cloud-aging.json) (E5), [`v4-cloud-sizebins.json`](../benchmarks/configs/v4-cloud-sizebins.json) (E6) |
 | Replicates | [`v3-aging-prodflow-1`](v3-aging-preregistration.md) and [`v3-sizebins-1`](v3-sizebins-preregistration.md) |
 | Analysis | [`benchmarks/prodflow_report.py`](../benchmarks/prodflow_report.py), unchanged |
@@ -51,8 +50,10 @@ replicates:
   predictive routing's, against a bar of 3% below it. The guardrails passed. Resize improved by 2.8% (bar 10%), and the
   invoice class was 8.7% worse.
 
-No run of either experiment on AWS has been made. A one-seed debug pass (seed 7, which is not registered, 60 seconds per
-arm) will check that the runner works; its latencies are not read.
+No registered run of either experiment on AWS has been made. A one-seed debug pass (seed 7, which is not registered, 60
+seconds per arm, `fifo` and the experiment's arm) ran on 2026-10-14 from commit `b7214e1` on a `c8i.2xlarge` with the image
+built from it. All four runs completed 7,066 of 7,066 messages with no dead-lettered messages, submit errors or lost
+leases. Its latencies were not read and it is not analysed.
 
 ## Criteria
 
@@ -77,13 +78,13 @@ reported as such.
 - If the pre-registered gate passes on AWS where it did not locally, that is reported as a replication failure of the
   local result and is not treated as a pass of the design.
 
-## Required changes before freezing (done, uncommitted)
+## Changes made before freezing
 
 1. `benchmarks/configs/v4-cloud-aging.json` and `v4-cloud-sizebins.json`, copies of the frozen configs with `frozen_on`
    still `null`.
 2. `benchmarks/cloud/run_all.sh` runs them as `e5` and `e6`, refuses unfrozen configs in registered mode, and has
    debug overrides for seed 7.
-3. At freeze: set `frozen_on` in both configs and remove the DRAFT notices.
+3. At freeze: `frozen_on` set in both configs and the DRAFT notices removed.
 
 ## Threats
 
