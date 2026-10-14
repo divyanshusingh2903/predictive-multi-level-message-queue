@@ -13,9 +13,12 @@ relative-delta criterion is the average of the paired differences,
 with its interval taken by resampling the units; a ratio criterion averages $M_u^{\text{arm}}/M_u^{\text{FIFO}}$ in the same way. Slowdown is a job's
 latency divided by its own service time. The primary criteria concern mean latency and the median latency of short jobs. All-message
 P99 and the longest wait of a long job are guardrails, which a design must not break, and are not goals. We should be
-honest about the limits of this discipline: the budgets for the first (v2) experiment were chosen after we had seen data
-from an earlier offline study, so they are not independent of it. Amendments made during the AWS runs are listed with the
-results.
+honest about the limits of this discipline: the budgets for the first experiment were chosen after we had seen data
+from an earlier offline study, so they are not independent of it. Deviations from the pre-registrations are listed here. Every frozen configuration is unchanged since the commit that froze it. One amendment was
+made during the AWS runs: the single-host replication moved to its own instance when the vCPU quota rose, before its first run and with only message counts read. The thirty-minute run
+was registered as descriptive, with no gate. The first trace simulation on Azure, before the weighted design, used older simulator rules, and a staleness defect
+found there was fixed before the later experiments; the common-rules runs on Azure use the converted trace and time-based windows, so their figures differ slightly. The DAS2
+diagnosis and the quiet-machine re-run were run afterwards and are not pre-registered, and the re-run keeps the frozen configurations and analysis.
 
 The arms follow the questions the experiments ask. FIFO is the default behaviour of most queues. Two static-priority
 baselines stand for what an operator would do by hand: one set by someone who knows each job type's cost, and one set badly
@@ -36,7 +39,7 @@ against Redis with FIFO, with the same producers, handlers, workers, arrivals an
 policy change. A thirty-minute run, in two repetitions, tests whether the benefit survives long backlogs. Two further frozen production-flow experiments test the design's optional features: one compares weights and pausing aging with predictive routing under the default aging, and one tests keys split by input size. An offline comparison of eight online learners against per-key statistics, on recorded workloads, decided whether a model was needed at all.
 
 Real traces test what a synthetic workload cannot: whether keys recur and how heavy the tails are in practice. A
-discrete-event simulator replays the Azure Functions 2021 trace \citep{zhang2021harvest} (its earlier characterisation is \citet{shahrad2020}), the Huawei Cloud 2025 request traces \citep{joosen2024} and two Parallel
+discrete-event simulator replays the Azure Functions 2021 trace \citep{zhang2021harvest} (its earlier characterisation is \citet{shahrad2020}), the Huawei Cloud public request traces (2025 release; the earlier trace study is \citealt{joosen2024}) and two Parallel
 Workloads Archive logs \citep{feitelson2014} at offered loads of 0.5, 0.8 and 0.95, using the same predictor code as the broker and a common
 trace format. Arrivals are reconstructed where a trace lacks them, and one of the traces records completion times instead
 of arrival times, which we discuss with the limitations. Two gates are defined for each trace. Gate~A asks whether
