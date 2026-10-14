@@ -1,18 +1,18 @@
 \section{Introduction}\label{sec:intro}
 
 Almost every large service is built around queues. A web request that would take too long to finish synchronously becomes a message, and a pool of workers picks it up
-later. Cloud vendors document the pattern as a design principle, because a queue between a task and the service it calls smooths bursts of demand that would otherwise
+later. Cloud vendors document the pattern as a design pattern, because a queue between a task and the service it calls smooths bursts of demand that would otherwise
 overload the service \citep{azureleveling}, and serverless platforms use it to connect functions to the rest of the cloud, with a managed fleet of pollers that read from a queue and invoke a
-function for each message \citep{lambdasqs}. Inside large companies it runs at a scale that is hard to picture: Meta describes an internal queueing service that processes close to a trillion items a day, on behalf of
+function for each batch of messages \citep{lambdasqs}. Inside large companies it runs at a scale that is hard to picture: Meta describes an internal queueing service that processes close to a trillion items a day, on behalf of
 notifications, integrity checks, video encoding and the many other tasks that microservices hand to one another asynchronously \citep{foqs2021}. Queues also carry the machinery of reliability, namely retries,
 separate retry queues so that one bad message does not block a batch, and dead-letter queues for the messages that never succeed \citep{uberdlq}. When the work behind a service is not what a user is waiting on, it is in a queue.
 
 The trouble is that one queue usually carries very different kinds of work. A notification that takes a few milliseconds shares a queue, and often a pool of workers, with a report export that takes tens of seconds, and when load rises the cheap
-job waits behind the expensive one. This is head-of-line blocking, the same mechanism that makes tail latency so hard to control in interactive services \citep{dean2013tail}, and a known weakness of microservice applications in which
+job waits behind the expensive one. This is head-of-line blocking, the same mechanism that makes tail latency so hard to control in interactive services \citep{dean2013tail}, and a known concern for microservice applications in which
 many such calls compose \citep{gan2019deathstar}. It hurts the mean and the median as well as the tail, because most jobs are the cheap ones.
 
 Practitioners have a standard answer, which is to prioritise. The Azure Architecture Center describes a pattern in which the producer assigns each message a priority and consumers handle higher priorities first, or in which separate queues are kept per priority
-\citep{azurepriority}; Meta's queue and RabbitMQ also let producers set a priority on every item \citep{foqs2021,rabbitmqpriority}, whereas SQS has none \citep{sqstypes} and a Kafka partition is consumed in offset order \citep{kreps2011kafka}. Even where priorities exist, they put the
+\citep{azurepriority}; Meta's queue and RabbitMQ also let producers set a priority on every item \citep{foqs2021,rabbitmqpriority}, whereas SQS offers standard and FIFO queues but no priority \citep{sqstypes} and a Kafka partition is consumed in offset order \citep{kreps2011kafka}. Even where priorities exist, they put the
 burden on a person. Someone has to know what each endpoint costs, decide where it belongs, and revisit that decision when code or traffic changes, and getting it wrong is not harmless: in our benchmark a plausible but misconfigured map was slower than doing nothing at all.
 
 Scheduling theory suggests a route that needs no such person. If a job's processing time is known, serving the shortest first minimises mean response time \citep{schrage1968}, and that idea has been put to work in web servers \citep{harchol2003}, data-processing clusters \citep{pastorelli2013} and

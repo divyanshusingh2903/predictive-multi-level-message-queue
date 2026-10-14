@@ -10,8 +10,8 @@ The theory of scheduling by size begins with the observation that shortest remai
 first improved response times with little loss to large ones \citep{harchol2003}, and across several servers, sending jobs of similar size to the same host avoids short jobs queueing behind long ones \citep{harchol1999sita}; size-aware sharding applies the same reasoning to key-value stores \citep{didona2019minos}. \sys{} differs in that it is a non-preemptive broker: one multi-level queue shared by many workers. It can only reorder what has not started, so it inherits the
 penalty on long jobs without the ability to preempt that some of these systems rely on, and our results show that cost directly.
 
-Those results assume the scheduler knows each job's size. When it does not, but knows the distribution of sizes, the Gittins index minimises mean response time \citep{gittins1979} and stays close to optimal on many servers \citep{scully2020gittins}; when it knows nothing, foreground--background scheduling favours the jobs that have received the least service \citep{nuyens2008}. Tiresias combines the two to schedule GPU training jobs whose durations
-nobody can predict \citep{gu2019tiresias}. These policies learn from a running job's age, which a broker cannot observe, since a handler is opaque code that it cannot preempt. What the broker does see is the outcome of earlier jobs of the same kind, and that is the signal we use.
+Those results assume the scheduler knows each job's size. When it does not, but knows the distribution of sizes, the Gittins index, which comes from the theory of bandit processes, minimises mean response time \citep{gittins1979} and stays close to optimal on many servers \citep{scully2020gittins}; when it knows nothing, foreground--background scheduling favours the jobs that have received the least service \citep{nuyens2008}. Tiresias schedules GPU training jobs whose durations are unknown or only partly known, with a Gittins-index policy and an information-agnostic least-attained-service policy
+\citep{gu2019tiresias}. These policies learn from a running job's age, which a broker cannot observe, since a handler is opaque code that it cannot preempt. What the broker does see is the outcome of earlier jobs of the same kind, and that is the signal we use.
 
 \subsection{Scheduling with estimated or predicted sizes}\label{sec:rw-estimated}
 
@@ -34,7 +34,7 @@ rather than only to function platforms.
 \subsection{Queues and brokers in practice}\label{sec:rw-brokers}
 
 At that layer the brokers people actually run expose no learning. The priorities in Azure's pattern, Meta's queue and RabbitMQ are all set by producers \citep{azurepriority,foqs2021,rabbitmqpriority}; RabbitMQ's priorities only reorder messages that have not yet been delivered, so they depend on a small consumer prefetch, and its quorum queues use strict priority, which can starve low-priority messages
-\citep{rabbitmqpriority}. SQS has no priority \citep{sqstypes}, and Kafka orders a partition by offset \citep{kreps2011kafka}. We are not aware of a general-purpose broker that learns message cost and uses it for routing, though our search was not exhaustive. To show the idea is not tied to our broker, our RabbitMQ experiments run \sys{}'s predictor as an external sidecar that sets those producer-side priorities.
+\citep{rabbitmqpriority}. SQS offers no priority \citep{sqstypes}, and Kafka orders a partition by offset \citep{kreps2011kafka}. We are not aware of a general-purpose broker that learns message cost and uses it for routing, though our search was not exhaustive. To show the idea is not tied to our broker, our RabbitMQ experiments run \sys{}'s predictor as an external sidecar that sets those producer-side priorities.
 
 \subsection{Positioning}\label{sec:rw-position}
 
