@@ -21,7 +21,7 @@ the broker adds latency of its own under this load. The more telling result is w
 \sys{} behind. Running beside RabbitMQ as a sidecar that sets message priorities, it cut mean latency by \EThreeSidecarAbs{},
 well beyond what it achieved inside \sys{}. A plausible reason is that RabbitMQ's priorities never age, so short jobs stay
 ahead through the whole flash sale, while \sys{}'s default aging eventually lifts waiting long jobs back to the top;
-consistent with this, \sys{} with weights and pausing aging cut mean latency by \EThreeWeightedAbs{}. The experiment does not isolate aging,
+consistent with this, \sys{} with weights and pausing aging cut mean latency by \EThreeWeightedAbs{}, at the price of an all-message P99 of \EThreeWeightedPNinetyNine{} RabbitMQ FIFO's. The experiment does not isolate aging,
 so this is an explanation and not a measurement. It also shows the price of aging's absence: static priorities without
 aging made the longest wait of a long job \EThreeStaticLongWait{} that of FIFO. In a separate cost measurement with
 empty handlers, \sys{} delivered about \EFourHarbingerPeak{} messages per second at its limit against \EFourRabbitPeak{} for RabbitMQ and
@@ -63,7 +63,7 @@ above, a large gain in mean and short-job median with all-message P99 within a f
 \input{generated/tab_cobham}
 
 The model is an idealisation, and the experiments depart from it in three ways that the reader should keep in mind. It assumes one server, whereas the
-broker feeds several workers, and the multi-server case has no such closed form \citep{scully2020gittins}. It assumes Poisson arrivals, whereas the flash sale is a burst. And it assumes perfect classification, whereas
+broker feeds several workers, and for several servers the analysis gives bounds rather than such a closed form \citep{scully2020gittins}. It assumes Poisson arrivals, whereas the flash sale is a burst. And it assumes perfect classification, whereas
 the predictor makes mistakes. It also describes waiting time, while the latencies we report add each job's service time, which no ordering changes, so the measured reductions are smaller than the waiting-time ratios
 suggest. The model nevertheless sets a bound on what to expect from an ideal order, and we use it that way. On DAS2-fs2, where long jobs carry most of the
 work, an ideal order would have cost them only about a tenth more waiting at load 0.8, yet they waited several times longer. The excess cannot come from reordering as such. The oracle with the same scheduler improved every window there, so
