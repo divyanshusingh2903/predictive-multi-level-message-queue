@@ -204,10 +204,42 @@ def from_pwa(path: Path, key: str = "user,executable", max_processors: int | Non
                   "rows_with_requested_time": sum(row.size is not None for row in rows)}
 
 
+def from_prodflow(directory: Path) -> tuple[list[Row], dict]:
+    """One measured production-flow run (a directory holding messages.tsv and run.json), for the simulator validation.
+
+    - Arrival is `submit_ns`, in milliseconds from the run's first submission. It is the moment the producer handed the
+      message to the broker, as the benchmark's own latency measures it.
+    - Duration is `handler_ms`, the handler's run time as the consumer measured it and reported on acknowledgement,
+      which is what the broker's predictor learned from.
+    - Key is `job_type`. In this workload each job type belongs to one service, so it names the same key as the
+      broker's producer-scoped key.
+    - Size is `planned_ms`, the cost the benchmark planned for the job. The real oracle arm ranks by it, so the
+      simulator's fixed-bounds oracle needs it.
+    - Every message must be done; the converter refuses a run with lost work.
+    """
+    run = json.loads((directory / "run.json").read_text())
+    with (directory / "messages.tsv").open(newline="") as stream:
+        records = list(csv.DictReader(stream, delimiter="\t"))
+    if not records:
+        raise ValueError(f"no messages under {directory}")
+    not_done = sum(record["done"] != "1" for record in records)
+    if not_done:
+        raise ValueError(f"{not_done} of {len(records)} messages are not done in {directory}")
+    origin = min(int(record["submit_ns"]) for record in records)
+    rows = [(int(record["submit_ns"]), int(record["seq"]),
+             Row((int(record["submit_ns"]) - origin) / 1e6, record["job_type"], float(record["handler_ms"]),
+                 float(record["planned_ms"]))) for record in records]
+    rows.sort(key=lambda item: (item[0], item[1]))  # submissions race across producer threads; ties keep seq order
+    notes = {"messages": len(records), "retried": sum(int(record["attempts"]) > 1 for record in records),
+             "oracle_boundaries_ms": run.get("oracle_boundaries_ms"), "arm": run.get("arm"), "seed": run.get("seed")}
+    return [row for _, _, row in rows], notes
+
+
 CONVERTERS = {
     "azure2021": lambda path: (from_azure2021(path), {}),
     "huawei2025": from_huawei2025,
     "pwa": from_pwa,
+    "prodflow": from_prodflow,
 }
 
 

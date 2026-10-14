@@ -1,6 +1,7 @@
 // Trace-driven multi-level queue simulator (issue #25). Replays an invocation trace through non-preemptive workers
 // with the broker's tier/aging rules; the predictive arms use the broker's own PerKeyPredictor on simulation time.
 // Usage: harbinger_trace_sim TRACE CONFIG.json OUT.json
+// Replay mode (v4-simvalidation, `"replay": true`) replays a measured run as it happened, without compressing arrivals.
 // TRACE is the Azure Functions 2021 invocation file or any trace in the common harbinger-trace-v1 format (#47,
 // analysis/trace_format.py); the header tells them apart.
 #include "ml/duration_predictor.hpp"
@@ -12,7 +13,9 @@
 #include <chrono>
 #include <cmath>
 #include <deque>
+#include <filesystem>
 #include <fstream>
+#include <iomanip>
 #include <iostream>
 #include <map>
 #include <queue>
@@ -306,8 +309,27 @@ int main(int argc, char** argv) try {
     if (!class_bounds.empty() && (class_bounds.size() != 2 || !(0 < class_bounds[0] && class_bounds[0] < class_bounds[1])))
         throw std::invalid_argument("class_bounds_ms needs two increasing positive values");
     const bool v3_rules = config.get("history_split") || config.get("window_split") || !class_bounds.empty();
+    // Optional v4 rules (v4-simvalidation); configs without them reproduce the published results byte for byte.
+    //   replay: arrivals keep their real spacing (no compression to a target load) and `utilizations` is not read.
+    //   oracle_bounds_ms [a, b]: arm "oracle_bounds" ranks by the trace's size column against these fixed bounds.
+    //   static_maps {arm: {key: tier}}: an arm named in it routes by that map, unknown keys to the default tier.
+    //   per_message_dir: each arm also writes its per-message latency and wait there, one TSV per arm.
+    const auto* replay_flag = config.get("replay");
+    const bool replay = replay_flag && std::get_if<bool>(&replay_flag->value) && std::get<bool>(replay_flag->value);
+    std::vector<double> oracle_bounds;
+    if (const auto* list = config.get("oracle_bounds_ms"))
+        for (const auto& b : std::get<json::Array>(list->value)) oracle_bounds.push_back(*b.number());
+    if (!oracle_bounds.empty() && (oracle_bounds.size() != 2 || !(0 < oracle_bounds[0] && oracle_bounds[0] < oracle_bounds[1])))
+        throw std::invalid_argument("oracle_bounds_ms needs two increasing positive values");
+    const auto* static_maps = config.get("static_maps");
+    std::filesystem::path per_message_dir;
+    if (const auto* dir = config.get("per_message_dir")) {
+        per_message_dir = *dir->string();
+        std::filesystem::create_directories(per_message_dir);
+    }
     std::vector<double> utilizations;
-    for (const auto& u : std::get<json::Array>(config.get("utilizations")->value)) utilizations.push_back(*u.number());
+    if (replay) utilizations.push_back(1.0);  // one pass, labelled "replay" in the output
+    else for (const auto& u : std::get<json::Array>(config.get("utilizations")->value)) utilizations.push_back(*u.number());
 
     const auto trace = load(argv[1]);
     const auto arrival_index = [](const std::vector<Invocation>& rows, double at) {
@@ -326,7 +348,13 @@ int main(int argc, char** argv) try {
     std::unordered_map<uint32_t, std::vector<double>> per_key;
     for (const auto& row : history) { history_durations.push_back(row.duration_ms); per_key[row.key].push_back(row.duration_ms); }
     std::vector<double> bounds;
-    for (int i = 1; i < levels; ++i) bounds.push_back(quantile(history_durations, static_cast<double>(i) / levels));
+    if (history_durations.empty()) {
+        // Replay without a history half: there are no terciles, so the fixed class bounds stand in for them.
+        if (class_bounds.empty()) throw std::invalid_argument("an empty history needs class_bounds_ms");
+        bounds = class_bounds;
+    } else {
+        for (int i = 1; i < levels; ++i) bounds.push_back(quantile(history_durations, static_cast<double>(i) / levels));
+    }
     std::unordered_map<uint32_t, int> history_tier, random_tier;
     std::mt19937 rng(static_cast<uint32_t>(num(config, "misconfigured_seed")));
     for (auto& [key, values] : per_key) {
@@ -364,8 +392,9 @@ int main(int argc, char** argv) try {
     bool first_u = true;
     for (const double utilization : utilizations) {
         // Compress arrivals so offered load = utilization x workers.
-        const double compress = utilization * workers * span / work;
-        out << (first_u ? "" : ",") << "\"" << utilization << "\":{\"compress\":" << compress;
+        const double compress = replay ? 1.0 : utilization * workers * span / work;
+        if (replay) out << (first_u ? "" : ",") << "\"replay\":{\"compress\":" << compress;
+        else out << (first_u ? "" : ",") << "\"" << utilization << "\":{\"compress\":" << compress;
         first_u = false;
         for (const auto& arm_json : std::get<json::Array>(config.get("arms")->value)) {
             const std::string arm_name = *arm_json.string();
@@ -409,9 +438,26 @@ int main(int argc, char** argv) try {
                     predictor.observe(trace.keys[row.key], row.duration_ms);
                 }
             }
+            if (arm == "oracle_bounds" && (oracle_bounds.empty() || trace.sizes.size() != trace.rows.size()))
+                throw std::invalid_argument("oracle_bounds needs oracle_bounds_ms and a trace with a size column");
+            std::unordered_map<uint32_t, int> static_tier;
+            if (static_maps && static_maps->get(arm)) {
+                std::unordered_map<std::string, uint32_t> key_id;
+                for (uint32_t k = 0; k < trace.keys.size(); ++k) key_id.emplace(trace.keys[k], k);
+                for (const auto& [name, tier] : std::get<json::Object>(static_maps->get(arm)->value)) {
+                    const auto found = key_id.find(name);
+                    if (found != key_id.end()) static_tier[found->second] = static_cast<int>(*tier.number());
+                }
+                if (static_tier.empty()) throw std::invalid_argument("static map for " + arm + " names no key of the trace");
+            }
             const auto route = [&](const Invocation& row, double now) -> std::pair<int, double> {
                 if (arm == "fifo") return {0, 0.0};
                 if (arm == "oracle") return {ml::tier_of(bounds, row.duration_ms), 0.0};
+                if (arm == "oracle_bounds") {
+                    const double planned = trace.sizes[cut + static_cast<std::size_t>(&row - evaluation.data())];
+                    return {ml::tier_of(oracle_bounds, planned), 0.0};
+                }
+                if (!static_tier.empty()) { const auto f = static_tier.find(row.key); return {f == static_tier.end() ? default_tier : f->second, 0.0}; }
                 if (arm == "static_history") { const auto f = history_tier.find(row.key); return {f == history_tier.end() ? default_tier : f->second, 0.0}; }
                 if (arm == "static_random") { const auto f = random_tier.find(row.key); return {f == random_tier.end() ? default_tier : f->second, 0.0}; }
                 sim_now = now;
@@ -431,6 +477,11 @@ int main(int argc, char** argv) try {
             const auto started = std::chrono::steady_clock::now();
             const auto r = simulate(evaluation, compress, workers, levels, threshold, interval, policy, route, learn);
             const double seconds = std::chrono::duration<double>(std::chrono::steady_clock::now() - started).count();
+            if (!per_message_dir.empty()) {
+                std::ofstream dump(per_message_dir / (arm_name + ".tsv"));
+                dump << "index\tlatency_ms\twait_ms\n" << std::setprecision(12);
+                for (std::size_t i = 0; i < evaluation.size(); ++i) dump << i << '\t' << r.latency[i] << '\t' << r.wait[i] << '\n';
+            }
             out << ",\"" << arm_name << "\":{\"sim_seconds\":" << seconds << ",\"all\":" << window_metrics(r, cls, 0, evaluation.size(), v3_rules) << ",\"windows\":[";
             for (std::size_t w = 0; w < windows; ++w) {
                 const auto begin = edges[w], end = edges[w + 1];
