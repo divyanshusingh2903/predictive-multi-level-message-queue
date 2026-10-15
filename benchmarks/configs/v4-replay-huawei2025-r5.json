@@ -1,0 +1,70 @@
+{
+ "version": "v4-replay-1",
+ "frozen_on": null,
+ "issue": null,
+ "preregistration": "docs/v4-replay-preregistration.md",
+ "simulator_config": "benchmarks/configs/v3-traces-huawei2025-r5.json",
+ "trace": {
+  "title": "Huawei Cloud 2025 Region 5 trace simulation",
+  "name": "Huawei Public Cloud Trace 2025, request tables, Region 5 (day 30)",
+  "source": "https://github.com/sir-lab/data-release (README_data_release_2025.md), CC BY 4.0",
+  "zip_sha256": "5825f74443cf6e4f5df264f8c94d439fc9eae576399f9786a50ca4cb3316e60d",
+  "converted_sha256": "e860c7a699670af200e09b8a6d97b194fd87ecc5a15833f039af88bc7a64656b",
+  "rows": 3443079,
+  "key": "funcName---userID---poolName",
+  "arrival": "time_frontend - totalCost_frontend",
+  "duration": "totalCost_worker",
+  "convert": "python -m analysis.trace_format convert huawei2025 R5/ huawei2025-r5.csv"
+ },
+ "time_scale": 1,
+ "history_split": "time",
+ "history_fraction": 0.5,
+ "class_bounds_ms": [
+  100,
+  1000
+ ],
+ "workers": 64,
+ "levels": 3,
+ "default_priority": 1,
+ "aging": {
+  "threshold_ms": 5000,
+  "interval_ms": 500
+ },
+ "predictor": {
+  "stale_after_ms": 1800000,
+  "time_half_life_ms": 600000
+ },
+ "level_weights": [
+  8,
+  3,
+  1
+ ],
+ "utilizations": [
+  0.5,
+  0.8,
+  0.95
+ ],
+ "arms": [
+  "fifo",
+  "predictive_warm",
+  "predictive_warm+weights+pausing",
+  "oracle",
+  "oracle+weights+pausing",
+  "static_history",
+  "predictive_cold"
+ ],
+ "repeats": 3,
+ "producer_threads": 8,
+ "drain_s": 3600,
+ "windows": 28,
+ "bootstrap": {
+  "samples": 10000,
+  "seed": 2026,
+  "confidence": 0.95,
+  "block_length": 4
+ },
+ "probe": {
+  "load": 0.1,
+  "seconds": 600
+ }
+}

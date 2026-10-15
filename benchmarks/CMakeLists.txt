@@ -21,6 +21,10 @@ find_package(ZLIB REQUIRED)
 add_executable(harbinger_prodflow prodflow.cpp)
 target_link_libraries(harbinger_prodflow PRIVATE harbinger_benchmark_server_lib harbinger_client_lib ZLIB::ZLIB)
 harbinger_target_warnings(harbinger_prodflow)
+add_executable(harbinger_replay replay.cpp)
+target_include_directories(harbinger_replay PRIVATE "${PROJECT_SOURCE_DIR}/tools")
+target_link_libraries(harbinger_replay PRIVATE harbinger_benchmark_server_lib harbinger_client_lib)
+harbinger_target_warnings(harbinger_replay)
 add_executable(harbinger_brokerbench brokerbench.cpp)
 target_link_libraries(harbinger_brokerbench PRIVATE harbinger_client_lib)
 harbinger_target_warnings(harbinger_brokerbench)
@@ -52,4 +56,7 @@ if(Python3_Interpreter_FOUND)
     set_tests_properties(synthetic_benchmark_python_tests PROPERTIES
         WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}" TIMEOUT 60
         ENVIRONMENT "HARBINGER_BENCHMARK_RUNNER=$<TARGET_FILE:harbinger_synthetic_benchmark>;HARBINGER_PRODFLOW=$<TARGET_FILE:harbinger_prodflow>;HARBINGER_BROKERBENCH=$<TARGET_FILE:harbinger_brokerbench>")
+    add_test(NAME replay_python_tests COMMAND "${Python3_EXECUTABLE}" -m unittest benchmarks.tests.test_replay benchmarks.tests.test_run_replay -v)
+    set_tests_properties(replay_python_tests PROPERTIES WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}" TIMEOUT 900
+        ENVIRONMENT "HARBINGER_REPLAY=$<TARGET_FILE:harbinger_replay>")
 endif()

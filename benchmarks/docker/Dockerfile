@@ -24,8 +24,8 @@ WORKDIR /src
 COPY . .
 RUN cmake -S . -B /build -G Ninja -DCMAKE_BUILD_TYPE=Release -DHARBINGER_BUILD_BENCHMARKS=ON \
         -DHARBINGER_BUILD_BROKER_ADAPTERS=ON \
-    && cmake --build /build --target harbinger_prodflow harbinger_brokerbench harbinger_server \
-    && install -m 0755 /build/benchmarks/harbinger_prodflow /build/benchmarks/harbinger_brokerbench /build/harbinger_server \
+    && cmake --build /build --target harbinger_prodflow harbinger_brokerbench harbinger_replay harbinger_server \
+    && install -m 0755 /build/benchmarks/harbinger_prodflow /build/benchmarks/harbinger_brokerbench /build/benchmarks/harbinger_replay /build/harbinger_server \
         /usr/local/bin/ \
     && install -m 0755 benchmarks/docker/entrypoint.sh /usr/local/bin/entrypoint.sh
 
