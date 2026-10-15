@@ -17,7 +17,8 @@
 #   SHARD          i/n: run only the cells whose position in the matrix (repeat, load, arm, then the probe) is congruent to
 #                  i modulo n, so n machine pairs can split one registered matrix; copy the result trees together afterwards.
 #                  Allowed in registered mode, because every cell still runs exactly as frozen.
-# Arm order is rotated by repeat and load so that slow drift does not always land on the same arm.
+# Arm order is rotated by repeat and load so that slow drift does not always land on the same arm. `arms_by_load` in the
+# config narrows the arms at some loads; ARMS (a debug override) takes precedence over it.
 set -euo pipefail
 mode=$1; config=$2; results=$3; prep=$4; trace=$5
 [ "$mode" = debug ] || [ "$mode" = registered ] || { echo "mode must be debug or registered" >&2; exit 2; }
@@ -39,6 +40,11 @@ if [ "$mode" = registered ]; then
 fi
 read -r -a loads <<< "${LOADS:-$(field "['utilizations']")}"
 read -r -a arms <<< "${ARMS:-$(field "['arms']")}"
+# A config may give some loads fewer arms (`arms_by_load`), so costly cells run only the arms a gate needs.
+arms_for() {  # arms_for LOAD -> the arms to run at that load
+  if [ -n "${ARMS:-}" ] || ! has arms_by_load; then echo "${arms[*]}"; return; fi
+  python3 -c "import json;c=json.load(open('$config'));print(' '.join(c['arms_by_load'].get('$1', c['arms'])))"
+}
 repeats=${REPEATS:-$(field "['repeats']")}
 shard_i=0; shard_n=1
 if [ -n "${SHARD:-}" ]; then
@@ -67,7 +73,7 @@ fi
   echo "commit $(git rev-parse HEAD)$( [ -z "$(git status --porcelain)" ] || echo ' (dirty tree)')"
   echo "mode $mode"; echo "config $(basename "$config") sha256 $(sha256sum "$config" | cut -d' ' -f1)"
   echo "trace $(basename "$trace") sha256 $(sha256sum "$trace" | cut -d' ' -f1)"
-  echo "loads ${loads[*]}"; echo "arms ${arms[*]}"; echo "repeats $repeats"; echo "split $split"; echo "shard $shard_i/$shard_n"
+  echo "loads ${loads[*]}"; echo "arms ${arms[*]}"; has arms_by_load && echo "arms_by_load $(python3 -c "import json;print(json.dumps(json.load(open('$config'))['arms_by_load']))")"; echo "repeats $repeats"; echo "split $split"; echo "shard $shard_i/$shard_n"
   [ -z "${REPLAY_BIN:-}" ] && echo "image $(docker image inspect "$image" --format '{{.Id}}')"
   echo "started $(date -u +%FT%TZ)"
 } > "$results/manifest.txt"
@@ -160,8 +166,9 @@ mine() { local r=$(( position % shard_n == shard_i )); position=$(( position + 1
 for rep in $(seq 1 "$repeats"); do
   for li in "${!loads[@]}"; do
     offset=$(( rep + li ))
-    for i in "${!arms[@]}"; do
-      arm=${arms[$(( (i + offset) % ${#arms[@]} ))]}
+    read -r -a here_arms <<< "$(arms_for "${loads[$li]}")"
+    for i in "${!here_arms[@]}"; do
+      arm=${here_arms[$(( (i + offset) % ${#here_arms[@]} ))]}
       if mine; then cell "$arm" "${loads[$li]}" "rep-$rep"; fi
     done
   done

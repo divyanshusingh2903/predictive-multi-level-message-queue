@@ -40,6 +40,7 @@
   1
  ],
  "utilizations": [
+  0.5,
   0.8,
   0.95
  ],
@@ -63,5 +64,17 @@
  "probe": {
   "load": 0.1,
   "seconds": 133
+ },
+ "arms_by_load": {
+  "0.5": [
+   "fifo",
+   "predictive_warm",
+   "predictive_warm+weights+pausing"
+  ],
+  "0.95": [
+   "fifo",
+   "predictive_warm",
+   "predictive_warm+weights+pausing"
+  ]
  }
 }

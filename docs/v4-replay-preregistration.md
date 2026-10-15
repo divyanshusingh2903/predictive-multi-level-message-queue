@@ -49,7 +49,7 @@ mean offered load over the replayed span is 0.5, 0.8 or 0.95 of 64 workers (the 
 | Trace | Replayed span | `f` | Aging threshold / interval | Staleness / idle half-life | Real time per arm (3 loads) |
 |---|---|---|---|---|---|
 | Huawei Cloud 2025 R5 | the evaluation half, 12 h | 1 | 5000 / 500 ms | 30 min / 10 min | about 83 min |
-| Azure Functions 2021 | the evaluation half, 7 days; **loads 0.8 and 0.95 only** | 4.5 | 1111 / 111 ms | 6.7 min / 2.2 min | about 9.1 h (4.96 + 4.18) |
+| Azure Functions 2021 | the evaluation half, 7 days; loads 0.5, 0.8, 0.95 with `arms_by_load` | 4.5 | 1111 / 111 ms | 6.7 min / 2.2 min | 7.94 + 4.96 + 4.18 h per arm (61.2 h for the registered cells) |
 | DAS2-fs2-2003 | the evaluation half, about 6 months | 300 | 17 / 2 ms | 6 s / 2 s | about 2.4 h |
 | LPC-EGEE-2004 | the last 30 days of the evaluation half | 400 | 13 / 1 ms | 4.5 s / 1.5 s | about 5 h (to be computed from the data before freezing) |
 
@@ -136,7 +136,7 @@ Status 2026-10-14 (uncommitted). Nothing below has been run on a registered trac
    applies the validity rules, cuts the span into 28 windows of equal trace time, and evaluates the registered criteria
    with the block bootstrap (primary) and the seven-window independent interval (alongside), reusing `sim_report.evaluate`.
    Repeats: the per-window metrics are averaged over the repeats valid for every arm (pooled), and each repeat's verdicts
-   are listed too (**confirm that pooling is the primary analysis**). It also writes the replay-against-simulator table
+   are listed too (decision 1). It also writes the replay-against-simulator table
    (ratio of mean-latency changes, gate verdicts side by side) and each cell's run-to-run spread. It also reports the overhead probe
    (`_probe`, not gated).
 4. **Tests: done on a synthetic trace** (`benchmarks/tests/test_replay.py`, ctest `replay_python_tests`): plan equals the
@@ -149,35 +149,53 @@ Status 2026-10-14 (uncommitted). Nothing below has been run on a registered trac
    not count is kept as `rep-<n>.failed` and run once more, so both are reported. `registered` refuses overrides, an unfrozen
    config, a dirty tree and a trace whose sha256 is not the config's. The overhead probe (config `probe`: FIFO, load 0.1,
    600 s) goes to `_probe`. Tested with the real binary on a synthetic trace: embedded, split over a stand-in ssh, the
-   retry path, the refusals, and the report on its output. **Not yet exercised: the Docker path** (the image now builds
-   `harbinger_replay`; mounts at /cfg, /trace, /prep, /out), which the AWS smoke run covers.
-   **Open:** the AWS runbook for two pairs, and the Azure, DAS2 and LPC configs. The Huawei config is
-   `benchmarks/configs/v4-replay-huawei2025-r5.json` (draft, `frozen_on` null).
+   retry path, the refusals, and the report on its output. **The Docker path was also run locally** (2026-10-15, image built from the working tree on top of `a8a9a99`): the
+   smoke kit, embedded and split with the broker as a separate container, all 7 arms and the probe, every run complete with
+   no lost lease or dead letter, the warm snapshot reaching the broker container, no stray containers. **Not yet exercised:
+   real ssh between two hosts and the cross-host image check**, which the AWS smoke run covers.
+   The Huawei and Azure configs are `benchmarks/configs/v4-replay-{huawei2025-r5,azure2021}.json` (`frozen_on` null until the
+   freeze commit). The AWS runbook (Lane R of `benchmarks/cloud/RUNBOOK-v4.md`) is written. **Not in this registration:**
+   DAS2-fs2 and LPC-EGEE, whose time scales (300 and 400) and 1 to 17 ms aging constants need a calibration run first; they
+   are dropped from this version and would be a separate, exploratory registration.
 6. **Partly done:** the broker accepts whole-millisecond scaled aging constants and a lease above the longest job
    (checked at `time_scale` 1 and 2). The DAS2 and LPC constants (13 to 17 ms) are not checked.
 
-### Azure (`benchmarks/configs/v4-replay-azure2021.json`, draft)
+### Azure (`benchmarks/configs/v4-replay-azure2021.json`)
 
-- **Loads 0.8 and 0.95 only**, not the three of `v3-traces-1`: the 0.5 cell would add 7.7 h per arm, and 0.8 and 0.95 are
-  where gate B passed in the simulator. This is a deviation from the load list above, to be confirmed before freezing.
-  From `prepare` on the converted trace (936,382 evaluation rows, 1,044,569 history rows, 424 keys): compress 7.52 and
-  8.93, replay times 4.96 h and 4.18 h per arm at `time_scale` 4.5, 52 and 62 messages/s, longest scaled job 2.1 min.
-  Five arms, one run per cell: about 46 h on one pair, or about 23 h each on two with `SHARD=0/2` and `SHARD=1/2`.
-- **Arms:** `fifo`, `predictive_warm`, `predictive_warm+weights+pausing`, `oracle`, `oracle+weights+pausing`
-  (`static_history` and `predictive_cold` are Huawei-only). Overhead probe: FIFO at load 0.1 for 133 s of real time, which is
-  10 minutes of trace time. `drain_s` is 6 h of real time, since the last day of the trace holds 62% of the work.
+- **Loads 0.5, 0.8 and 0.95, with the gate arms only at the edges** (`arms_by_load`). All five arms at 0.8; `fifo`,
+  `predictive_warm` and `predictive_warm+weights+pausing` at 0.5 and 0.95, which is all that gates A and B need (the oracle
+  arms feed only the secondary criteria S5 and S6, which are therefore evaluated at 0.8 alone). One run per cell. Why: gate B
+  passed at all three Azure loads in the simulator, but at 0.5 by the narrowest margin (−15.4% against the −15% bar), so that
+  cell is the one most likely to change under replay and dropping it would have removed the most informative result.
+- **Time**, from `prepare` on the converted trace (936,382 evaluation rows, 1,044,569 history rows, 424 keys), at
+  `time_scale` 4.5: 7.94 h per arm at 0.5 (compress 4.73), 4.96 h at 0.8, 4.18 h at 0.95. Eleven cells and the probe: 61.2 h,
+  34.2 h and 27.0 h on the two shards (`SHARD=0/2`, `1/2`).
+- **Overhead probe:** FIFO at load 0.1 for 133 s of real time, which is 10 minutes of trace time. `drain_s` is 6 h of real
+  time, since the last day of the trace holds 62% of the work.
 - **A finding that changed the harness.** Azure's keys are 129 characters and the broker rejects job keys over 128 bytes,
   so unmodified every Azure message would have been unpredicted and routed to the default tier (the first `prepare` warmed
   0 keys). Keys now travel on the wire as `k<index>` in order of first appearance, in `prepare`, the static map and `run`
-  alike. The simulator passed raw keys to the predictor and never met this limit. It means a deployment whose job-type
-  labels exceed 128 bytes silently gets no prediction; the paper should say so.
+  alike. The simulator passed raw keys to the predictor and never met this limit. A deployment whose job-type labels exceed
+  128 bytes silently gets no prediction; the paper should say so.
 
-### Choices made while writing it (confirm before freezing)
+### Decisions (2026-10-15, made before any registered run)
 
-- **Latency** is the handler's end on the client minus the *scheduled* arrival (so producer lateness counts against the
-  broker), times `time_scale`. The Ack round trip is not included.
-- **Run validity.** The binary reports producer lateness (p50, p99, max) in real milliseconds. The 10 ms bound is applied
-  to real time; "in scaled time" in the validity paragraph above is ambiguous at `time_scale` above 1.
+1. **Repeats.** The primary analysis pools the repeats (the per-window metrics averaged over the repeats valid for every
+   arm). Each repeat's verdicts are also reported. **If the single-repeat verdicts of a gate cell disagree with each other,
+   the cell is reported as unstable and not counted as a pass**, whatever the pooled verdict. Azure, DAS2 and LPC have one
+   repeat, so the rule cannot apply to them; the paper says so when it sets Huawei's stability beside them.
+2. **Lateness.** The validity bound (producer lateness p99 at most 10 ms) is in **real time**. Lateness in trace time (real
+   time times the time scale) is also reported for every run.
+3. **Latency** is measured from the **scheduled arrival**, as in the simulator, so a slow Submit at the broker counts
+   against the broker. The report also gives the largest relative difference in mean latency if it were measured from the
+   actual submit, as a sensitivity check, not as a second analysis.
+4. **Azure loads** as above.
+
+### Other choices made while writing it
+
+- **Latency** is the handler's end on the client minus the scheduled arrival, times `time_scale` (decision 3). The Ack round
+  trip is not included, as in the simulator.
+- **Run validity.** The binary reports producer lateness (p50, p99, max) in real milliseconds; decision 2 fixes the bound.
 - **Producer.** Eight threads, message `i` on thread `i mod 8`, one connection each. Two messages less than one round trip
   apart can swap order on the way in; the test allows two such swaps in 60.
 - **Key.** The trace key is sent as the `job_type` header and is the whole predictor key (not producer-scoped), so the

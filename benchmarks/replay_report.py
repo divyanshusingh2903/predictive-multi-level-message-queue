@@ -14,7 +14,8 @@ Windows and intervals. The replayed span is cut into `windows` (28) windows of e
 the moving-block bootstrap over the paired per-window changes (`bootstrap.block_length` windows, 4); the independent-window
 interval over seven windows, as in v3-traces-1, is computed alongside. Where a cell has several valid repeats, the
 per-window metrics are averaged over the repeats that every arm of that load has (the pooled analysis); each repeat's
-own verdicts are also reported, so run-to-run noise is visible.
+own verdicts are also reported, so run-to-run noise is visible. If the single-repeat verdicts of a gate cell disagree
+with each other, the cell is reported as unstable and not counted as a pass.
 
 A run is valid only if every message completed, with none in the dead-letter queue, no submit error, no lost lease, and a
 99th-percentile producer lateness of at most `max_lateness_p99_ms` (real time). Invalid runs are listed and left out.
@@ -63,9 +64,11 @@ def read_messages(path: Path, scale: float, class_bounds: list[float]) -> list[d
     with path.open() as f:
         for r in csv.DictReader(f, delimiter="\t"):
             sched, start, end = int(r["sched_ns"]), int(r["start_ns"]), int(r["end_ns"])
+            submit = int(r["submit_ns"])
             duration = float(r["trace_duration_ms"])
             rows.append({"arrival": float(r["trace_arrival_ms"]), "duration": duration,
                          "latency": (end - sched) / 1e6 * scale, "wait": (start - sched) / 1e6 * scale,
+                         "latency_from_submit": (end - submit) / 1e6 * scale,
                          "cls": bisect.bisect_right(class_bounds, duration), "idx": int(r["idx"])})
     rows.sort(key=lambda m: m["idx"])
     return rows
@@ -104,6 +107,10 @@ def analyze_run(directory: Path, class_bounds: list[float], window_counts: tuple
     rows = read_messages(directory / "messages.tsv", run["time_scale"], class_bounds)
     arrivals = [m["arrival"] for m in rows]
     result["all"] = metrics(rows)
+    # Sensitivity to the latency basis: the same run measured from the actual submit instead of the scheduled arrival.
+    from_submit = [m["latency_from_submit"] for m in rows]
+    result["submit_basis"] = {"mean_latency_ms": statistics.fmean(from_submit), "p99_latency_ms": quantile(from_submit, 0.99)}
+    result["lateness_p99_trace_ms"] = run["timing"]["lateness_p99_ms"] * run["time_scale"]
     for n in window_counts:
         edges = window_edges(arrivals, n)
         result[f"windows_{n}"] = [metrics(rows[a:b]) for a, b in zip(edges, edges[1:])]
@@ -189,6 +196,29 @@ def per_repeat_verdicts(config: dict, cells: dict, windows_key: str, block: int 
     return out
 
 
+def stability(primary: dict, repeats: dict) -> dict:
+    """Per load and gate: 'pass' or 'fail' by the pooled analysis, or 'unstable' when the single-repeat verdicts disagree
+    among themselves (the registered rule: such a cell is reported as unstable and not counted as a pass). With fewer than
+    two repeats there is nothing to disagree and the pooled verdict stands."""
+    out: dict[str, dict] = {}
+    for load, verdict in primary.items():
+        for gate, ok in verdict.get("gates_passed", {}).items():
+            single = {r["gates_passed"][gate] for r in repeats.get(load, {}).values() if gate in r["gates_passed"]}
+            out.setdefault(load, {})[gate] = "unstable" if len(single) > 1 else ("pass" if ok else "fail")
+    return out
+
+
+def submit_basis_difference(cells: dict) -> dict:
+    """Largest relative difference over valid runs between mean latency from the scheduled arrival and from the actual submit."""
+    worst = 0.0
+    for cell in cells.values():
+        for info in cell.values():
+            for r in info["reps"].values():
+                if r["valid"]:
+                    worst = max(worst, abs(r["submit_basis"]["mean_latency_ms"] / r["all"]["mean_latency_ms"] - 1.0))
+    return {"max_relative_difference_in_mean_latency": worst}
+
+
 def relative_change(all_metrics: dict, arm: str) -> float | None:
     if arm not in all_metrics or "fifo" not in all_metrics:
         return None
@@ -266,7 +296,8 @@ def config_criteria(config: dict, verdict: dict) -> dict:
     return criteria_for(config, set(verdict["all"]))[0]
 
 
-def report(config: dict, cells: dict, primary: dict, independent: dict, comparison: dict, repeats: dict, spread: dict) -> str:
+def report(config: dict, cells: dict, primary: dict, independent: dict, comparison: dict, repeats: dict, spread: dict,
+           status: dict | None = None) -> str:
     lines = [f"# Real trace replay ({config['version']}{', ' + config['trace']['name'] if 'trace' in config else ''})", "",
              f"{config['workers']} workers, time scale {config['time_scale']:g}, {config['windows']} windows of equal trace time; "
              f"primary interval: moving-block bootstrap, block {config['bootstrap']['block_length']}, "
@@ -288,7 +319,9 @@ def report(config: dict, cells: dict, primary: dict, independent: dict, comparis
                          f"{a['slowdown_p50']:.1f} / {a['slowdown_p99']:.0f} |")
         lines += ["", "Block bootstrap (primary):", ""] + table(config, primary, load)
         for gate, ok in verdict.get("gates_passed", {}).items():
-            lines.append(f"\n**Gate {gate} at load {float(load):.2f}: {'PASSED' if ok else 'NOT PASSED'}.**")
+            state = (status or {}).get(load, {}).get(gate)
+            label = "UNSTABLE (the repeats disagree; not counted as a pass)" if state == "unstable" else ("PASSED" if ok else "NOT PASSED")
+            lines.append(f"\n**Gate {gate} at load {float(load):.2f}: {label}.**")
         if load in independent and "criteria" in independent[load]:
             lines += ["", "Independent seven windows (v3-traces-1 rule):", ""] + table(config, independent, load)
             for gate, ok in independent[load].get("gates_passed", {}).items():
@@ -344,14 +377,18 @@ def main() -> None:
     comparison = simulator_comparison(primary, json.loads(args.simulation.read_text()) if args.simulation else None,
                                       json.loads(args.simulation_summary.read_text()) if args.simulation_summary else None)
     spread = noise(cells)
+    status = stability(primary, repeats)
+    basis = submit_basis_difference(cells)
     probe = overhead_probe(args.results)
     out = args.out or args.results
     summary = {"config": config["version"], "primary_block_bootstrap": primary, "independent_seven_windows": independent,
-               "per_repeat": repeats, "simulator_comparison": comparison, "run_to_run": spread, "overhead_probe": probe,
-               "runs": {l: {a: {n: {k: r[k] for k in ("valid", "reasons", "lateness_p99_ms")} for n, r in i["reps"].items()}
+               "per_repeat": repeats, "gate_status": status, "latency_basis": basis, "simulator_comparison": comparison, "run_to_run": spread, "overhead_probe": probe,
+               "runs": {l: {a: {n: {k: r[k] for k in ("valid", "reasons", "lateness_p99_ms", "lateness_p99_trace_ms") if k in r} for n, r in i["reps"].items()}
                             for a, i in c.items()} for l, c in cells.items()}}
     (out / "replay_summary.json").write_text(json.dumps(summary, indent=1) + "\n")
-    text = report(config, cells, primary, independent, comparison, repeats, spread)
+    text = report(config, cells, primary, independent, comparison, repeats, spread, status)
+    text += (f"\nLatency basis: measured from the actual submit instead of the scheduled arrival, mean latency differs by at most "
+             f"{basis['max_relative_difference_in_mean_latency']:.2%} on any valid run.\n")
     if probe:
         text += "\n## Overhead probe (light load; latency minus the job's own duration, trace ms)\n\n" + "\n".join(
             f"- {k}: " + (f"p50 {v['overhead_p50_ms']:.2f}, p99 {v['overhead_p99_ms']:.2f} over {v['messages']} messages" if v["valid"]

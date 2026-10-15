@@ -104,6 +104,18 @@ exit $status
         self.assertEqual(ran, ["fifo", "oracle", "predictive_warm"])
         self.assertEqual(self.script(env={**env, "SHARD": "2/2"}).returncode, 2)
 
+    def test_arms_by_load_narrows_some_loads(self):
+        c = json.loads((self.dir / "config.json").read_text())
+        c.update({"utilizations": [3, 4], "arms": ["fifo", "oracle", "predictive_warm"], "arms_by_load": {"4": ["fifo", "predictive_warm"]},
+                  "probe": {"load": 0.5, "seconds": 1}})
+        (self.dir / "config.json").write_text(json.dumps(c))
+        done = self.script(env={"REPEATS": "1"})
+        self.assertEqual(done.returncode, 0, done.stderr + done.stdout)
+        res = self.dir / "results"
+        self.assertEqual(sorted(p.parts[-4] for p in res.glob("*/3/rep-1/run.json")), ["fifo", "oracle", "predictive_warm"])
+        self.assertEqual(sorted(p.parts[-4] for p in res.glob("*/4/rep-1/run.json")), ["fifo", "predictive_warm"])
+        self.assertIn("arms_by_load", (res / "manifest.txt").read_text())
+
     def test_registered_mode_refuses_overrides_unfrozen_config_and_wrong_trace(self):
         self.assertEqual(self.script("registered", {"ROWS": "10"}).returncode, 2)
         done = self.script("registered")

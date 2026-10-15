@@ -14,7 +14,7 @@ E1 to E4 are **not** re-run. The v4 work on AWS is:
 |---|---|---|---|---|
 | **S** (single host) | E5 aging and E6 size bins ([v4-cloud-reruns](../../docs/v4-cloud-reruns-preregistration.md)) | 1 × `c8i.2xlarge` | about 3 h | **ready to run** |
 | S | baselines and ablation ([v4-baselines](../../docs/v4-baselines-preregistration.md)) | same host, after E5, E6 | about 8.4 h | arms built; pre-registration not frozen |
-| R (two pairs) | trace replay ([v4-replay](../../docs/v4-replay-preregistration.md)): Huawei at three loads, Azure at 0.8 and 0.95, both sharded across the pairs | 2 × (`c8i.2xlarge` + `c8i.xlarge`) | about 75 h of runs, about 38 h on each pair | harness and runner written and tested locally; **AWS smoke run next** |
+| R (two pairs) | trace replay ([v4-replay](../../docs/v4-replay-preregistration.md)): Huawei at three loads, Azure at three loads (gate arms at the edges), both sharded across the pairs | 2 × (`c8i.2xlarge` + `c8i.xlarge`) | about 90 h of runs, about 42 to 49 h on each pair | harness and runner written and tested locally; **AWS smoke run next** |
 
 ## Quota
 
@@ -108,7 +108,7 @@ directory and the paper's numbers.
 
 ## Lane R: trace replay on two pairs
 
-Replays the Huawei 2025 R5 trace (all three loads, f = 1) and the Azure Functions 2021 trace (loads 0.8 and 0.95, f = 4.5)
+Replays the Huawei 2025 R5 trace (all three loads, f = 1) and the Azure Functions 2021 trace (all three loads, f = 4.5)
 through the real broker, to replace the simulator's trace results (which overstated the mean-latency reduction by about
 40% on the production flow, `v4-simvalidation-1`). The experiment is
 [v4-replay](../../docs/v4-replay-preregistration.md); the harness is `harbinger_replay`, the runner
@@ -118,19 +118,19 @@ through the real broker, to replace the simulator's trace results (which oversta
 
 | Trace | Config | Cells | One cell | Total |
 |---|---|---|---|---|
-| Azure 2021 | `v4-replay-azure2021.json` | 5 arms × 2 loads, 1 repeat, plus the probe | 4.96 h (0.8), 4.18 h (0.95), probe 2 min | about 46 h |
+| Azure 2021 | `v4-replay-azure2021.json` | 11 cells (5 arms at 0.8, 3 gate arms at 0.5 and 0.95), 1 repeat, plus the probe | 7.94 h (0.5), 4.96 h (0.8), 4.18 h (0.95); probe 2 min | 61.2 h |
 | Huawei R5 | `v4-replay-huawei2025-r5.json` | 7 arms × 3 loads × 3 repeats, plus the probe | 39, 24 and 20 min (loads 0.5, 0.8, 0.95) | about 29 h |
 
-Each experiment is split across both pairs with `SHARD=0/2` on pair 1 and `SHARD=1/2` on pair 2, which gives about 38 h
-each. A shard takes the cells at even or odd positions of the matrix (repeat, then load, then arm); for Azure that is
-about 23.3 h on pair 1 and 22.5 h on pair 2. **Run Azure first** (its cells are the longest and it is the long pole), then Huawei, on
-the same pair; the runner resumes, so the order costs nothing.
+Each experiment is split across both pairs with `SHARD=0/2` and `SHARD=1/2`: a shard takes the cells at even or odd
+positions of the matrix (repeat, then load, then arm). Azure's shards are 34.2 h and 27.0 h. To even the pairs out,
+**pair 1 takes Azure `0/2` and Huawei `1/2`, and pair 2 takes Azure `1/2` and Huawei `0/2`**: about 49 h and 42 h. **Run Azure
+first** (its cells are the longest); the runner resumes, so the order costs nothing.
 
 ### Cost and quota
 
 A pair is 12 vCPU (8 + 4): two pairs are 24 of your 32, which leaves lane S's 8. Lane S can keep running. At the runbook's
-prices a pair is about $0.56/h, so two pairs for about 38 h is about **$43 plus disks**. Set a **$100 budget alert** before
-launching. Give `setup_host.sh` **48** hours (the spend cap): an instance that powers itself off keeps its disk, and the
+prices a pair is about $0.56/h, so two pairs for about 45 h on average is about **$50 plus disks**. Set a **$100 budget alert** before
+launching. Give `setup_host.sh` **60** hours (the spend cap): an instance that powers itself off keeps its disk, and the
 runner resumes where it stopped (see *If something stops*).
 
 ### 1. Launch two pairs
@@ -160,11 +160,11 @@ aws ec2 wait instance-running --instance-ids "$CLIENT_p1" "$BROKER_p1" "$CLIENT_
 If the security group does not exist any more, create it as README.md section 1. Within a pair, both hosts must report the
 same availability zone (`describe-instances`, as in README.md section 2). Note each host's public and private IP.
 
-Prepare all four hosts and give each client an SSH key for its broker host, exactly as README.md section 3, with 48 as the
+Prepare all four hosts and give each client an SSH key for its broker host, exactly as README.md section 3, with 60 as the
 spend-cap hours:
 
 ```bash
-scp benchmarks/cloud/setup_host.sh ubuntu@<each public IP>: && ssh ubuntu@<each public IP> bash setup_host.sh 48
+scp benchmarks/cloud/setup_host.sh ubuntu@<each public IP>: && ssh ubuntu@<each public IP> bash setup_host.sh 60
 ```
 
 ### 2. Put the traces on the client hosts
@@ -196,7 +196,8 @@ docker save harbinger-bench | ssh ubuntu@<broker private IP> docker load
 ### 4. Smoke run (before freezing)
 
 The pre-registration allows a smoke run only on a synthetic trace, and only to see whether the pipeline runs. Do this on
-**one pair first** and, once it passes, on the other. It exercises the Docker path, the split roles, the warm snapshot
+**one pair first** and, once it passes, on the other. It exercises (the Docker path and split roles already passed locally with a stand-in ssh, so what is new here is real
+ssh and two hosts) the Docker path, the split roles, the warm snapshot
 reaching the remote broker, the retry rule, the probe and the report, with all seven arms (about 15 minutes):
 
 ```bash
@@ -231,9 +232,9 @@ On each pair's client host, inside `tmux`, from the freeze commit (the tree must
 git pull && git checkout <freeze commit> && docker build -f benchmarks/docker/Dockerfile -t harbinger-bench .
 docker save harbinger-bench | ssh ubuntu@<broker private IP> docker load
 export BROKER_SSH=ubuntu@<broker private IP> BROKER_HOST=<broker private IP>
-SHARD=<0/2 on pair 1, 1/2 on pair 2> benchmarks/run_replay.sh registered benchmarks/configs/v4-replay-azure2021.json \
+SHARD=<Azure: 0/2 on pair 1, 1/2 on pair 2> benchmarks/run_replay.sh registered benchmarks/configs/v4-replay-azure2021.json \
   ~/results/azure ~/prep-azure ~/azure2021.csv
-SHARD=<same> benchmarks/run_replay.sh registered benchmarks/configs/v4-replay-huawei2025-r5.json \
+SHARD=<Huawei: 1/2 on pair 1, 0/2 on pair 2> benchmarks/run_replay.sh registered benchmarks/configs/v4-replay-huawei2025-r5.json \
   ~/results/huawei ~/prep-huawei ~/huawei2025-r5.csv
 ```
 

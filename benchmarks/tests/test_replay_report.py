@@ -133,5 +133,38 @@ class Analysis(unittest.TestCase):
         self.assertEqual(out["gates"]["A"], {"replay": True, "simulator": False, "same": False})
 
 
+class Stability(unittest.TestCase):
+    def test_disagreeing_repeats_make_a_cell_unstable_even_if_the_pooled_verdict_passes(self):
+        primary = {"0.8": {"gates_passed": {"A": True, "B": True}}}
+        repeats = {"0.8": {"rep-1": {"gates_passed": {"A": True, "B": True}},
+                           "rep-2": {"gates_passed": {"A": False, "B": True}},
+                           "rep-3": {"gates_passed": {"A": True, "B": True}}}}
+        self.assertEqual(rr.stability(primary, repeats), {"0.8": {"A": "unstable", "B": "pass"}})
+
+    def test_one_repeat_cannot_disagree_with_itself(self):
+        primary = {"0.8": {"gates_passed": {"A": False}}}
+        repeats = {"0.8": {"rep-1": {"gates_passed": {"A": False}}}}
+        self.assertEqual(rr.stability(primary, repeats), {"0.8": {"A": "fail"}})
+        self.assertEqual(rr.stability(primary, {}), {"0.8": {"A": "fail"}})
+
+    def test_report_says_unstable(self):
+        primary = {"0.8": {"gates_passed": {"A": True}, "criteria": {}, "all": {}, "repeats_used": []}}
+        text = rr.report(CONFIG, {}, primary, {}, {}, {}, {}, {"0.8": {"A": "unstable"}})
+        self.assertIn("UNSTABLE", text)
+        self.assertNotIn("PASSED", text)
+
+
+class SubmitBasis(unittest.TestCase):
+    def test_runs_carry_the_submit_basis_and_trace_time_lateness(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            make_run(Path(tmp) / "fifo/0.8/rep-1", 1.0, lateness=0.4)  # submit is 0.1 ms after the schedule in make_run
+            cells = rr.collect(Path(tmp), CLASS_BOUNDS, (WINDOWS, 7))
+            r = cells["0.8"]["fifo"]["reps"]["rep-1"]
+            self.assertAlmostEqual(r["lateness_p99_trace_ms"], 0.8)  # 0.4 ms real x time scale 2
+            diff = rr.submit_basis_difference(cells)["max_relative_difference_in_mean_latency"]
+            self.assertGreater(diff, 0.0)
+            self.assertLess(diff, 0.001)
+
+
 if __name__ == "__main__":
     unittest.main()
