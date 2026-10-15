@@ -128,10 +128,16 @@ class Replay(unittest.TestCase):
             self.assertGreaterEqual(handler_ms, expected * 0.99)
             self.assertLess(handler_ms, expected + 20.0)
 
+    def test_no_aging_arm_runs_and_serves_short_jobs_first_even_without_promotion(self):
+        run, rows = self.run_arm("predictive_warm+no_aging")
+        self.assertEqual((run["messages"], run["completed"], run["dlq"], run["leases_lost"]), (60, 60, 0, 0))
+        fifo = self.mean_latency_ms(self.run_arm("fifo")[1])
+        self.assertLess(self.mean_latency_ms(rows), fifo * 0.9)  # strict priority still beats FIFO on the hand-built backlog
+
     def test_misuse_is_refused(self):
         cfg, prep = self.prepare()
         base = [BINARY, "run", "--load", "3", "--trace", str(self.trace), "--config", str(cfg), "--prep", str(prep)]
-        for arm in ("nonsense", "predictive_warm+weights", "fifo+pausing"):
+        for arm in ("nonsense", "predictive_warm+weights", "fifo+pausing", "predictive_warm+weights+pausing+no_aging"):
             with self.subTest(arm=arm):
                 done = subprocess.run(base + ["--arm", arm, "--out", str(self.dir / f"bad-{arm}")], capture_output=True)
                 self.assertEqual(done.returncode, 2)

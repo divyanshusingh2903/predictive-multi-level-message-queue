@@ -155,6 +155,7 @@ std::string snapshot_context(const ml::PredictiveRoutingConfig& routing) {
 struct Arm {
     std::string name, route;  // route: fifo | oracle | static_history | predictive_warm | predictive_cold
     bool weights{false};
+    bool no_aging{false};  // strict priority, nothing is promoted (v4-replay-aging)
 };
 
 Arm parse_arm(const std::string& name) {
@@ -165,10 +166,12 @@ Arm parse_arm(const std::string& name) {
         const auto flag = name.substr(at + 1, next == std::string::npos ? std::string::npos : next - at - 1);
         if (flag == "weights") arm.weights = true;
         else if (flag == "pausing") pausing = true;  // the broker turns pausing aging on with weights
+        else if (flag == "no_aging") arm.no_aging = true;
         else throw std::invalid_argument("unknown arm flag " + flag);
         at = next;
     }
     if (arm.weights != pausing) throw std::invalid_argument("weights and pausing go together: " + name);
+    if (arm.no_aging && arm.weights) throw std::invalid_argument("no_aging cannot be combined with weights and pausing: " + name);
     static const std::vector<std::string> routes{"fifo", "oracle", "static_history", "predictive_warm", "predictive_cold"};
     if (std::find(routes.begin(), routes.end(), arm.route) == routes.end()) throw std::invalid_argument("unknown arm " + name);
     return arm;
@@ -315,6 +318,7 @@ HarbingerConfig broker_config(const Config& c, const Plan& plan, const Arm& arm,
     config.delivery_lease = std::chrono::milliseconds{
         static_cast<int64_t>(std::ceil(plan.max_duration_ms / c.f * 1.25)) + 60000};
     if (arm.weights) config.level_weights = c.weights;  // the broker turns pausing aging on with weights
+    if (arm.no_aging) config.aging = std::nullopt;      // strict priority with no aging thread
     benchmark::Options options;
     options.observations = std::make_shared<benchmark::Observations>(1);
     options.static_header = "job_type";
