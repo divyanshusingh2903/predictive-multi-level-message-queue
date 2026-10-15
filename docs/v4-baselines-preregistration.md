@@ -1,7 +1,8 @@
-# Baselines, predictor ablation and aging isolation: pre-registration (`v4-baselines-1`) — DRAFT, NOT FROZEN
+# Baselines, predictor ablation and aging isolation: pre-registration (`v4-baselines-1`)
 
-**Status: draft.** It becomes a pre-registration only when the commit that freezes it exists, before any registered
-run. After freezing, changing anything requires a new version, and these results stay published.
+**Frozen 2026-10-15, before any registered run.** Changing anything below after results exist requires a new version, and
+these results stay published, as in the earlier registrations. The freeze commit is the one that sets `frozen_on` in the
+configuration.
 
 | | |
 |---|---|
@@ -136,15 +137,16 @@ RabbitMQ's FIFO as the baseline, this run on one host with Harbinger's, so the t
 
 ## Required changes before freezing (code, not run)
 
-Status 2026-10-15.
+Status at the freeze, 2026-10-15.
 
 1. **Done:** arms `predictive_mean`, `per_type_fair`, `predictive_noaging`, `ablate_decay`, `ablate_spread`, `ablate_stale`,
    `ablate_nmin` in `prodflow.cpp`. The embedded broker accepts nine levels with the static policy and equal `level_weights`
    and aging switched off; each new arm started and completed a short unregistered run locally (seed 7, 8 s).
 2. **Done:** `v4-baselines.json` (ten seeds, 11 arms, readings, report-only criteria and groups) and the report's readings,
    report-only criteria and groups, with tests.
-3. **Done:** `e7` in `benchmarks/cloud/run_all.sh`. **Open:** the AWS debug pass of all 11 arms on seed 7 (60 s each), reading
-   only that no work is lost; then freeze.
+3. **Done:** `e7` in `benchmarks/cloud/run_all.sh`, and the AWS debug pass (2026-10-15, `c8i.2xlarge`, commit `97a10b0`): all 11
+   arms on seed 7, 60 s each, every run completed 7,066 of 7,066 messages with no dead-lettered message and no submit error.
+   Only completion was read; the debug results are not analysed.
 4. The quiet check above, after the registered run.
 
 ## What has been seen before freezing
