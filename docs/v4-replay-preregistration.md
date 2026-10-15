@@ -1,16 +1,22 @@
-# Real traces through the real broker: pre-registration (`v4-replay-1`) — DRAFT, NOT FROZEN
+# Real traces through the real broker: pre-registration (`v4-replay-1`)
 
-**Status: draft.** It becomes a pre-registration only when the commit that freezes it exists, before any registered
-run. After freezing, changing anything requires a new version, and these results stay published.
+**Frozen 2026-10-15, before any registered run.** Changing anything below after results exist requires a new version, and
+these results stay published, as in the earlier registrations. The freeze commit is the one that sets `frozen_on` in both
+configs.
+
+**Scope of this version: Huawei Cloud 2025 R5 and Azure Functions 2021 only.** DAS2-fs2-2003 and LPC-EGEE-2004 appear below
+in the design text (their time scales, arms and aging constants) but are **not run under `v4-replay-1`**: their time scales
+of 300 and 400 put the broker's aging constants at 1 to 17 ms, where scheduler jitter and the broker's 100 ms pull wake-up
+are comparable to them, so they need a calibration run first and would be a separate, exploratory registration.
 
 | | |
 |---|---|
-| Issue | TBD (create before freezing) |
-| Configurations | `benchmarks/configs/v4-replay-{huawei2025-r5,azure2021,das2-fs2-2003,lpc-egee-2004}.json` (to be written at freeze) |
-| Harness | a new trace-replay binary (see *Required changes*); the broker is the real `harbinger_server_lib` |
-| Traces | the four traces of `v3-traces-1` and `v3-traces-2`, same converted files and hashes |
+| Issue | none |
+| Configurations | [`v4-replay-huawei2025-r5.json`](../benchmarks/configs/v4-replay-huawei2025-r5.json), [`v4-replay-azure2021.json`](../benchmarks/configs/v4-replay-azure2021.json) |
+| Harness | `harbinger_replay` (`benchmarks/replay.cpp`), run by `benchmarks/run_replay.sh`; the broker is the real `harbinger_server_lib` |
+| Traces | Huawei R5 and Azure 2021 of `v3-traces-1`, same converted files and hashes (checked by the runner against the configs) |
 | Environment | AWS, two broker + client pairs, `c8i.xlarge` + `c8i.2xlarge`, one placement group per pair, as in `v3-cloud` |
-| Analysis | `benchmarks/replay_report.py` (to be written) |
+| Analysis | [`benchmarks/replay_report.py`](../benchmarks/replay_report.py) |
 
 ## Why this experiment
 
@@ -211,8 +217,18 @@ Status 2026-10-14 (uncommitted). Nothing below has been run on a registered trac
 
 Data only: the Azure, DAS2 and LPC-EGEE duration and work distributions, and each trace's real-time replay time, were
 computed from the converted files. The published simulator results (`v3-traces-1`, `v3-traces-2`) and the validation
-(`v4-simvalidation-1`) have been seen. **No replay of any arm has been run.** The scaling factors were chosen from the
-time budget and the data checks, not from any replay result.
+(`v4-simvalidation-1`) have been seen. **No replay of any arm of a registered trace has been run.** The scaling factors were
+chosen from the time budget and the data checks, not from any replay result.
+
+**Smoke runs.** Only on synthetic traces (`benchmarks/make_replay_smoke.py`): locally with the binary and with the Docker
+image, and on 2026-10-15 on AWS, one pair (`c8i.2xlarge` client and `c8i.xlarge` broker, us-east-1d) from commit `96f2dc7`,
+over real ssh with the broker as a separate container: all seven arms and the probe on a 20,127-message trace, every run
+complete with no dead letter, lost lease or submit error, producer lateness p99 about 0.2 ms, the same image ID on both hosts,
+and the warm arms predicting every message from the first. Only these pipeline facts were read; the smoke's latencies and
+gates were not.
+
+The decisions under *Decisions* above, and the Azure load and arm choice, were made after reading the simulator's Azure
+results (gate B at 0.5 was −15.4%, the narrowest margin) and before any registered replay.
 
 ## Threats
 

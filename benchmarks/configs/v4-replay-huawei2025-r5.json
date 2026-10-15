@@ -1,6 +1,6 @@
 {
  "version": "v4-replay-1",
- "frozen_on": null,
+ "frozen_on": "2026-10-15",
  "issue": null,
  "preregistration": "docs/v4-replay-preregistration.md",
  "simulator_config": "benchmarks/configs/v3-traces-huawei2025-r5.json",
