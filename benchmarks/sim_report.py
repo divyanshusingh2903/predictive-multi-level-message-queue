@@ -196,7 +196,11 @@ def sensitivity(manifest: dict, outputs: dict, config: dict) -> dict:
     b = config["bootstrap"]
     verdicts: dict[str, dict] = {}
     for variant in manifest["variants"]:
-        cfg = {"bootstrap": b, "criteria": config["criteria"], "gate": list(config["criteria"])}
+        present = set(next(iter(outputs[variant["id"]]["results"].values())))
+        # Only the criteria whose arms this variant ran: the base config also holds criteria on arms (static_history, ...)
+        # that the variant configs leave out.
+        criteria = {n: r for n, r in config["criteria"].items() if r["arm"] in present and r["baseline"] in present}
+        cfg = {"bootstrap": b, "criteria": criteria, "gate": list(criteria)}
         result = evaluate(cfg, outputs[variant["id"]]["results"], data=outputs[variant["id"]])
         (cell,) = result.values()
         verdicts[variant["id"]] = {name: cell["criteria"][name] for name in ("A_P1_mean_latency_vs_fifo", "B_P1_mean_latency_vs_fifo")}

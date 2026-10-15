@@ -120,6 +120,20 @@ class Sensitivity(unittest.TestCase):
         self.assertEqual(out["passing_variants"], {"A_P1_mean_latency_vs_fifo": 3, "B_P1_mean_latency_vs_fifo": 4})
 
 
+class SensitivityIgnoresCriteriaOnArmsItDidNotRun(unittest.TestCase):
+    def test_a_base_config_with_secondary_criteria_does_not_break_the_sweep(self):
+        from benchmarks.sim_report import sensitivity
+        criteria = {"A_P1_mean_latency_vs_fifo": {**CRITERION, "arm": "predictive_warm"},
+                    "B_P1_mean_latency_vs_fifo": {**CRITERION, "arm": "predictive_warm+weights+pausing"},
+                    "S2_vs_static_history": {"arm": "predictive_warm", "baseline": "static_history",
+                                             "metric": "mean_latency_ms", "max_relative_delta": 0.1}}
+        res = results(predictive_warm=0.5, **{"predictive_warm+weights+pausing": 0.5})
+        manifest = {"variants": [{"id": "default", "parameter": "default", "value": "d", "default": True, "step": 0}]}
+        out = sensitivity(manifest, {"default": {"results": res, "class_bounds_ms": [100, 1000]}},
+                          {"bootstrap": BASE["bootstrap"], "criteria": criteria})
+        self.assertEqual(sorted(out["verdicts"]["default"]), ["A_P1_mean_latency_vs_fifo", "B_P1_mean_latency_vs_fifo"])
+
+
 class VerdictChanges(unittest.TestCase):
     def test_lists_only_differing_cells(self):
         from benchmarks.sim_report import verdict_changes
