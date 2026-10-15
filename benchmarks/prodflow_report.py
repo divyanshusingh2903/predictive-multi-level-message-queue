@@ -10,6 +10,15 @@ A criterion's metric is any key of the per-run metrics, including the per-class 
 "unsized_mean_ms" (mean latency of every other job type) and, when CONFIG sets "phase_metrics", "phase_mean_ms:<phase>"
 (steady, ramp, flash_sale, recovery, shifted).
 
+A criterion with "reading": {"margin": m, "labels": {"up", "tied", "down"}} (v4-baselines) has no pass or fail: it reads the paired
+relative change of the arm against its baseline from the bootstrap interval and gives one of the three labels, or
+"inconclusive". "up" needs the whole interval above 0 and the point estimate at least +m; "down" the whole interval below 0
+and the point at most -m; "tied" the whole interval inside ±m (an interval inside ±m has its point inside ±m too, so
+"tied" never competes with "up" or "down"); anything else is "inconclusive". A criterion with
+"report_only": true gives the paired relative change and its interval and the status "reported". A config's "groups"
+{name: {"members": [criteria], "labels": {...}}} combine several readings into one: "mixed" when members read both "up" and
+"down", else the label of the one that is not "tied", else "tied" if all are, else "inconclusive".
+
 A criterion with "every_seed": true needs no interval: it passes when the relative delta meets its limit in every seed
 (at or under "max_relative_delta", or within ±"max_abs_relative_delta"). It is meant for runs with too few repetitions
 for a bootstrap. A config with an empty "gate" is descriptive and reports no gate.
@@ -126,6 +135,22 @@ def evaluate(config: dict, table: dict) -> dict:
         if any(a is None or c is None or c == 0 for a, c in pairs):
             results[name] = {"status": "unevaluable"}
             continue
+        if "reading" in rule or rule.get("report_only"):
+            point, ci = bootstrap([(a - c) / c for a, c in pairs], b["samples"], b["seed"], b["confidence"])
+            if rule.get("report_only"):
+                status = "reported"
+            else:
+                margin, labels = rule["reading"]["margin"], rule["reading"]["labels"]
+                if ci[0] > 0 and point >= margin:
+                    status = labels["up"]
+                elif ci[1] < 0 and point <= -margin:
+                    status = labels["down"]
+                elif -margin <= ci[0] and ci[1] <= margin:
+                    status = labels["tied"]
+                else:
+                    status = "inconclusive"
+            results[name] = {"status": status, "kind": "relative_delta", "point": point, "ci95": ci, "seeds": len(seeds)}
+            continue
         if rule.get("every_seed"):
             deltas = [(a - c) / c for a, c in pairs]
             if "max_abs_relative_delta" in rule:
@@ -163,7 +188,13 @@ def evaluate(config: dict, table: dict) -> dict:
         results[name] = {"status": "pass" if ok else "fail", "kind": "relative_delta", "point": point, "ci95": ci,
                          "seeds": len(seeds)}
     gate = all(results.get(name, {}).get("status") == "pass" for name in config["gate"])
-    return {"criteria": results, "gate_passed": gate}
+    groups = {}
+    for name, group in config.get("groups", {}).items():
+        labels, statuses = group["labels"], [results.get(m, {}).get("status") for m in group["members"]]
+        has_up, has_down = labels["up"] in statuses, labels["down"] in statuses
+        groups[name] = ("mixed" if has_up and has_down else labels["up"] if has_up else labels["down"] if has_down
+                        else labels["tied"] if all(x == labels["tied"] for x in statuses) else "inconclusive")
+    return {"criteria": results, "gate_passed": gate, **({"groups": groups} if groups else {})}
 
 
 def fmt(value, digits=1) -> str:
@@ -197,6 +228,9 @@ def report(config: dict, table: dict, evaluation: dict) -> str:
         if result.get("kind") == "every_seed":
             shown, interval = ", ".join(f"{d:+.1%}" for d in result["deltas"]), "each seed"
         lines.append(f"| {name} | {who} | {shown} | {interval} | **{result['status']}** |")
+    if evaluation.get("groups"):
+        lines += ["", "## Readings that combine criteria", "", "| Group | Members | Reading |", "|---|---|---|"]
+        lines += [f"| {g} | {', '.join(config['groups'][g]['members'])} | **{r}** |" for g, r in evaluation["groups"].items()]
     if config["gate"]:
         lines += ["", f"**Gate ({', '.join(config['gate'])}): {'PASSED' if evaluation['gate_passed'] else 'NOT PASSED'}.**", ""]
     else:
@@ -230,7 +264,7 @@ def report(config: dict, table: dict, evaluation: dict) -> str:
         cells = [fmt(statistics.median(m["unsized_mean_ms"] for m in table[arm].values())) for arm in arms]
         lines.append("| *all other classes* | " + " | ".join(cells) + " |")
     for arm in arms:
-        if not arm.startswith("predictive"):
+        if not arm.startswith(("predictive", "ablate")):
             continue
         r = [m["routing"] for m in table[arm].values() if m["routing"].get("enabled")]
         if not r:

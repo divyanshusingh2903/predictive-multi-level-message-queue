@@ -428,7 +428,8 @@ HarbingerConfig arm_config(const std::string& arm) {
         config.aging = std::nullopt;
     } else if (arm == "shadow" || arm == "predictive" || arm == "predictive_p75" || arm == "predictive_mean" ||
              arm == "predictive_producer" || arm == "predictive_sized" || arm == "predictive_weighted" ||
-             arm == "ablate_decay" || arm == "ablate_spread" || arm == "ablate_stale" || arm == "ablate_nmin") {
+             arm == "ablate_decay" || arm == "ablate_spread" || arm == "ablate_stale" || arm == "ablate_nmin" ||
+             arm == "predictive_noaging") {
         ml::PredictiveRoutingConfig routing;
         routing.mode = arm == "shadow" ? ml::RoutingMode::Shadow : ml::RoutingMode::Predictive;
         if (arm == "predictive_p75") routing.predictor.summary = ml::DurationSummary::P75;
@@ -438,6 +439,8 @@ HarbingerConfig arm_config(const std::string& arm) {
         if (arm == "ablate_spread") routing.predictor.max_spread_ratio = 1e18;  // the check can no longer trigger
         if (arm == "ablate_stale") routing.predictor.stale_after = std::chrono::milliseconds{0};
         if (arm == "ablate_nmin") routing.predictor.min_samples = 1;
+        // v4-baselines aging isolation: the same predictive routing with no aging, so strict priority never promotes.
+        if (arm == "predictive_noaging") config.aging = std::nullopt;
         // Zero-configuration control: producers do not label jobs, so each service is one key.
         if (arm == "predictive_producer") routing.key.job_header.clear();
         // Size-binned keys (#35, #39): the producer's size hint (pixels, line items, chunks) adds a log2 bin.
@@ -496,7 +499,7 @@ int main(int argc, char** argv) try {
         (role == "broker" || ((role == "all" || (role == "client" && args.contains("--broker"))) && args.contains("--seed")));
     if (!usage_ok)
         throw std::invalid_argument("usage: harbinger_prodflow --arm fifo|static_tuned|static_misconfigured|shadow|"
-            "predictive|predictive_p75|predictive_mean|predictive_producer|predictive_sized|predictive_weighted|per_type_fair|ablate_decay|ablate_spread|ablate_stale|ablate_nmin|oracle --seed N --out NEW_DIR [--seconds 300] [--workers 4] [--rate-scale 1] [--drain-s 180]\n"
+            "predictive|predictive_p75|predictive_mean|predictive_producer|predictive_sized|predictive_weighted|predictive_noaging|per_type_fair|ablate_decay|ablate_spread|ablate_stale|ablate_nmin|oracle --seed N --out NEW_DIR [--seconds 300] [--workers 4] [--rate-scale 1] [--drain-s 180]\n"
             "       harbinger_prodflow --arm rabbitmq_fifo|rabbitmq_priority|rabbitmq_predictive|redis_fifo --broker HOST:PORT --seed N --out NEW_DIR [options above]\n"
             "       harbinger_prodflow --role broker --arm ARM --out NEW_DIR [--listen 0.0.0.0:50051]\n"
             "       harbinger_prodflow --role client --broker HOST:PORT --arm ARM --seed N --out NEW_DIR [options above]");

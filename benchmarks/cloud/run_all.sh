@@ -10,10 +10,12 @@
 #   in parallel. E1 alone needs no broker host. A subset writes to <mode>-<commit>-<experiments>.
 #   e5 and e6 (v4-cloud-reruns) re-run the frozen aging and size-bin production-flow experiments on one host, like E1:
 #   EXPERIMENTS="e5 e6" benchmarks/cloud/run_all.sh registered ~/results
+#   e7 (v4-baselines) runs the baselines, predictor ablation and aging isolation, 11 arms on ten seeds, on one host:
+#   EXPERIMENTS="e7" benchmarks/cloud/run_all.sh registered ~/results
 set -euo pipefail
 mode=$1; root=$2
 experiments=${EXPERIMENTS:-e4 e3 e2 e1}
-for e in $experiments; do case $e in e1|e2|e3|e4|e5|e6) ;; *) echo "unknown experiment $e" >&2; exit 2 ;; esac; done
+for e in $experiments; do case $e in e1|e2|e3|e4|e5|e6|e7) ;; *) echo "unknown experiment $e" >&2; exit 2 ;; esac; done
 want() { [[ " $experiments " == *" $1 "* ]]; }
 needs_broker=false; for e in e2 e3 e4; do want $e && needs_broker=true; done
 if $needs_broker; then : "${BROKER_SSH:?set BROKER_SSH}" "${BROKER_HOST:?set BROKER_HOST}"; fi
@@ -33,7 +35,7 @@ if [ "$mode" = registered ]; then
   done
 fi
 if [ "$mode" = registered ]; then
-  for pair in "e5 v4-cloud-aging" "e6 v4-cloud-sizebins"; do
+  for pair in "e5 v4-cloud-aging" "e6 v4-cloud-sizebins" "e7 v4-baselines"; do
     set -- $pair
     want "$1" || continue
     python3 -c "import json,sys;sys.exit(json.load(open('benchmarks/configs/$2.json'))['frozen_on'] is None)" \
@@ -121,6 +123,8 @@ single_host() {  # single_host LABEL CONFIG_NAME SUBDIR [debug overrides...]
 }
 if want e5; then single_host E5 v4-cloud-aging e5 seeds='[7]' seconds=60 'arms=["fifo","predictive_weighted"]'; fi
 if want e6; then single_host E6 v4-cloud-sizebins e6 seeds='[7]' seconds=60 'arms=["fifo","predictive_sized"]'; fi
+# Debug runs every arm (that is what the pass is for) for 60 s with a short drain, on the unregistered seed 7.
+if want e7; then single_host E7 v4-baselines e7 seeds='[7]' seconds=60 drain_s=60; fi
 
 log "done"
 echo "finished $(date -u +%FT%TZ)" >> "$out/manifest.txt"

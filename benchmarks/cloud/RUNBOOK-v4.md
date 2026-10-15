@@ -293,7 +293,19 @@ constants; they need a calibration run first and would be reported as explorator
 
 ## Later lanes
 
-- **Baselines** (same host, after E5 and E6): `benchmarks/run_prodflow.sh` with `v4-baselines.json` once that
-  pre-registration is frozen; add it to `run_all.sh` as `e7` in the same way.
+- **Baselines, ablation and aging isolation** (`e7`, [v4-baselines](../../docs/v4-baselines-preregistration.md)): one
+  `c8i.2xlarge` alone, 11 arms on ten seeds, about 9.4 h and about $4. It fits beside the two replay pairs: 24 + 8 = 32 vCPU,
+  with nothing to spare. The lane S host can be reused (`aws ec2 start-instances`; its public IP changes), with the image
+  rebuilt from the commit under test:
+
+  ```bash
+  git pull && git checkout <commit under test> && docker build -f benchmarks/docker/Dockerfile -t harbinger-bench .
+  EXPERIMENTS="e7" benchmarks/cloud/run_all.sh debug ~/results        # all 11 arms, seed 7, 60 s each; about 15 minutes
+  # freeze (set frozen_on in v4-baselines.json, remove the DRAFT notice from the pre-registration), push, then on the host:
+  git pull && git checkout <freeze commit> && docker build -f benchmarks/docker/Dockerfile -t harbinger-bench .
+  EXPERIMENTS="e7" benchmarks/cloud/run_all.sh registered ~/results   # writes ~/results/registered-<commit>-e7/
+  ```
+
+  Read in the debug pass only that every `run.json` has `completed` equal to `messages` and no `dlq` or `submit_errors`.
 - **Trace replay on the pairs:** see Lane R below.
 - Terminate lane S's host before launching the second pair if you want the quota for something else.

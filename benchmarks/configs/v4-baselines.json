@@ -1,0 +1,376 @@
+{
+ "version": "v4-baselines-1",
+ "frozen_on": null,
+ "issue": null,
+ "preregistration": "docs/v4-baselines-preregistration.md",
+ "workload": "v2-prodflow-1, unchanged",
+ "environment": {
+  "provider": "AWS us-east-1",
+  "host": "c8i.2xlarge (8 vCPU, 16 GiB), Ubuntu 24.04, alone",
+  "broker": "embedded in harbinger_prodflow over loopback, as in v3-cloud-e1",
+  "image": "harbinger-bench built from the freeze commit",
+  "runner": "benchmarks/run_prodflow.sh inside the image"
+ },
+ "benchmark": "harbinger_prodflow",
+ "seconds": 300,
+ "workers": 4,
+ "rate_scale": 1.8,
+ "drain_s": 180,
+ "seeds": [
+  11,
+  22,
+  33,
+  44,
+  55,
+  66,
+  77,
+  88,
+  99,
+  110
+ ],
+ "arms": [
+  "fifo",
+  "predictive",
+  "static_tuned",
+  "predictive_mean",
+  "predictive_p75",
+  "per_type_fair",
+  "predictive_noaging",
+  "ablate_decay",
+  "ablate_spread",
+  "ablate_stale",
+  "ablate_nmin"
+ ],
+ "primary_arm": "predictive",
+ "short_classes": [
+  "reserve_inventory",
+  "push_notification",
+  "reindex_product",
+  "generate_invoice"
+ ],
+ "long_class": "export_report",
+ "phase_metrics": true,
+ "bootstrap": {
+  "samples": 10000,
+  "seed": 2026,
+  "confidence": 0.95
+ },
+ "gate": [],
+ "criteria": {
+  "B1_predictive_vs_per_type_fair": {
+   "arm": "predictive",
+   "baseline": "per_type_fair",
+   "metric": "mean_latency_ms",
+   "reading": {
+    "margin": 0.03,
+    "labels": {
+     "up": "predictive worse",
+     "tied": "tied",
+     "down": "predictive better"
+    }
+   }
+  },
+  "B2_predictive_vs_static_tuned": {
+   "arm": "predictive",
+   "baseline": "static_tuned",
+   "metric": "mean_latency_ms",
+   "reading": {
+    "margin": 0.03,
+    "labels": {
+     "up": "predictive worse",
+     "tied": "tied",
+     "down": "predictive better"
+    }
+   }
+  },
+  "B3_predictive_mean_vs_predictive": {
+   "arm": "predictive_mean",
+   "baseline": "predictive",
+   "metric": "mean_latency_ms",
+   "reading": {
+    "margin": 0.03,
+    "labels": {
+     "up": "variant worse",
+     "tied": "tied",
+     "down": "variant better"
+    }
+   }
+  },
+  "B4_predictive_p75_vs_predictive": {
+   "arm": "predictive_p75",
+   "baseline": "predictive",
+   "metric": "mean_latency_ms",
+   "reading": {
+    "margin": 0.03,
+    "labels": {
+     "up": "variant worse",
+     "tied": "tied",
+     "down": "variant better"
+    }
+   }
+  },
+  "R_ptf_short_p50_vs_predictive": {
+   "arm": "per_type_fair",
+   "baseline": "predictive",
+   "metric": "short_p50_ms",
+   "report_only": true
+  },
+  "R_ptf_p99_vs_predictive": {
+   "arm": "per_type_fair",
+   "baseline": "predictive",
+   "metric": "p99_latency_ms",
+   "report_only": true
+  },
+  "R_ptf_long_max_wait_vs_predictive": {
+   "arm": "per_type_fair",
+   "baseline": "predictive",
+   "metric": "long_max_wait_ms",
+   "report_only": true
+  },
+  "R_mean_short_p50_vs_predictive": {
+   "arm": "predictive_mean",
+   "baseline": "predictive",
+   "metric": "short_p50_ms",
+   "report_only": true
+  },
+  "R_mean_p99_vs_predictive": {
+   "arm": "predictive_mean",
+   "baseline": "predictive",
+   "metric": "p99_latency_ms",
+   "report_only": true
+  },
+  "R_mean_long_max_wait_vs_predictive": {
+   "arm": "predictive_mean",
+   "baseline": "predictive",
+   "metric": "long_max_wait_ms",
+   "report_only": true
+  },
+  "R_p75_short_p50_vs_predictive": {
+   "arm": "predictive_p75",
+   "baseline": "predictive",
+   "metric": "short_p50_ms",
+   "report_only": true
+  },
+  "R_p75_p99_vs_predictive": {
+   "arm": "predictive_p75",
+   "baseline": "predictive",
+   "metric": "p99_latency_ms",
+   "report_only": true
+  },
+  "R_p75_long_max_wait_vs_predictive": {
+   "arm": "predictive_p75",
+   "baseline": "predictive",
+   "metric": "long_max_wait_ms",
+   "report_only": true
+  },
+  "Q1_predictive_replicates_v2": {
+   "arm": "predictive",
+   "baseline": "fifo",
+   "metric": "mean_latency_ms",
+   "max_relative_delta": -0.15
+  },
+  "AB_decay_overall": {
+   "arm": "ablate_decay",
+   "baseline": "predictive",
+   "metric": "mean_latency_ms",
+   "reading": {
+    "margin": 0.03,
+    "labels": {
+     "up": "component supported",
+     "tied": "not supported here",
+     "down": "component harmful here"
+    }
+   }
+  },
+  "AB_decay_shifted": {
+   "arm": "ablate_decay",
+   "baseline": "predictive",
+   "metric": "phase_mean_ms:shifted",
+   "reading": {
+    "margin": 0.03,
+    "labels": {
+     "up": "component supported",
+     "tied": "not supported here",
+     "down": "component harmful here"
+    }
+   }
+  },
+  "AB_spread_overall": {
+   "arm": "ablate_spread",
+   "baseline": "predictive",
+   "metric": "mean_latency_ms",
+   "reading": {
+    "margin": 0.03,
+    "labels": {
+     "up": "component supported",
+     "tied": "not supported here",
+     "down": "component harmful here"
+    }
+   }
+  },
+  "AB_spread_shifted": {
+   "arm": "ablate_spread",
+   "baseline": "predictive",
+   "metric": "phase_mean_ms:shifted",
+   "reading": {
+    "margin": 0.03,
+    "labels": {
+     "up": "component supported",
+     "tied": "not supported here",
+     "down": "component harmful here"
+    }
+   }
+  },
+  "AB_stale_overall": {
+   "arm": "ablate_stale",
+   "baseline": "predictive",
+   "metric": "mean_latency_ms",
+   "reading": {
+    "margin": 0.03,
+    "labels": {
+     "up": "component supported",
+     "tied": "not supported here",
+     "down": "component harmful here"
+    }
+   }
+  },
+  "AB_stale_shifted": {
+   "arm": "ablate_stale",
+   "baseline": "predictive",
+   "metric": "phase_mean_ms:shifted",
+   "reading": {
+    "margin": 0.03,
+    "labels": {
+     "up": "component supported",
+     "tied": "not supported here",
+     "down": "component harmful here"
+    }
+   }
+  },
+  "AB_nmin_overall": {
+   "arm": "ablate_nmin",
+   "baseline": "predictive",
+   "metric": "mean_latency_ms",
+   "reading": {
+    "margin": 0.03,
+    "labels": {
+     "up": "component supported",
+     "tied": "not supported here",
+     "down": "component harmful here"
+    }
+   }
+  },
+  "AB_nmin_shifted": {
+   "arm": "ablate_nmin",
+   "baseline": "predictive",
+   "metric": "phase_mean_ms:shifted",
+   "reading": {
+    "margin": 0.03,
+    "labels": {
+     "up": "component supported",
+     "tied": "not supported here",
+     "down": "component harmful here"
+    }
+   }
+  },
+  "C1_noaging_vs_predictive": {
+   "arm": "predictive_noaging",
+   "baseline": "predictive",
+   "metric": "mean_latency_ms",
+   "reading": {
+    "margin": 0.03,
+    "labels": {
+     "up": "aging helps the mean",
+     "tied": "aging does not change the mean",
+     "down": "aging costs mean latency"
+    }
+   }
+  },
+  "C2_noaging_mean_vs_fifo": {
+   "arm": "predictive_noaging",
+   "baseline": "fifo",
+   "metric": "mean_latency_ms",
+   "report_only": true
+  },
+  "C3_noaging_p99_vs_fifo": {
+   "arm": "predictive_noaging",
+   "baseline": "fifo",
+   "metric": "p99_latency_ms",
+   "report_only": true
+  },
+  "C4_noaging_long_max_wait_vs_fifo": {
+   "arm": "predictive_noaging",
+   "baseline": "fifo",
+   "metric": "long_max_wait_ms",
+   "report_only": true
+  },
+  "C5_noaging_p99_vs_predictive": {
+   "arm": "predictive_noaging",
+   "baseline": "predictive",
+   "metric": "p99_latency_ms",
+   "report_only": true
+  },
+  "C6_noaging_long_max_wait_vs_predictive": {
+   "arm": "predictive_noaging",
+   "baseline": "predictive",
+   "metric": "long_max_wait_ms",
+   "report_only": true
+  }
+ },
+ "groups": {
+  "ablate_decay": {
+   "members": [
+    "AB_decay_overall",
+    "AB_decay_shifted"
+   ],
+   "labels": {
+    "up": "component supported",
+    "tied": "not supported here",
+    "down": "component harmful here"
+   }
+  },
+  "ablate_spread": {
+   "members": [
+    "AB_spread_overall",
+    "AB_spread_shifted"
+   ],
+   "labels": {
+    "up": "component supported",
+    "tied": "not supported here",
+    "down": "component harmful here"
+   }
+  },
+  "ablate_stale": {
+   "members": [
+    "AB_stale_overall",
+    "AB_stale_shifted"
+   ],
+   "labels": {
+    "up": "component supported",
+    "tied": "not supported here",
+    "down": "component harmful here"
+   }
+  },
+  "ablate_nmin": {
+   "members": [
+    "AB_nmin_overall",
+    "AB_nmin_shifted"
+   ],
+   "labels": {
+    "up": "component supported",
+    "tied": "not supported here",
+    "down": "component harmful here"
+   }
+  },
+  "C1_aging": {
+   "members": [
+    "C1_noaging_vs_predictive"
+   ],
+   "labels": {
+    "up": "aging helps the mean",
+    "tied": "aging does not change the mean",
+    "down": "aging costs mean latency"
+   }
+  }
+ }
+}
