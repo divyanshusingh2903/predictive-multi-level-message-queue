@@ -1,7 +1,7 @@
-# Aging switched off on a real trace: pre-registration (`v4-replay-aging-1`) — DRAFT, NOT FROZEN
+# Aging switched off on a real trace: pre-registration (`v4-replay-aging-1`)
 
-**Status: draft.** It becomes a pre-registration only when the commit that freezes it exists, before any registered run. After
-freezing, changing anything requires a new version, and these results stay published.
+**Frozen 2026-10-15, before any registered run.** Changing anything below after results exist requires a new version, and these
+results stay published, as in the earlier registrations. The freeze commit is the one that sets `frozen_on` in the configuration.
 
 | | |
 |---|---|
@@ -82,8 +82,9 @@ least one load and gate N's guardrails (`N_G1`, `N_G2`) pass there, so that the 
 
 The simulator's Huawei gate A verdicts (`v3-traces-1`, and `v4-sensitivity-1`'s 28-window and aging-threshold results), the
 production-flow aging result (`v4-baselines-1`) and the E5 result have been seen. **No cell of `v4-replay-1` has been read**
-(the runs are in progress and only liveness has been checked), and no run of this experiment has been made except smoke runs
-on a synthetic trace that read only that the arm completes. The loads, arms and readings were chosen from the simulator
+(the runs are in progress and only liveness has been checked), and no run of this experiment has been made except a smoke run
+on a synthetic trace (2026-10-15, the two `c8i.xlarge` hosts, commit `d16d425`: `fifo`, `predictive_warm` and `predictive_warm+no_aging`
+on a 20,127-message trace, all complete with no dead letter or lost lease, producer lateness p99 0.12 ms), which read only those facts. The loads, arms and readings were chosen from the simulator
 results and the baselines, not from any replay result.
 
 ## Threats
