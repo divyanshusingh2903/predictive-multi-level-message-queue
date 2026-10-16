@@ -1,0 +1,118 @@
+{
+ "version": "v4-sensitivity-1",
+ "frozen_on": "2026-10-15",
+ "issue": 46,
+ "preregistration": "docs/v4-sensitivity-preregistration.md",
+ "trace": {
+  "title": "Azure Functions 2021 trace simulation (v3-traces rules)",
+  "name": "AzureFunctionsInvocationTraceForTwoWeeksJan2021",
+  "rar_sha256": "8bb5d1c82e89e467062b6582996232df24edfebadbaf3287a8c985ca178ba92d",
+  "txt_sha256": "d56368ef194baa8d418304bd2f87cca67668ced0d117bd89ad4ef3cf836457d2",
+  "converted_sha256": "07e6c5c1d977896f97ff29782817a29f0c99a358e39b7145fbf530e87345d33c",
+  "rows": 1980951,
+  "key": "app/func",
+  "arrival": "end_timestamp - duration",
+  "duration": "duration",
+  "convert": "python -m analysis.trace_format convert azure2021 AzureFunctionsInvocationTraceForTwoWeeksJan2021.txt azure2021.csv"
+ },
+ "history_split": "time",
+ "history_fraction": 0.5,
+ "window_split": "time",
+ "evaluation_days": 7,
+ "class_bounds_ms": [
+  100,
+  1000
+ ],
+ "workers": 64,
+ "levels": 2,
+ "default_priority": 1,
+ "aging": {
+  "threshold_ms": 5000,
+  "interval_ms": 500
+ },
+ "utilizations": [
+  0.8
+ ],
+ "level_weights": [
+  8,
+  1
+ ],
+ "arms": [
+  "fifo",
+  "predictive_warm",
+  "predictive_warm+weights+pausing"
+ ],
+ "misconfigured_seed": 2026,
+ "bootstrap": {
+  "samples": 10000,
+  "seed": 2026,
+  "confidence": 0.95
+ },
+ "report_without_extreme_window": true,
+ "criteria": {
+  "A_P1_mean_latency_vs_fifo": {
+   "arm": "predictive_warm",
+   "baseline": "fifo",
+   "metric": "mean_latency_ms",
+   "max_relative_delta": -0.15
+  },
+  "A_G1_all_p99_vs_fifo": {
+   "arm": "predictive_warm",
+   "baseline": "fifo",
+   "metric": "p99_latency_ms",
+   "max_ratio": 2.0
+  },
+  "A_G2_long_max_wait_vs_fifo": {
+   "arm": "predictive_warm",
+   "baseline": "fifo",
+   "metric": "long_max_wait_ms",
+   "max_ratio": 2.0,
+   "floor": "long_class_bound",
+   "min_class_count": {
+    "class": "long",
+    "count": 30
+   }
+  },
+  "B_P1_mean_latency_vs_fifo": {
+   "arm": "predictive_warm+weights+pausing",
+   "baseline": "fifo",
+   "metric": "mean_latency_ms",
+   "max_relative_delta": -0.15
+  },
+  "B_G1_all_p99_vs_fifo": {
+   "arm": "predictive_warm+weights+pausing",
+   "baseline": "fifo",
+   "metric": "p99_latency_ms",
+   "max_ratio": 2.0
+  },
+  "B_G2_long_max_wait_vs_fifo": {
+   "arm": "predictive_warm+weights+pausing",
+   "baseline": "fifo",
+   "metric": "long_max_wait_ms",
+   "max_ratio": 2.0,
+   "floor": "long_class_bound",
+   "min_class_count": {
+    "class": "long",
+    "count": 30
+   }
+  }
+ },
+ "gates": {
+  "A_predictive_routing": [
+   "A_P1_mean_latency_vs_fifo",
+   "A_G1_all_p99_vs_fifo",
+   "A_G2_long_max_wait_vs_fifo"
+  ],
+  "B_overload_design": [
+   "B_P1_mean_latency_vs_fifo",
+   "B_G1_all_p99_vs_fifo",
+   "B_G2_long_max_wait_vs_fifo"
+  ]
+ },
+ "predictor": {},
+ "variant": {
+  "id": "levels-2",
+  "parameter": "levels",
+  "value": 2
+ }
+}

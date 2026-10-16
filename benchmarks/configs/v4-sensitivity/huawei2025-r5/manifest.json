@@ -1,0 +1,134 @@
+{
+ "version": "v4-sensitivity-1",
+ "trace": "huawei2025-r5",
+ "load": 0.8,
+ "base_config": "benchmarks/configs/v3-traces-huawei2025-r5.json",
+ "variants": [
+  {
+   "id": "default",
+   "parameter": "default",
+   "value": "all defaults",
+   "default": true,
+   "step": 0
+  },
+  {
+   "id": "n_min-5",
+   "parameter": "n_min",
+   "value": 5,
+   "default": false,
+   "step": 1
+  },
+  {
+   "id": "n_min-100",
+   "parameter": "n_min",
+   "value": 100,
+   "default": false,
+   "step": 1
+  },
+  {
+   "id": "kappa-4",
+   "parameter": "kappa",
+   "value": 4,
+   "default": false,
+   "step": 1
+  },
+  {
+   "id": "kappa-64",
+   "parameter": "kappa",
+   "value": 64,
+   "default": false,
+   "step": 1
+  },
+  {
+   "id": "kappa-inf",
+   "parameter": "kappa",
+   "value": "inf",
+   "default": false,
+   "step": 2
+  },
+  {
+   "id": "decay-0.98",
+   "parameter": "decay",
+   "value": 0.98,
+   "default": false,
+   "step": 1
+  },
+  {
+   "id": "decay-0.999",
+   "parameter": "decay",
+   "value": 0.999,
+   "default": false,
+   "step": 1
+  },
+  {
+   "id": "decay-1.0",
+   "parameter": "decay",
+   "value": 1.0,
+   "default": false,
+   "step": 2
+  },
+  {
+   "id": "tau-5min",
+   "parameter": "tau",
+   "value": "5min",
+   "default": false,
+   "step": 1
+  },
+  {
+   "id": "tau-2h",
+   "parameter": "tau",
+   "value": "2h",
+   "default": false,
+   "step": 1
+  },
+  {
+   "id": "tau-off",
+   "parameter": "tau",
+   "value": "off",
+   "default": false,
+   "step": 2
+  },
+  {
+   "id": "aging_threshold-1s",
+   "parameter": "aging_threshold",
+   "value": "1s",
+   "default": false,
+   "step": 1
+  },
+  {
+   "id": "aging_threshold-30s",
+   "parameter": "aging_threshold",
+   "value": "30s",
+   "default": false,
+   "step": 1
+  },
+  {
+   "id": "weights-4-2-1",
+   "parameter": "weights",
+   "value": "4-2-1",
+   "default": false,
+   "step": 1
+  },
+  {
+   "id": "weights-16-4-1",
+   "parameter": "weights",
+   "value": "16-4-1",
+   "default": false,
+   "step": 2
+  },
+  {
+   "id": "levels-2",
+   "parameter": "levels",
+   "value": 2,
+   "default": false,
+   "step": 1
+  },
+  {
+   "id": "levels-4",
+   "parameter": "levels",
+   "value": 4,
+   "default": false,
+   "step": 1
+  }
+ ]
+}

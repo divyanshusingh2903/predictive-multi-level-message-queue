@@ -1,0 +1,121 @@
+{
+ "version": "v4-sensitivity-1",
+ "frozen_on": "2026-10-15",
+ "issue": 46,
+ "preregistration": "docs/v4-sensitivity-preregistration.md",
+ "trace": {
+  "title": "Huawei Cloud 2025 Region 5 trace simulation",
+  "name": "Huawei Public Cloud Trace 2025, request tables, Region 5 (day 30)",
+  "source": "https://github.com/sir-lab/data-release (README_data_release_2025.md), CC BY 4.0",
+  "zip_sha256": "5825f74443cf6e4f5df264f8c94d439fc9eae576399f9786a50ca4cb3316e60d",
+  "converted_sha256": "e860c7a699670af200e09b8a6d97b194fd87ecc5a15833f039af88bc7a64656b",
+  "rows": 3443079,
+  "key": "funcName---userID---poolName",
+  "arrival": "time_frontend - totalCost_frontend",
+  "duration": "totalCost_worker",
+  "convert": "python -m analysis.trace_format convert huawei2025 R5/ huawei2025-r5.csv"
+ },
+ "history_split": "time",
+ "history_fraction": 0.5,
+ "window_split": "time",
+ "evaluation_days": 7,
+ "class_bounds_ms": [
+  100,
+  1000
+ ],
+ "workers": 64,
+ "levels": 3,
+ "default_priority": 1,
+ "aging": {
+  "threshold_ms": 5000,
+  "interval_ms": 500
+ },
+ "utilizations": [
+  0.8
+ ],
+ "level_weights": [
+  8,
+  3,
+  1
+ ],
+ "arms": [
+  "fifo",
+  "predictive_warm",
+  "predictive_warm+weights+pausing"
+ ],
+ "misconfigured_seed": 2026,
+ "bootstrap": {
+  "samples": 10000,
+  "seed": 2026,
+  "confidence": 0.95
+ },
+ "report_without_extreme_window": true,
+ "criteria": {
+  "A_P1_mean_latency_vs_fifo": {
+   "arm": "predictive_warm",
+   "baseline": "fifo",
+   "metric": "mean_latency_ms",
+   "max_relative_delta": -0.15
+  },
+  "A_G1_all_p99_vs_fifo": {
+   "arm": "predictive_warm",
+   "baseline": "fifo",
+   "metric": "p99_latency_ms",
+   "max_ratio": 2.0
+  },
+  "A_G2_long_max_wait_vs_fifo": {
+   "arm": "predictive_warm",
+   "baseline": "fifo",
+   "metric": "long_max_wait_ms",
+   "max_ratio": 2.0,
+   "floor": "long_class_bound",
+   "min_class_count": {
+    "class": "long",
+    "count": 30
+   }
+  },
+  "B_P1_mean_latency_vs_fifo": {
+   "arm": "predictive_warm+weights+pausing",
+   "baseline": "fifo",
+   "metric": "mean_latency_ms",
+   "max_relative_delta": -0.15
+  },
+  "B_G1_all_p99_vs_fifo": {
+   "arm": "predictive_warm+weights+pausing",
+   "baseline": "fifo",
+   "metric": "p99_latency_ms",
+   "max_ratio": 2.0
+  },
+  "B_G2_long_max_wait_vs_fifo": {
+   "arm": "predictive_warm+weights+pausing",
+   "baseline": "fifo",
+   "metric": "long_max_wait_ms",
+   "max_ratio": 2.0,
+   "floor": "long_class_bound",
+   "min_class_count": {
+    "class": "long",
+    "count": 30
+   }
+  }
+ },
+ "gates": {
+  "A_predictive_routing": [
+   "A_P1_mean_latency_vs_fifo",
+   "A_G1_all_p99_vs_fifo",
+   "A_G2_long_max_wait_vs_fifo"
+  ],
+  "B_overload_design": [
+   "B_P1_mean_latency_vs_fifo",
+   "B_G1_all_p99_vs_fifo",
+   "B_G2_long_max_wait_vs_fifo"
+  ]
+ },
+ "predictor": {
+  "max_spread_ratio": 4
+ },
+ "variant": {
+  "id": "kappa-4",
+  "parameter": "kappa",
+  "value": 4
+ }
+}

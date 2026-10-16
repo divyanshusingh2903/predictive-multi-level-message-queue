@@ -1,0 +1,60 @@
+{
+  "version": "v4-simvalidation-1",
+  "frozen_on": "2026-10-14",
+  "status": "frozen before the first registered run; changing anything requires a new version",
+  "preregistration": "docs/v4-simvalidation-preregistration.md",
+  "workload": "benchmarks/configs/v2-prodflow.json (v2-prodflow-1, unchanged)",
+  "measured_sets": {
+    "local": "rerun-2026-10-12/v2-prodflow, quiet-machine re-run (seeds 11, 22, 33, 44, 55)",
+    "aws": "v3-aws/e1, AWS replication (seeds 11, 22, 33, 44, 55)"
+  },
+  "simulator": {
+    "workers": "from each run's run.json",
+    "levels": 3,
+    "default_priority": 1,
+    "aging": {"threshold_ms": 5000, "interval_ms": 500},
+    "replay": true,
+    "history_fraction": 0,
+    "misconfigured_seed": 2026
+  },
+  "arms": {
+    "fifo": "fifo",
+    "predictive": "predictive_cold",
+    "static_tuned": "static_tuned",
+    "static_misconfigured": "static_misconfigured",
+    "oracle": "oracle_bounds"
+  },
+  "static_maps": {
+    "source": "benchmarks/prodflow.cpp kTunedTiers and kMisconfiguredTiers, frozen with v2-prodflow-1",
+    "static_tuned": {"reserve_inventory": 0, "push_notification": 0, "reindex_product": 0, "send_order_email": 1,
+                     "generate_invoice": 1, "send_sms": 1, "deliver_webhook": 1, "resize_image": 2, "export_report": 2},
+    "static_misconfigured": {"send_order_email": 0, "generate_invoice": 0, "reserve_inventory": 0,
+                             "deliver_webhook": 0, "export_report": 0, "push_notification": 1, "send_sms": 1,
+                             "resize_image": 1, "reindex_product": 2}
+  },
+  "criteria": {
+    "V1_effect_agreement": {
+      "arms": ["predictive", "static_tuned", "static_misconfigured", "oracle"],
+      "metric": "mean_latency_ms",
+      "baseline": "fifo",
+      "max_gap_points": 10
+    },
+    "V2_phase_direction": {
+      "arm": "predictive",
+      "baseline": "fifo",
+      "phases": ["steady", "ramp", "flash_sale", "recovery", "shifted"],
+      "rule": "the paired mean change has the same sign in the simulator and in the real run"
+    },
+    "V3_group_order": {
+      "metric": "mean_latency_ms",
+      "groups_best_to_worst": [["predictive", "oracle"], ["static_tuned"], ["fifo"], ["static_misconfigured"]],
+      "rule": "every arm of a group has a lower mean latency than every arm of the next group; order inside a group is not compared",
+      "min_share_of_seeds": 0.8,
+      "why_grouped": "predictive and the oracle were within 6% of each other in every real seed, so their order is noise; the groups are the order the real runs show in all ten seed-sets"
+    },
+    "V4_absolute_ratio": {"reported": true},
+    "V5_short_p50": {"reported": true, "arms": ["predictive", "static_tuned", "static_misconfigured", "oracle"]}
+  },
+  "gate": ["V1_effect_agreement", "V2_phase_direction", "V3_group_order"],
+  "gate_rule": "all three criteria pass in the local set and in the AWS set"
+}
