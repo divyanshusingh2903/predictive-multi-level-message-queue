@@ -86,6 +86,7 @@ benchmarks/results/v3-sizebins/raw/
 !benchmarks/results/v4-cloud-reruns/
 !benchmarks/results/v4-sensitivity/
 !benchmarks/results/v4-baselines/
+!benchmarks/results/v4-replay-aging/
 benchmarks/results/v3-aging/prodflow/raw/
 benchmarks/results/issue5-v1/raw/*.tar.gz
 !benchmarks/results/issue4-v1/raw/*.tar.gz

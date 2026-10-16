@@ -132,6 +132,22 @@ class Analysis(unittest.TestCase):
         self.assertAlmostEqual(out["mean_latency_change"]["predictive_warm"]["ratio"], 0.5 / 0.6, places=3)
         self.assertEqual(out["gates"]["A"], {"replay": True, "simulator": False, "same": False})
 
+    def test_a_gate_only_the_replay_has_is_not_reported_as_a_simulator_fail(self):
+        cells, ev = self.run_set({"fifo": [1.0], "predictive_warm": [0.5]})
+        sim = {"results": {"0.8": {"fifo": {"all": {"mean_latency_ms": 1000.0}}, "predictive_warm": {"all": {"mean_latency_ms": 400.0}}}}}
+        summary = {"evaluation": {"0.8": {"gates_passed": {"A": True}}}}
+        ev["0.8"]["gates_passed"]["N_only_in_replay"] = True
+        gates = rr.simulator_comparison(ev, sim, summary)["0.8"]["gates"]
+        self.assertEqual(sorted(gates), ["A"])
+
+    def test_the_simulators_compress_entry_beside_the_arms_is_ignored(self):
+        # trace_sim writes "compress": <float> in each load next to the arms.
+        cells, ev = self.run_set({"fifo": [1.0], "predictive_warm": [0.5]})
+        sim = {"results": {"0.8": {"compress": 29.7, "fifo": {"all": {"mean_latency_ms": 1000.0}},
+                                    "predictive_warm": {"all": {"mean_latency_ms": 400.0}}}}}
+        out = rr.simulator_comparison(ev, sim, None)["0.8"]
+        self.assertIn("predictive_warm", out["mean_latency_change"])
+
 
 class Stability(unittest.TestCase):
     def test_disagreeing_repeats_make_a_cell_unstable_even_if_the_pooled_verdict_passes(self):

@@ -234,7 +234,8 @@ def simulator_comparison(primary: dict, simulation: dict | None, sim_summary: di
         sim_arms = simulation["results"].get(load)
         if not sim_arms or "all" not in verdict:
             continue
-        sim_all = {a: v["all"] for a, v in sim_arms.items()}
+        # A load also holds its "compress" factor beside the arms; only the arms carry metrics.
+        sim_all = {a: v["all"] for a, v in sim_arms.items() if isinstance(v, dict) and "all" in v}
         rows = {}
         for arm in verdict["all"]:
             real, sim = relative_change(verdict["all"], arm), relative_change(sim_all, arm)
@@ -243,8 +244,9 @@ def simulator_comparison(primary: dict, simulation: dict | None, sim_summary: di
         entry = {"mean_latency_change": rows}
         if sim_summary and "gates_passed" in verdict and load in sim_summary["evaluation"]:
             sim_gates = sim_summary["evaluation"][load]["gates_passed"]
-            entry["gates"] = {g: {"replay": ok, "simulator": sim_gates.get(g), "same": ok == sim_gates.get(g)}
-                              for g, ok in verdict["gates_passed"].items()}
+            # Only gates the simulator also has: a replay-only gate has no simulator verdict, and a missing one is not a fail.
+            entry["gates"] = {g: {"replay": ok, "simulator": sim_gates[g], "same": ok == sim_gates[g]}
+                              for g, ok in verdict["gates_passed"].items() if g in sim_gates}
         out[load] = entry
     return out
 

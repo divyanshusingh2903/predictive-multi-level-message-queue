@@ -1,0 +1,11 @@
+instance_id i-09866dc4b431ec729
+instance_type c8i.xlarge
+availability_zone us-east-1d
+ami ami-0fa5967347d08d2df
+private_ip 172.31.37.13
+kernel 7.0.0-1014-aws
+cpu Intel(R) Xeon(R) 6975P-C
+nproc 4
+memory_kb 7962204
+docker Docker version 29.1.3, build 29.1.3-0ubuntu3~24.04.2
+spend_cap_hours 14
