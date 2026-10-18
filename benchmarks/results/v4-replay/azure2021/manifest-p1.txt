@@ -1,0 +1,14 @@
+commit 608dd0200a6562f3f66116dca1f637cb82c4ebbc
+mode registered
+config v4-replay-azure2021.json sha256 abc4ee8fa306202014403759b17b704d6ad4c98147c00c04402c10d233868fab
+trace azure2021.csv sha256 07e6c5c1d977896f97ff29782817a29f0c99a358e39b7145fbf530e87345d33c
+loads 0.5 0.8 0.95
+arms fifo predictive_warm predictive_warm+weights+pausing oracle oracle+weights+pausing
+arms_by_load {"0.5": ["fifo", "predictive_warm", "predictive_warm+weights+pausing"], "0.95": ["fifo", "predictive_warm", "predictive_warm+weights+pausing"]}
+repeats 1
+split true
+shard 0/2
+image sha256:52c97bb0ca91873359a40822873808c8f899734803bed99bd27f49a29f7bf82a
+started 2026-10-15T07:14:52Z
+broker_image sha256:52c97bb0ca91873359a40822873808c8f899734803bed99bd27f49a29f7bf82a
+finished 2026-10-17T03:42:46Z
