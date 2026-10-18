@@ -47,11 +47,14 @@ fragile to the choice of 7 windows. The intervals widen with the block length, a
 
 Per trace: `<trace>/block_bootstrap.md` (every P1 cell at block 1, 2 and 4, and the verdict changes).
 
-## What follows
+## What followed: Part C was not run
 
-Part A found verdict changes (R2 and R3) on both traces, so the pre-registration's Part C applies: a separate registration,
-`v4-sensitivity-2`, is written **before any replay**, to confirm on the real broker at Huawei load 0.8 the variants whose gate
-verdict differs from the default's. It needs per-variant overrides in `harbinger_replay`, which do not exist yet.
+Part A found verdict changes, so the pre-registration's Part C applied: a stage-2 replay on the real broker of the variants whose gate verdict
+differs from the default's. **It was not run.** The main replay (`v4-replay-1`) then showed that the simulator reproduces real-broker effects
+to about a point on both traces (Huawei and Azure, every arm with a simulator counterpart), which is what stage 2 was meant to check, and it
+confirmed the 28-window verdicts of Part B exactly (gate A 0 of 6, gate B 4 of 6). Stage 2 would have needed per-variant overrides in the replay
+binary, a registration and about 8 hours on a pair. The sensitivity results therefore stand as simulator results, and the paper says so: it
+reports no real-broker run of any parameter variant except the aging threshold's extreme (aging off, `v4-replay-aging-1`).
 
 ## Files
 
