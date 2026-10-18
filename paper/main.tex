@@ -4,21 +4,23 @@
 \usepackage{lmodern}
 \usepackage{microtype}
 \usepackage{booktabs}
+\usepackage{float}
 \usepackage{amsmath,amssymb}
-\usepackage[numbers,sort&compress]{natbib}
-\usepackage[hidelinks,pdftitle={Harbinger: Zero-Configuration Size-Based Scheduling for Message Queues with Per-Key Duration Statistics},pdfauthor={Divyanshu Singh}]{hyperref}
+\usepackage[style=ieee,backend=biber,natbib=true,doi=true,url=true,isbn=false]{biblatex}
+\addbibresource{references.bib}
+\usepackage[pdftitle={Harbinger: Size-Based Scheduling for Message Queues from Per-Key Duration Statistics, Without Per-Endpoint Configuration},pdfauthor={Divyanshu Singh}]{hyperref}
 \usepackage{harbinger}
+\usepackage[capitalise,nameinlink]{cleveref}
 
 \input{generated/numbers}
 
 \newcommand{\sys}{Harbinger}
-\newcommand{\todo}[1]{\textcolor{red}{[TODO: #1]}}
 
 
 \begin{document}
-\harbingertitle{Harbinger: Zero-Configuration Size-Based Scheduling\\for Message Queues with Per-Key Duration Statistics}
+\harbingertitle{Harbinger: Size-Based Scheduling for Message Queues\\from Per-Key Duration Statistics, Without Per-Endpoint Configuration}
   {Divyanshu Singh \quad {\small\texttt{divyanshusingh2903@gmail.com}}}
-  {Draft \today}{\url{https://divyanshusingh.site/harbinger}}
+  {\today}{\url{https://divyanshusingh.site/harbinger}}
 
 \input{sections/abstract}
 \input{sections/intro}
@@ -29,7 +31,22 @@
 \input{sections/limits}
 \input{sections/conclusion}
 
-\bibliographystyle{unsrtnat}
-\bibliography{references}
+\printbibliography
+
+\clearpage
+\appendix
+\section{Pre-registered criteria}\label{app:criteria}
+The pass/fail record and pre-registered bars behind \Cref{fig:prodflow,fig:brokers,fig:traces} (\Cref{tab:prodflow,tab:brokers,tab:traces}), and the closed-form values plotted in \Cref{fig:cobham} (\Cref{tab:cobham}).
+
+\input{generated/tab_prodflow}
+
+\input{generated/tab_brokers}
+
+\input{generated/tab_traces}
+
+\input{generated/tab_tracessim}
+
+\input{generated/tab_cobham}
+
 
 \end{document}

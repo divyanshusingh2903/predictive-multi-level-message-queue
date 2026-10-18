@@ -1,7 +1,7 @@
 \section{Related work}\label{sec:related}
 
-We organise prior work by the assumption it makes about job sizes, since that is the axis on which \sys{} differs. Scheduling theory assumes sizes are known or can be estimated (Sections~\ref{sec:rw-known} and~\ref{sec:rw-estimated}); systems that learn durations in practice schedule long, batch-like jobs or work at the operating-system layer
-(Sections~\ref{sec:rw-learning} and~\ref{sec:rw-serverless}); and the brokers people actually run expose no learning at all (Section~\ref{sec:rw-brokers}). Section~\ref{sec:rw-position} states what this paper adds.
+We organise prior work by the assumption it makes about job sizes, since that is the axis on which \sys{} differs. Scheduling theory assumes sizes are known or can be estimated (\Cref{sec:rw-known,sec:rw-estimated}); systems that learn durations in practice schedule long, batch-like jobs or work at the operating-system layer
+(\Cref{sec:rw-learning,sec:rw-serverless}); and the brokers people actually run expose no learning at all (\Cref{sec:rw-brokers}). \Cref{sec:rw-position} states what this paper adds.
 
 \subsection{Scheduling when sizes are known or unknown}\label{sec:rw-known}
 
@@ -19,6 +19,8 @@ Between the two extremes lies scheduling with estimated sizes. The question of h
 a long job block many others. Theory has since caught up. \citet{mitzenmacher2019} analyses queues that schedule by predicted service times and introduces the price of misprediction, and \citet{scully2022uniform} give a variant of SRPT whose performance relative to SRPT approaches one as estimation error shrinks. The broader programme of algorithms with predictions \citep{mitzenmacher2022cacm}, now being applied to queues and to LLM serving
 \citep{mitzenmacher2025queueing}, takes the prediction as given. Our concern is complementary and more practical: how a broker obtains a usable prediction without any configuration, and where that prediction breaks.
 
+The closest recent analogues are in LLM serving, where output length, and so service time, is unknown on arrival. These systems predict it and serve short requests first: a proxy model predicts the length for a speculative shortest-job-first scheduler \citep{qiu2024ssjf}, a ranking model orders requests without predicting exact lengths \citep{fu2024ltr}, and an embedding from the model itself refines a remaining-length prediction as a request runs \citep{shahout2025trail}. They share our premise that a noisy prediction of size is enough to reorder a queue. They differ in what carries the signal, which is the content of a request, and in being able to see and preempt a running request, which a message broker cannot do. \sys{} predicts from the history of a key and nothing else, which suits queues of opaque jobs in which no such content exists.
+
 \subsection{Learning durations in clusters and supercomputers}\label{sec:rw-learning}
 
 Several systems have taken exactly that step in other settings. HFSP brings size-based scheduling with aging to Hadoop and estimates job sizes online while jobs run, showing that the scheduler tolerates the resulting errors \citep{pastorelli2013}. Supercomputer schedulers face user-supplied runtime estimates that are notoriously poor; replacing them with the average of a user's last two runtimes improved backfilling
@@ -34,9 +36,9 @@ rather than only to function platforms.
 \subsection{Queues and brokers in practice}\label{sec:rw-brokers}
 
 At that layer the brokers people actually run expose no learning. The priorities in Azure's pattern, Meta's queue and RabbitMQ are all set by producers \citep{azurepriority,foqs2021,rabbitmqpriority}; RabbitMQ's priorities only reorder messages that have not yet been delivered, so they depend on a small consumer prefetch, and its quorum queues use strict priority, which can starve low-priority messages
-\citep{rabbitmqpriority}. SQS offers no priority \citep{sqstypes}, and Kafka orders a partition by offset \citep{kreps2011kafka}. We are not aware of a general-purpose broker that learns message cost and uses it for routing, though our search was not exhaustive. To show the idea is not tied to our broker, our RabbitMQ experiments run \sys{}'s predictor as an external sidecar that sets those producer-side priorities.
+\citep{rabbitmqpriority}. SQS offers no priority \citep{sqstypes}, and Kafka orders a partition by offset \citep{kreps2011kafka}. Job-queue frameworks sit on top of such brokers and leave the same choice to the operator: Celery exposes message priorities that, on Redis, are emulated with a few separate lists \citep{celerypriority}, and Sidekiq lets the operator either order its queues strictly or give them weights, but not both at once \citep{sidekiqqueues}. We are not aware of a general-purpose broker that learns message cost and uses it for routing, though our search was not exhaustive. To show the idea is not tied to our broker, our RabbitMQ experiments run \sys{}'s predictor as an external sidecar that sets those producer-side priorities.
 
 \subsection{Positioning}\label{sec:rw-position}
 
-In sum, \sys{} takes the size-based scheduling result that is well established when sizes are known, replaces the assumption with a per-key estimate learned from acknowledgements, puts the whole mechanism in the broker, and keeps aging to bound the damage of bad estimates. The policy itself is not new. What this paper adds is the zero-configuration loop, and evidence about when it helps (production-style job queues, and serverless
-traces under an overload-aware aging design) and when it does not.
+In sum, \sys{} takes the size-based scheduling result that is well established when sizes are known, replaces the assumption with a per-key estimate learned from acknowledgements, puts the whole mechanism in the broker, and keeps aging to bound the damage of bad estimates. The policy itself is not new. What this paper adds is a loop that needs no per-endpoint configuration, and evidence about when it helps (production-style job queues, and serverless
+traces under an overload-aware aging design) and when it does not. Two results qualify the idea itself: where job types are few and stable, a queue per type with no prediction beats it on mean latency, and what limits it under backlogs is the broker's aging, not the predictor.

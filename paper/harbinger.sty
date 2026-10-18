@@ -14,6 +14,9 @@
 \definecolor{hbink}{HTML}{15171C}
 \definecolor{hbslate}{HTML}{5B616E}
 \definecolor{hbsignal}{HTML}{E4572E}
+\definecolor{hblink}{HTML}{1F5FA8}
+% Cross-references, citations and URLs are links, shown in a muted blue so they can be found.
+\hypersetup{colorlinks=true,linkcolor=hblink,citecolor=hblink,urlcolor=hblink}
 
 \titleformat{\section}{\normalfont\Large\bfseries\color{hbink}}{\thesection}{0.8em}{}
 \titleformat{\subsection}{\normalfont\large\bfseries\color{hbink}}{\thesubsection}{0.8em}{}
@@ -54,3 +57,7 @@
 \setlength{\parskip}{0.8em plus 0.2em minus 0.1em}
 \RequirePackage{tikz}
 \usetikzlibrary{positioning,arrows.meta,calc,shapes.geometric,fit}
+
+% No single lines stranded at the top or bottom of a page.
+\widowpenalty=10000
+\clubpenalty=10000

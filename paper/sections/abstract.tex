@@ -1,14 +1,18 @@
 \begin{abstract}
-Message queues deliver work first-come-first-served unless an operator hand-assigns priorities per endpoint, which
-needs knowledge of each job type's cost and goes stale when costs change. We present \sys{}, a gRPC broker that learns
-each message's expected processing time from the durations it has already observed for the same key (a decaying
-per-key histogram fed by acknowledgements) and routes it into a multi-level queue, so that short expected work is
-served first without configuration. We evaluate it with experiments whose configurations and pass criteria were frozen
-before the registered runs: a production-style job-queue benchmark, a replication of it on AWS, a comparison with
-RabbitMQ and Redis, and trace-driven simulations on four public traces. Predictive routing cut mean latency by
-\EOneMeanVsFifoAbs{} against FIFO on AWS (\VTwoMeanVsFifoAbs{} in a local run) and beat a hand-tuned static priority map; the same
-predictor running as a sidecar on RabbitMQ cut mean latency by \EThreeSidecarAbs{}. We also report where it does not work.
-Under hours-long backlogs, the broker's default aging erases the predictor's ordering; an opt-in weighted design
-recovers the gain on two serverless traces but harms long jobs on one HPC log; and on logs whose keys rarely recur or predict poorly,
-the predictor has little to learn from. All evidence is synthetic or trace-driven, and we make no claim of tail-latency improvement or of production readiness.
+Message queues deliver work first-come-first-served unless an operator assigns priorities by hand, which requires knowing each
+job type's cost and goes stale when costs change. We present \sys{}, a gRPC broker that learns each message key's expected
+processing time from the durations it has already observed and routes the message into a multi-level queue, so that short
+expected work is served first without per-endpoint priority configuration. The approach lowers mean and short-job latency; it does
+not improve all-message tail latency, and it has failure regimes that we report. We evaluate it in experiments whose configurations and pass
+criteria were frozen before the registered runs: a synthetic production-style job queue (nine job types, five seeds) on a
+laptop and on AWS, the same workload against RabbitMQ and Redis, the Azure Functions and Huawei Cloud traces replayed through the real broker on AWS, and
+two research-cluster logs simulated. On AWS, predictive routing cut mean latency by \EOneMeanVsFifoAbs{} against FIFO, with all-message P99 at \EOnePNinetyNine{}
+of FIFO's, and it beat a hand-tuned static priority map by \EOneVsTunedAbs{}; run as a sidecar that sets RabbitMQ priorities, the same predictor cut RabbitMQ's mean latency by \EThreeSidecarAbs{}.
+The gain is not free: the median latency of mid-cost jobs rose by \PerClassMidMin{} to \PerClassMidMax{}. What limits it under backlogs is the broker's default aging.
+Predictive routing as built failed its gate in all \ReplayCells{} replayed trace cells; with aging switched off it cut the production flow's mean latency by a further \BaseNoAgingVsPredAbs{} and passed on Huawei Cloud at both loads tried.
+An opt-in design with worker-time weights and pausing aging passed at loads 0.8 and 0.95 on both traces, cutting mean latency by \ReplayHuaweiBEightAbs{} to \ReplayHuaweiBNinetyFiveAbs{}
+on Huawei and \ReplayAzureBEightAbs{} to \ReplayAzureBNinetyFiveAbs{} on Azure, and failed at load 0.5. The predictor is also not the only route to the gain: on the production flow a queue per job type with no prediction
+had a mean latency \BasePtfVsPredAbs{} below predictive routing's, at the cost of a worse all-message P99, and on Huawei a static map built from the same history matched or beat the live predictor. On logs whose keys rarely recur
+the predictor has little to learn from, and on one research-cluster log the weighted design raised mean latency (an interval that includes zero). The trace simulator first overstated the production flow's gain by about \SimValOverstatePct{}
+but matched the broker to about a point on both replayed traces. All evidence is synthetic or trace-driven and from one cloud region, and the replayed handlers sleep; we claim no tail-latency improvement and no production readiness.
 \end{abstract}
