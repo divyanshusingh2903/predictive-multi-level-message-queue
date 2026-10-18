@@ -14,9 +14,35 @@ from __future__ import annotations
 
 import argparse
 import json
+import math
+import random
+import statistics
+import sys
 from pathlib import Path
 
 from .prodflow_report import bootstrap
+
+
+def block_bootstrap(values: list[float], block: int, samples: int, seed: int, confidence: float) -> tuple[float, list[float]]:
+    """Moving-block bootstrap of the mean: resample overlapping blocks of `block` consecutive values, so adjacent windows
+    that share a backlog stay together. A block of 1 is the ordinary bootstrap. Blocks are drawn until the series length
+    is reached and the last is cut short; the interval is the percentile interval, as in `prodflow_report.bootstrap`."""
+    n = len(values)
+    if not 1 <= block <= n:
+        raise ValueError(f"block length {block} must be between 1 and the {n} windows")
+    rng = random.Random(seed)
+    starts = n - block + 1
+    means = []
+    for _ in range(samples):
+        picked: list[float] = []
+        while len(picked) < n:
+            at = rng.randrange(starts)
+            picked.extend(values[at:at + block])
+        means.append(statistics.mean(picked[:n]))
+    means.sort()
+    low = means[max(0, math.floor(samples * (1 - confidence) / 2))]
+    high = means[min(samples - 1, math.ceil(samples * (1 + confidence) / 2) - 1)]
+    return statistics.mean(values), [low, high]
 
 
 def extreme_window(arms: dict) -> int:
@@ -34,8 +60,12 @@ def resolve_floor(rule: dict, data: dict | None) -> float:
     return float(floor)
 
 
-def evaluate(config: dict, results: dict, drop_extreme: bool = False, data: dict | None = None) -> dict:
+def evaluate(config: dict, results: dict, drop_extreme: bool = False, data: dict | None = None, block: int | None = None) -> dict:
+    """With `block`, intervals come from the moving-block bootstrap of that length (v4-sensitivity-1, part B); without
+    it they are the independent-window bootstrap of the earlier registrations, unchanged."""
     b = config["bootstrap"]
+    interval = (lambda values: block_bootstrap(values, block, b["samples"], b["seed"], b["confidence"])) if block else \
+        (lambda values: bootstrap(values, b["samples"], b["seed"], b["confidence"]))
     out = {}
     for utilization, arms in results.items():
         verdicts = {}
@@ -55,11 +85,11 @@ def evaluate(config: dict, results: dict, drop_extreme: bool = False, data: dict
                 verdicts[name] = {"status": "unevaluable"}
                 continue
             if "max_ratio" in rule:
-                point, ci = bootstrap([a / c for a, c in pairs], b["samples"], b["seed"], b["confidence"])
+                point, ci = interval([a / c for a, c in pairs])
                 verdicts[name] = {"kind": "ratio", "point": point, "ci95": ci,
                                   "status": "pass" if ci[1] <= rule["max_ratio"] else "fail"}
                 continue
-            point, ci = bootstrap([(a - c) / c for a, c in pairs], b["samples"], b["seed"], b["confidence"])
+            point, ci = interval([(a - c) / c for a, c in pairs])
             limit = rule["max_relative_delta"]
             ok = (point <= limit and ci[1] < 0) if limit < 0 else (ci[1] < 0) if limit == 0 else ci[1] <= limit
             verdicts[name] = {"kind": "relative_delta", "point": point, "ci95": ci, "status": "pass" if ok else "fail"}
@@ -94,7 +124,7 @@ def report(config: dict, data: dict, evaluation: dict, without_extreme: dict | N
     title = config["trace"].get("title", "Azure Functions trace simulation")
     lines = [f"# {title} ({config['version']})", "",
              f"{data['evaluation_rows']} simulated invocations after {data['history_rows']} history invocations; "
-             f"tier boundaries (history terciles) {data['boundaries_ms'][0]:.0f} / {data['boundaries_ms'][1]:.0f} ms; "
+             f"tier boundaries (history quantiles) {' / '.join(f'{x:.0f}' for x in data['boundaries_ms'])} ms; "
              f"{config['workers']} workers, aging {config['aging']['threshold_ms']}/{config['aging']['interval_ms']} ms.", ""]
     if "window_rows" in data:  # v3-traces rules
         lines += [f"History split by {data['history_split']}, windows by {data['window_split']} "
@@ -122,11 +152,116 @@ def report(config: dict, data: dict, evaluation: dict, without_extreme: dict | N
     return "\n".join(lines) + "\n"
 
 
+def verdict_changes(old: dict, new: dict) -> list[str]:
+    """Gate cells (load, gate) whose pass/fail differs between two `evaluation` dicts (T2 of v4-sensitivity-1)."""
+    changes = []
+    for load, cell in new.items():
+        for gate, ok in cell["gates_passed"].items():
+            before = old[load]["gates_passed"][gate]
+            if before != ok:
+                changes.append(f"load {float(load):.2f} gate {gate}: {'pass' if before else 'fail'} -> {'pass' if ok else 'fail'}")
+    return changes
+
+
+def block_report(config: dict, data: dict, blocks: list[int], primary: int, old: dict | None) -> tuple[dict, str]:
+    """Gate verdicts at each block length; the primary length's intervals are the ones the paper uses."""
+    summary = {str(b): evaluate(config, data["results"], data=data, block=b) for b in blocks}
+    lines = [f"# Block-bootstrap re-estimation ({config['version']})", "",
+             f"{len(next(iter(data['results'].values()))['fifo']['windows'])} windows; moving blocks of {', '.join(map(str, blocks))} "
+             f"windows, {config['bootstrap']['samples']} resamples. Block {primary} is primary.", ""]
+    for load in data["results"]:
+        for name in config["criteria"]:
+            if not name.endswith("P1_mean_latency_vs_fifo"):
+                continue
+            row = [f"{name} @ {float(load):.2f}"]
+            for b in blocks:
+                v = summary[str(b)][load]["criteria"][name]
+                row.append(f"block {b}: {v['point']:+.1%} [{v['ci95'][0]:+.1%}, {v['ci95'][1]:+.1%}] {v['status']}"
+                           if "point" in v else f"block {b}: {v['status']}")
+            lines.append("- " + "; ".join(row))
+    lines += [""]
+    if old is not None:
+        changed = verdict_changes(old, summary[str(primary)])
+        lines += ["Cells whose verdict differs from v3-traces-1 (block %d):" % primary,
+                  *(f"- {c}" for c in changed or ["none"]), ""]
+    return summary, "\n".join(lines) + "\n"
+
+
+def sensitivity(manifest: dict, outputs: dict, config: dict) -> dict:
+    """Per variant, the P1 criteria of both gates at the one registered load, and the R1 to R3 readings per parameter.
+
+    `manifest["variants"]` lists {id, parameter, value, default, step} where `step` is the value's position in the
+    parameter's grid; `outputs[id]` is that variant's simulation. A variant passes P1 for a gate when the gate's P1
+    criterion passes."""
+    b = config["bootstrap"]
+    verdicts: dict[str, dict] = {}
+    for variant in manifest["variants"]:
+        present = set(next(iter(outputs[variant["id"]]["results"].values())))
+        # Only the criteria whose arms this variant ran: the base config also holds criteria on arms (static_history, ...)
+        # that the variant configs leave out.
+        criteria = {n: r for n, r in config["criteria"].items() if r["arm"] in present and r["baseline"] in present}
+        cfg = {"bootstrap": b, "criteria": criteria, "gate": list(criteria)}
+        result = evaluate(cfg, outputs[variant["id"]]["results"], data=outputs[variant["id"]])
+        (cell,) = result.values()
+        verdicts[variant["id"]] = {name: cell["criteria"][name] for name in ("A_P1_mean_latency_vs_fifo", "B_P1_mean_latency_vs_fifo")}
+    default = next(v["id"] for v in manifest["variants"] if v["default"])
+    readings: dict[str, dict] = {}
+    for gate in ("A_P1_mean_latency_vs_fifo", "B_P1_mean_latency_vs_fifo"):
+        baseline = verdicts[default][gate]["status"]
+        by_parameter: dict[str, list[dict]] = {}
+        for v in manifest["variants"]:
+            if not v["default"]:
+                by_parameter.setdefault(v["parameter"], []).append(v)
+        for parameter, variants in by_parameter.items():
+            flipped = [v for v in variants if verdicts[v["id"]][gate]["status"] != baseline]
+            readings.setdefault(gate, {})[parameter] = {
+                "robust": not flipped,                                  # R1
+                "flips_at": [v["value"] for v in flipped],              # R2
+                "cliff": any(v["step"] == 1 for v in flipped),          # R3: one grid step from the default
+            }
+    passed = {gate: sum(verdicts[v["id"]][gate]["status"] == "pass" for v in manifest["variants"]) for gate in
+              ("A_P1_mean_latency_vs_fifo", "B_P1_mean_latency_vs_fifo")}
+    return {"default": default, "verdicts": verdicts, "readings": readings, "passing_variants": passed,
+            "variants": len(manifest["variants"])}
+
+
+def sensitivity_main(argv: list[str]) -> None:
+    parser = argparse.ArgumentParser(prog="sim_report sensitivity")
+    parser.add_argument("manifest", type=Path, help="manifest.json written by make_sensitivity_configs.py")
+    parser.add_argument("outputs", type=Path, help="directory holding <variant id>.json simulation outputs")
+    args = parser.parse_args(argv)
+    manifest = json.loads(args.manifest.read_text())
+    config = json.loads(Path(manifest["base_config"]).read_text())
+    outputs = {v["id"]: json.loads((args.outputs / f"{v['id']}.json").read_text()) for v in manifest["variants"]}
+    result = sensitivity(manifest, outputs, config)
+    (args.outputs / "sensitivity.json").write_text(json.dumps(result, indent=1) + "\n")
+    lines = [f"# Parameter sensitivity ({manifest['version']}, {manifest['trace']})", "",
+             f"{result['variants']} variants at load {manifest['load']}; default variant `{result['default']}`.", "",
+             "| Variant | Parameter | Value | A P1 | B P1 |", "|---|---|---|---|---|"]
+    for v in manifest["variants"]:
+        cells = []
+        for gate in ("A_P1_mean_latency_vs_fifo", "B_P1_mean_latency_vs_fifo"):
+            c = result["verdicts"][v["id"]][gate]
+            cells.append(f"{c['point']:+.1%} [{c['ci95'][0]:+.1%}, {c['ci95'][1]:+.1%}] {c['status']}" if "point" in c else c["status"])
+        lines.append(f"| {v['id']} | {v['parameter']} | {v['value']} | {cells[0]} | {cells[1]} |")
+    lines += ["", f"Variants passing P1: {result['passing_variants']}", ""]
+    for gate, params in result["readings"].items():
+        lines += [f"**{gate}**", *(f"- {p}: {'robust (R1)' if r['robust'] else 'sensitive (R2), flips at ' + ', '.join(map(str, r['flips_at']))}"
+                                    f"{'; default on a cliff (R3)' if r['cliff'] else ''}" for p, r in params.items()), ""]
+    (args.outputs / "sensitivity.md").write_text("\n".join(lines) + "\n")
+    print("\n".join(lines))
+
+
 def main() -> None:
+    if len(sys.argv) > 1 and sys.argv[1] == "sensitivity":
+        return sensitivity_main(sys.argv[2:])
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("config", type=Path)
     parser.add_argument("simulation", type=Path)
     parser.add_argument("--out", type=Path)
+    parser.add_argument("--blocks", type=int, nargs="+", help="also write block_bootstrap.{json,md} for these block lengths")
+    parser.add_argument("--primary-block", type=int, default=4)
+    parser.add_argument("--compare", type=Path, help="summary.json of v3-traces-1, for the verdict-change list")
     args = parser.parse_args()
     config = json.loads(args.config.read_text())
     data = json.loads(args.simulation.read_text())
@@ -139,6 +274,12 @@ def main() -> None:
     (out / "summary.json").write_text(json.dumps(summary, indent=1) + "\n")
     (out / "report.md").write_text(report(config, data, evaluation, without_extreme))
     print((out / "report.md").read_text())
+    if args.blocks:
+        old = json.loads(args.compare.read_text())["evaluation"] if args.compare else None
+        blocks, text = block_report(config, data, args.blocks, args.primary_block, old)
+        (out / "block_bootstrap.json").write_text(json.dumps(blocks, indent=1) + "\n")
+        (out / "block_bootstrap.md").write_text(text)
+        print(text)
 
 
 if __name__ == "__main__":

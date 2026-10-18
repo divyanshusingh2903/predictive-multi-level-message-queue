@@ -1,0 +1,13 @@
+commit 304e61b95ef70904e0dcd6922a2bd37dcd634146
+mode registered
+config v4-replay-aging-huawei2025-r5.json sha256 a2657051768345cded993617c0ac9b1b731456e62ff1f9f63317f0f75c33ceff
+trace huawei2025-r5.csv sha256 e860c7a699670af200e09b8a6d97b194fd87ecc5a15833f039af88bc7a64656b
+loads 0.8 0.95
+arms fifo predictive_warm predictive_warm+no_aging
+repeats 3
+split true
+shard 0/1
+image sha256:383fce13a0a0e59ef4373a51c82a99cd8b3af9b3e9688f2bbfeca41c428d6bab
+started 2026-10-15T19:04:12Z
+broker_image sha256:383fce13a0a0e59ef4373a51c82a99cd8b3af9b3e9688f2bbfeca41c428d6bab
+finished 2026-10-16T02:43:46Z

@@ -1,10 +1,12 @@
 // Trace-driven multi-level queue simulator (issue #25). Replays an invocation trace through non-preemptive workers
 // with the broker's tier/aging rules; the predictive arms use the broker's own PerKeyPredictor on simulation time.
 // Usage: harbinger_trace_sim TRACE CONFIG.json OUT.json
+// Replay mode (v4-simvalidation, `"replay": true`) replays a measured run as it happened, without compressing arrivals.
 // TRACE is the Azure Functions 2021 invocation file or any trace in the common harbinger-trace-v1 format (#47,
 // analysis/trace_format.py); the header tells them apart.
 #include "ml/duration_predictor.hpp"
 #include "ml/predictive_routing.hpp"
+#include "trace_io.hpp"
 #include "util/json.hpp"
 
 #include <algorithm>
@@ -12,7 +14,9 @@
 #include <chrono>
 #include <cmath>
 #include <deque>
+#include <filesystem>
 #include <fstream>
+#include <iomanip>
 #include <iostream>
 #include <map>
 #include <queue>
@@ -26,77 +30,7 @@ using namespace harbinger;
 
 namespace {
 
-struct Invocation { double arrival_ms; uint32_t key; double duration_ms; };
-
-struct Trace {
-    std::vector<Invocation> rows;
-    std::vector<std::string> keys;
-    /// Per-row size hints in row order, NaN when unknown; empty when the trace has no size column.
-    std::vector<double> sizes;
-};
-
-/// harbinger-trace-v1: arrival_ms,key,duration_ms[,size], sorted by arrival (ties keep file order).
-Trace load_common(std::ifstream& in, bool sized) {
-    Trace t;
-    std::unordered_map<std::string, uint32_t> ids;
-    std::string line;
-    double previous = -INFINITY;
-    for (std::size_t number = 2; std::getline(in, line); ++number) {
-        const auto fail = [&](const char* what) {
-            return std::runtime_error("line " + std::to_string(number) + ": " + what);
-        };
-        const auto a = line.find(','), b = line.find(',', a + 1), c = line.find(',', b + 1);
-        if (b == std::string::npos || (sized ? c == std::string::npos || line.find(',', c + 1) != std::string::npos
-                                             : c != std::string::npos))
-            throw fail("wrong number of fields");
-        const auto key = line.substr(a + 1, b - a - 1);
-        if (key.empty() || key.find('"') != std::string::npos) throw fail("bad key");
-        const double arrival = std::stod(line.substr(0, a));
-        const double duration = std::stod(line.substr(b + 1, sized ? c - b - 1 : std::string::npos));
-        if (!std::isfinite(arrival) || arrival < previous) throw fail("rows must be sorted by arrival_ms");
-        if (!std::isfinite(duration) || duration < 0) throw fail("bad duration_ms");
-        previous = arrival;
-        if (sized) {
-            const auto field = line.substr(c + 1);
-            const double size = field.empty() ? NAN : std::stod(field);
-            if (!field.empty() && (!std::isfinite(size) || size < 0)) throw fail("bad size");
-            t.sizes.push_back(size);
-        }
-        const auto [it, fresh] = ids.emplace(key, static_cast<uint32_t>(t.keys.size()));
-        if (fresh) t.keys.push_back(key);
-        t.rows.push_back({arrival, it->second, duration});
-    }
-    return t;
-}
-
-Trace load(const std::string& path) {
-    std::ifstream in(path);
-    if (!in) throw std::runtime_error("cannot open " + path);
-    std::string line;
-    if (!std::getline(in, line)) throw std::runtime_error("empty trace");
-    if (line == "arrival_ms,key,duration_ms") return load_common(in, false);
-    if (line == "arrival_ms,key,duration_ms,size") return load_common(in, true);
-    if (line != "app,func,end_timestamp,duration") throw std::runtime_error("unexpected header");
-    // Azure Functions 2021, read as for the published results: arrival reconstructed as end - duration.
-    Trace t;
-    std::unordered_map<std::string, uint32_t> ids;
-    while (std::getline(in, line)) {
-        const auto a = line.find(','), b = line.find(',', a + 1), c = line.find(',', b + 1);
-        if (c == std::string::npos) throw std::runtime_error("bad row");
-        const auto key = line.substr(0, a) + "/" + line.substr(a + 1, b - a - 1);
-        const double end = std::stod(line.substr(b + 1, c - b - 1)), duration = std::stod(line.substr(c + 1));
-        const auto [it, fresh] = ids.emplace(key, static_cast<uint32_t>(t.keys.size()));
-        if (fresh) t.keys.push_back(key);
-        t.rows.push_back({(end - duration) * 1000.0, it->second, duration * 1000.0});
-    }
-    std::sort(t.rows.begin(), t.rows.end(), [](const Invocation& x, const Invocation& y) { return x.arrival_ms < y.arrival_ms; });
-    return t;
-}
-
-double quantile(std::vector<double> v, double q) {
-    std::sort(v.begin(), v.end());
-    return v[std::min(v.size() - 1, static_cast<std::size_t>(std::max(0.0, std::ceil(v.size() * q) - 1)))];
-}
+using namespace trace_io;
 
 struct Result { std::vector<double> latency, wait, slowdown; std::vector<int> cls; };
 
@@ -306,8 +240,27 @@ int main(int argc, char** argv) try {
     if (!class_bounds.empty() && (class_bounds.size() != 2 || !(0 < class_bounds[0] && class_bounds[0] < class_bounds[1])))
         throw std::invalid_argument("class_bounds_ms needs two increasing positive values");
     const bool v3_rules = config.get("history_split") || config.get("window_split") || !class_bounds.empty();
+    // Optional v4 rules (v4-simvalidation); configs without them reproduce the published results byte for byte.
+    //   replay: arrivals keep their real spacing (no compression to a target load) and `utilizations` is not read.
+    //   oracle_bounds_ms [a, b]: arm "oracle_bounds" ranks by the trace's size column against these fixed bounds.
+    //   static_maps {arm: {key: tier}}: an arm named in it routes by that map, unknown keys to the default tier.
+    //   per_message_dir: each arm also writes its per-message latency and wait there, one TSV per arm.
+    const auto* replay_flag = config.get("replay");
+    const bool replay = replay_flag && std::get_if<bool>(&replay_flag->value) && std::get<bool>(replay_flag->value);
+    std::vector<double> oracle_bounds;
+    if (const auto* list = config.get("oracle_bounds_ms"))
+        for (const auto& b : std::get<json::Array>(list->value)) oracle_bounds.push_back(*b.number());
+    if (!oracle_bounds.empty() && (oracle_bounds.size() != 2 || !(0 < oracle_bounds[0] && oracle_bounds[0] < oracle_bounds[1])))
+        throw std::invalid_argument("oracle_bounds_ms needs two increasing positive values");
+    const auto* static_maps = config.get("static_maps");
+    std::filesystem::path per_message_dir;
+    if (const auto* dir = config.get("per_message_dir")) {
+        per_message_dir = *dir->string();
+        std::filesystem::create_directories(per_message_dir);
+    }
     std::vector<double> utilizations;
-    for (const auto& u : std::get<json::Array>(config.get("utilizations")->value)) utilizations.push_back(*u.number());
+    if (replay) utilizations.push_back(1.0);  // one pass, labelled "replay" in the output
+    else for (const auto& u : std::get<json::Array>(config.get("utilizations")->value)) utilizations.push_back(*u.number());
 
     const auto trace = load(argv[1]);
     const auto arrival_index = [](const std::vector<Invocation>& rows, double at) {
@@ -326,7 +279,13 @@ int main(int argc, char** argv) try {
     std::unordered_map<uint32_t, std::vector<double>> per_key;
     for (const auto& row : history) { history_durations.push_back(row.duration_ms); per_key[row.key].push_back(row.duration_ms); }
     std::vector<double> bounds;
-    for (int i = 1; i < levels; ++i) bounds.push_back(quantile(history_durations, static_cast<double>(i) / levels));
+    if (history_durations.empty()) {
+        // Replay without a history half: there are no terciles, so the fixed class bounds stand in for them.
+        if (class_bounds.empty()) throw std::invalid_argument("an empty history needs class_bounds_ms");
+        bounds = class_bounds;
+    } else {
+        for (int i = 1; i < levels; ++i) bounds.push_back(quantile(history_durations, static_cast<double>(i) / levels));
+    }
     std::unordered_map<uint32_t, int> history_tier, random_tier;
     std::mt19937 rng(static_cast<uint32_t>(num(config, "misconfigured_seed")));
     for (auto& [key, values] : per_key) {
@@ -352,7 +311,9 @@ int main(int argc, char** argv) try {
 
     std::ofstream out(argv[3]);
     out << "{\"version\":\"" << *config.get("version")->string() << "\",\"evaluation_rows\":" << evaluation.size()
-        << ",\"history_rows\":" << history.size() << ",\"boundaries_ms\":[" << bounds[0] << "," << bounds[1] << "]";
+        << ",\"history_rows\":" << history.size() << ",\"boundaries_ms\":[";
+    for (std::size_t i = 0; i < bounds.size(); ++i) out << (i ? "," : "") << bounds[i];  // one fewer than levels
+    out << "]";
     if (v3_rules) {
         out << ",\"history_split\":\"" << history_split << "\",\"window_split\":\"" << window_split << "\",\"class_bounds_ms\":[";
         const auto& used = class_bounds.empty() ? bounds : class_bounds;
@@ -364,8 +325,9 @@ int main(int argc, char** argv) try {
     bool first_u = true;
     for (const double utilization : utilizations) {
         // Compress arrivals so offered load = utilization x workers.
-        const double compress = utilization * workers * span / work;
-        out << (first_u ? "" : ",") << "\"" << utilization << "\":{\"compress\":" << compress;
+        const double compress = replay ? 1.0 : utilization * workers * span / work;
+        if (replay) out << (first_u ? "" : ",") << "\"replay\":{\"compress\":" << compress;
+        else out << (first_u ? "" : ",") << "\"" << utilization << "\":{\"compress\":" << compress;
         first_u = false;
         for (const auto& arm_json : std::get<json::Array>(config.get("arms")->value)) {
             const std::string arm_name = *arm_json.string();
@@ -391,6 +353,20 @@ int main(int argc, char** argv) try {
             pc.default_priority = static_cast<uint8_t>(default_tier);
             // Optional, for exploratory runs only; frozen configs omit it and keep the predictor default.
             if (const auto* stale = config.get("stale_after_ms")) pc.stale_after = std::chrono::milliseconds(static_cast<int64_t>(*stale->number()));
+            // Optional v4-sensitivity overrides; absent fields keep the broker's defaults. Zero means off for
+            // stale_after_ms and time_half_life_ms, as in the broker. There is no infinity in JSON: a spread ratio of
+            // 1e18 never triggers.
+            if (const auto* overrides = config.get("predictor")) {
+                for (const auto& [name, value] : std::get<json::Object>(overrides->value)) {
+                    const double v = *value.number();
+                    if (name == "min_samples") pc.min_samples = static_cast<uint32_t>(v);
+                    else if (name == "max_spread_ratio") pc.max_spread_ratio = v;
+                    else if (name == "decay") pc.decay = v;
+                    else if (name == "time_half_life_ms") pc.time_half_life = std::chrono::milliseconds(static_cast<int64_t>(v));
+                    else if (name == "stale_after_ms") pc.stale_after = std::chrono::milliseconds(static_cast<int64_t>(v));
+                    else throw std::invalid_argument("unknown predictor option " + name);
+                }
+            }
             double sim_now = 0;
             pc.clock = [&sim_now] { return std::chrono::steady_clock::time_point{} + std::chrono::microseconds(static_cast<int64_t>(sim_now * 1000)); };
             ml::PerKeyPredictor predictor{pc};
@@ -409,9 +385,26 @@ int main(int argc, char** argv) try {
                     predictor.observe(trace.keys[row.key], row.duration_ms);
                 }
             }
+            if (arm == "oracle_bounds" && (oracle_bounds.empty() || trace.sizes.size() != trace.rows.size()))
+                throw std::invalid_argument("oracle_bounds needs oracle_bounds_ms and a trace with a size column");
+            std::unordered_map<uint32_t, int> static_tier;
+            if (static_maps && static_maps->get(arm)) {
+                std::unordered_map<std::string, uint32_t> key_id;
+                for (uint32_t k = 0; k < trace.keys.size(); ++k) key_id.emplace(trace.keys[k], k);
+                for (const auto& [name, tier] : std::get<json::Object>(static_maps->get(arm)->value)) {
+                    const auto found = key_id.find(name);
+                    if (found != key_id.end()) static_tier[found->second] = static_cast<int>(*tier.number());
+                }
+                if (static_tier.empty()) throw std::invalid_argument("static map for " + arm + " names no key of the trace");
+            }
             const auto route = [&](const Invocation& row, double now) -> std::pair<int, double> {
                 if (arm == "fifo") return {0, 0.0};
                 if (arm == "oracle") return {ml::tier_of(bounds, row.duration_ms), 0.0};
+                if (arm == "oracle_bounds") {
+                    const double planned = trace.sizes[cut + static_cast<std::size_t>(&row - evaluation.data())];
+                    return {ml::tier_of(oracle_bounds, planned), 0.0};
+                }
+                if (!static_tier.empty()) { const auto f = static_tier.find(row.key); return {f == static_tier.end() ? default_tier : f->second, 0.0}; }
                 if (arm == "static_history") { const auto f = history_tier.find(row.key); return {f == history_tier.end() ? default_tier : f->second, 0.0}; }
                 if (arm == "static_random") { const auto f = random_tier.find(row.key); return {f == random_tier.end() ? default_tier : f->second, 0.0}; }
                 sim_now = now;
@@ -431,6 +424,11 @@ int main(int argc, char** argv) try {
             const auto started = std::chrono::steady_clock::now();
             const auto r = simulate(evaluation, compress, workers, levels, threshold, interval, policy, route, learn);
             const double seconds = std::chrono::duration<double>(std::chrono::steady_clock::now() - started).count();
+            if (!per_message_dir.empty()) {
+                std::ofstream dump(per_message_dir / (arm_name + ".tsv"));
+                dump << "index\tlatency_ms\twait_ms\n" << std::setprecision(12);
+                for (std::size_t i = 0; i < evaluation.size(); ++i) dump << i << '\t' << r.latency[i] << '\t' << r.wait[i] << '\n';
+            }
             out << ",\"" << arm_name << "\":{\"sim_seconds\":" << seconds << ",\"all\":" << window_metrics(r, cls, 0, evaluation.size(), v3_rules) << ",\"windows\":[";
             for (std::size_t w = 0; w < windows; ++w) {
                 const auto begin = edges[w], end = edges[w + 1];

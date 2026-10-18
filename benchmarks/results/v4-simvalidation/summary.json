@@ -1,0 +1,390 @@
+{
+ "local": {
+  "seeds": [
+   "11",
+   "22",
+   "33",
+   "44",
+   "55"
+  ],
+  "V1": {
+   "predictive": {
+    "real": -0.2559760889295445,
+    "sim": -0.36998439542114464,
+    "gap_points": 11.400830649160016,
+    "pass": false
+   },
+   "static_tuned": {
+    "real": -0.1640154902265591,
+    "sim": -0.2631252699424821,
+    "gap_points": 9.910977971592299,
+    "pass": true
+   },
+   "static_misconfigured": {
+    "real": 0.06550375300743046,
+    "sim": 0.10494613590646833,
+    "gap_points": 3.944238289903787,
+    "pass": true
+   },
+   "oracle": {
+    "real": -0.2507938455077841,
+    "sim": -0.37946192669647794,
+    "gap_points": 12.866808118869383,
+    "pass": false
+   }
+  },
+  "V2": {
+   "steady": {
+    "real": -0.28258864461157307,
+    "sim": -0.1748022965497415,
+    "pass": true
+   },
+   "ramp": {
+    "real": -0.46500382917195165,
+    "sim": -0.3984127765497453,
+    "pass": true
+   },
+   "flash_sale": {
+    "real": -0.30833852606047113,
+    "sim": -0.3929465448955737,
+    "pass": true
+   },
+   "recovery": {
+    "real": -0.17274736410570718,
+    "sim": -0.30551893052755846,
+    "pass": true
+   },
+   "shifted": {
+    "real": -0.28669036203057424,
+    "sim": -0.4792775977818585,
+    "pass": true
+   }
+  },
+  "V4": {
+   "fifo": 0.3777361441644451,
+   "predictive": 0.32052855032076305,
+   "static_tuned": 0.33295276664805795,
+   "static_misconfigured": 0.39190628514167736,
+   "oracle": 0.31317354601515046
+  },
+  "V5": {
+   "predictive": {
+    "real": -0.5765011364282785,
+    "sim": -0.9896018946392218
+   },
+   "static_tuned": {
+    "real": -0.3640695429108861,
+    "sim": -0.9047977931633341
+   },
+   "static_misconfigured": {
+    "real": 0.04715734077082669,
+    "sim": 0.03931751345350241
+   },
+   "oracle": {
+    "real": -0.535285490325761,
+    "sim": -0.9897939482718173
+   }
+  },
+  "V3": {
+   "seeds_with_group_order": 5,
+   "real_seeds_with_group_order": 5,
+   "orders": [
+    {
+     "seed": "11",
+     "real_holds": true,
+     "sim_holds": true,
+     "real": [
+      "predictive",
+      "oracle",
+      "static_tuned",
+      "fifo",
+      "static_misconfigured"
+     ],
+     "sim": [
+      "predictive",
+      "oracle",
+      "static_tuned",
+      "fifo",
+      "static_misconfigured"
+     ]
+    },
+    {
+     "seed": "22",
+     "real_holds": true,
+     "sim_holds": true,
+     "real": [
+      "predictive",
+      "oracle",
+      "static_tuned",
+      "fifo",
+      "static_misconfigured"
+     ],
+     "sim": [
+      "oracle",
+      "predictive",
+      "static_tuned",
+      "fifo",
+      "static_misconfigured"
+     ]
+    },
+    {
+     "seed": "33",
+     "real_holds": true,
+     "sim_holds": true,
+     "real": [
+      "predictive",
+      "oracle",
+      "static_tuned",
+      "fifo",
+      "static_misconfigured"
+     ],
+     "sim": [
+      "predictive",
+      "oracle",
+      "static_tuned",
+      "fifo",
+      "static_misconfigured"
+     ]
+    },
+    {
+     "seed": "44",
+     "real_holds": true,
+     "sim_holds": true,
+     "real": [
+      "predictive",
+      "oracle",
+      "static_tuned",
+      "fifo",
+      "static_misconfigured"
+     ],
+     "sim": [
+      "predictive",
+      "oracle",
+      "static_tuned",
+      "fifo",
+      "static_misconfigured"
+     ]
+    },
+    {
+     "seed": "55",
+     "real_holds": true,
+     "sim_holds": true,
+     "real": [
+      "predictive",
+      "oracle",
+      "static_tuned",
+      "fifo",
+      "static_misconfigured"
+     ],
+     "sim": [
+      "oracle",
+      "predictive",
+      "static_tuned",
+      "fifo",
+      "static_misconfigured"
+     ]
+    }
+   ]
+  },
+  "gate": {
+   "V1": false,
+   "V2": true,
+   "V3": true,
+   "passed": false
+  }
+ },
+ "aws": {
+  "seeds": [
+   "11",
+   "22",
+   "33",
+   "44",
+   "55"
+  ],
+  "V1": {
+   "predictive": {
+    "real": -0.3084593806820551,
+    "sim": -0.42670541843894366,
+    "gap_points": 11.824603775688857,
+    "pass": false
+   },
+   "static_tuned": {
+    "real": -0.1928977947359549,
+    "sim": -0.28646820017763064,
+    "gap_points": 9.357040544167575,
+    "pass": true
+   },
+   "static_misconfigured": {
+    "real": 0.0942152576453033,
+    "sim": 0.12130690992245233,
+    "gap_points": 2.7091652277149034,
+    "pass": true
+   },
+   "oracle": {
+    "real": -0.33122035742891326,
+    "sim": -0.46192266478701266,
+    "gap_points": 13.07023073580994,
+    "pass": false
+   }
+  },
+  "V2": {
+   "steady": {
+    "real": -0.19533281610541148,
+    "sim": -0.08999263843279544,
+    "pass": true
+   },
+   "ramp": {
+    "real": -0.4756728241210476,
+    "sim": -0.3208845687759514,
+    "pass": true
+   },
+   "flash_sale": {
+    "real": -0.33935092444133275,
+    "sim": -0.44614822915551827,
+    "pass": true
+   },
+   "recovery": {
+    "real": -0.2326185882032511,
+    "sim": -0.3800550030842572,
+    "pass": true
+   },
+   "shifted": {
+    "real": -0.5283469995102617,
+    "sim": -0.28117460812552497,
+    "pass": true
+   }
+  },
+  "V4": {
+   "fifo": 0.403782792937612,
+   "predictive": 0.3348112780502427,
+   "static_tuned": 0.3569210947400016,
+   "static_misconfigured": 0.4138641782119861,
+   "oracle": 0.32500343784577135
+  },
+  "V5": {
+   "predictive": {
+    "real": -0.9476421481412786,
+    "sim": -0.9107727952527259
+   },
+   "static_tuned": {
+    "real": -0.8362496814437314,
+    "sim": -0.8817440853873132
+   },
+   "static_misconfigured": {
+    "real": 0.13527689849468508,
+    "sim": -0.4158563476301955
+   },
+   "oracle": {
+    "real": -0.9762817933266523,
+    "sim": -0.9178841776287561
+   }
+  },
+  "V3": {
+   "seeds_with_group_order": 5,
+   "real_seeds_with_group_order": 5,
+   "orders": [
+    {
+     "seed": "11",
+     "real_holds": true,
+     "sim_holds": true,
+     "real": [
+      "oracle",
+      "predictive",
+      "static_tuned",
+      "fifo",
+      "static_misconfigured"
+     ],
+     "sim": [
+      "oracle",
+      "predictive",
+      "static_tuned",
+      "fifo",
+      "static_misconfigured"
+     ]
+    },
+    {
+     "seed": "22",
+     "real_holds": true,
+     "sim_holds": true,
+     "real": [
+      "oracle",
+      "predictive",
+      "static_tuned",
+      "fifo",
+      "static_misconfigured"
+     ],
+     "sim": [
+      "oracle",
+      "predictive",
+      "static_tuned",
+      "fifo",
+      "static_misconfigured"
+     ]
+    },
+    {
+     "seed": "33",
+     "real_holds": true,
+     "sim_holds": true,
+     "real": [
+      "predictive",
+      "oracle",
+      "static_tuned",
+      "fifo",
+      "static_misconfigured"
+     ],
+     "sim": [
+      "predictive",
+      "oracle",
+      "static_tuned",
+      "fifo",
+      "static_misconfigured"
+     ]
+    },
+    {
+     "seed": "44",
+     "real_holds": true,
+     "sim_holds": true,
+     "real": [
+      "oracle",
+      "predictive",
+      "static_tuned",
+      "fifo",
+      "static_misconfigured"
+     ],
+     "sim": [
+      "oracle",
+      "predictive",
+      "static_tuned",
+      "fifo",
+      "static_misconfigured"
+     ]
+    },
+    {
+     "seed": "55",
+     "real_holds": true,
+     "sim_holds": true,
+     "real": [
+      "oracle",
+      "predictive",
+      "static_tuned",
+      "fifo",
+      "static_misconfigured"
+     ],
+     "sim": [
+      "oracle",
+      "predictive",
+      "static_tuned",
+      "fifo",
+      "static_misconfigured"
+     ]
+    }
+   ]
+  },
+  "gate": {
+   "V1": false,
+   "V2": true,
+   "V3": true,
+   "passed": false
+  }
+ }
+}

@@ -416,11 +416,31 @@ HarbingerConfig arm_config(const std::string& arm) {
     else if (arm == "static_tuned") { options.policy = benchmark::Policy::Static; options.static_tiers = kTunedTiers; }
     else if (arm == "static_misconfigured") { options.policy = benchmark::Policy::Static; options.static_tiers = kMisconfiguredTiers; }
     else if (arm == "oracle") options.policy = benchmark::Policy::Oracle;
-    else if (arm == "shadow" || arm == "predictive" || arm == "predictive_p75" || arm == "predictive_producer" ||
-             arm == "predictive_sized" || arm == "predictive_weighted") {
+    else if (arm == "per_type_fair") {
+        // v4-baselines: no prediction. One level per job type, equal worker-time weights, aging off, so every type gets
+        // an equal share of worker time (an operator's one-queue-per-type setup).
+        options.policy = benchmark::Policy::Static;
+        uint8_t level = 0;
+        for (const auto& [type, tier] : kTunedTiers) options.static_tiers[type] = level++;  // any distinct level per type
+        config.num_levels = level;
+        config.default_priority = 0;
+        config.level_weights = std::vector<uint32_t>(level, 1);
+        config.aging = std::nullopt;
+    } else if (arm == "shadow" || arm == "predictive" || arm == "predictive_p75" || arm == "predictive_mean" ||
+             arm == "predictive_producer" || arm == "predictive_sized" || arm == "predictive_weighted" ||
+             arm == "ablate_decay" || arm == "ablate_spread" || arm == "ablate_stale" || arm == "ablate_nmin" ||
+             arm == "predictive_noaging") {
         ml::PredictiveRoutingConfig routing;
         routing.mode = arm == "shadow" ? ml::RoutingMode::Shadow : ml::RoutingMode::Predictive;
         if (arm == "predictive_p75") routing.predictor.summary = ml::DurationSummary::P75;
+        if (arm == "predictive_mean") routing.predictor.summary = ml::DurationSummary::Mean;
+        // v4-baselines ablations: each removes one component of the predictor, with the broker's other defaults.
+        if (arm == "ablate_decay") { routing.predictor.decay = 1.0; routing.predictor.time_half_life = std::chrono::milliseconds{0}; }
+        if (arm == "ablate_spread") routing.predictor.max_spread_ratio = 1e18;  // the check can no longer trigger
+        if (arm == "ablate_stale") routing.predictor.stale_after = std::chrono::milliseconds{0};
+        if (arm == "ablate_nmin") routing.predictor.min_samples = 1;
+        // v4-baselines aging isolation: the same predictive routing with no aging, so strict priority never promotes.
+        if (arm == "predictive_noaging") config.aging = std::nullopt;
         // Zero-configuration control: producers do not label jobs, so each service is one key.
         if (arm == "predictive_producer") routing.key.job_header.clear();
         // Size-binned keys (#35, #39): the producer's size hint (pixels, line items, chunks) adds a log2 bin.
@@ -479,7 +499,7 @@ int main(int argc, char** argv) try {
         (role == "broker" || ((role == "all" || (role == "client" && args.contains("--broker"))) && args.contains("--seed")));
     if (!usage_ok)
         throw std::invalid_argument("usage: harbinger_prodflow --arm fifo|static_tuned|static_misconfigured|shadow|"
-            "predictive|predictive_p75|predictive_producer|predictive_sized|predictive_weighted|oracle --seed N --out NEW_DIR [--seconds 300] [--workers 4] [--rate-scale 1] [--drain-s 180]\n"
+            "predictive|predictive_p75|predictive_mean|predictive_producer|predictive_sized|predictive_weighted|predictive_noaging|per_type_fair|ablate_decay|ablate_spread|ablate_stale|ablate_nmin|oracle --seed N --out NEW_DIR [--seconds 300] [--workers 4] [--rate-scale 1] [--drain-s 180]\n"
             "       harbinger_prodflow --arm rabbitmq_fifo|rabbitmq_priority|rabbitmq_predictive|redis_fifo --broker HOST:PORT --seed N --out NEW_DIR [options above]\n"
             "       harbinger_prodflow --role broker --arm ARM --out NEW_DIR [--listen 0.0.0.0:50051]\n"
             "       harbinger_prodflow --role client --broker HOST:PORT --arm ARM --seed N --out NEW_DIR [options above]");

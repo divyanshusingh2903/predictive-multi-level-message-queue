@@ -1,0 +1,450 @@
+{
+ "default": "default",
+ "verdicts": {
+  "default": {
+   "A_P1_mean_latency_vs_fifo": {
+    "kind": "relative_delta",
+    "point": -0.008704085754984452,
+    "ci95": [
+     -0.02020091326036103,
+     -0.001322859730049546
+    ],
+    "status": "fail"
+   },
+   "B_P1_mean_latency_vs_fifo": {
+    "kind": "relative_delta",
+    "point": -0.22811300886306077,
+    "ci95": [
+     -0.371849230815171,
+     -0.09303459191965059
+    ],
+    "status": "pass"
+   }
+  },
+  "n_min-5": {
+   "A_P1_mean_latency_vs_fifo": {
+    "kind": "relative_delta",
+    "point": -0.009979093997385611,
+    "ci95": [
+     -0.02209152559240396,
+     -0.0016791560828867908
+    ],
+    "status": "fail"
+   },
+   "B_P1_mean_latency_vs_fifo": {
+    "kind": "relative_delta",
+    "point": -0.24637278098757776,
+    "ci95": [
+     -0.39355475645699656,
+     -0.10267254811195123
+    ],
+    "status": "pass"
+   }
+  },
+  "n_min-100": {
+   "A_P1_mean_latency_vs_fifo": {
+    "kind": "relative_delta",
+    "point": -0.007820719137767124,
+    "ci95": [
+     -0.01952244578560809,
+     -0.0009593331451748776
+    ],
+    "status": "fail"
+   },
+   "B_P1_mean_latency_vs_fifo": {
+    "kind": "relative_delta",
+    "point": -0.13704415116705052,
+    "ci95": [
+     -0.21830741076426158,
+     -0.05708983830233072
+    ],
+    "status": "fail"
+   }
+  },
+  "kappa-4": {
+   "A_P1_mean_latency_vs_fifo": {
+    "kind": "relative_delta",
+    "point": -0.0049205229476421775,
+    "ci95": [
+     -0.010437508520450433,
+     -0.00071743961583018
+    ],
+    "status": "fail"
+   },
+   "B_P1_mean_latency_vs_fifo": {
+    "kind": "relative_delta",
+    "point": -0.17436868446828083,
+    "ci95": [
+     -0.2984683407979223,
+     -0.06117438337568933
+    ],
+    "status": "pass"
+   }
+  },
+  "kappa-64": {
+   "A_P1_mean_latency_vs_fifo": {
+    "kind": "relative_delta",
+    "point": -0.010418424034711965,
+    "ci95": [
+     -0.022875978530391396,
+     -0.001797165999094935
+    ],
+    "status": "fail"
+   },
+   "B_P1_mean_latency_vs_fifo": {
+    "kind": "relative_delta",
+    "point": -0.2327150427690619,
+    "ci95": [
+     -0.38117807705645235,
+     -0.09332368677609448
+    ],
+    "status": "pass"
+   }
+  },
+  "kappa-inf": {
+   "A_P1_mean_latency_vs_fifo": {
+    "kind": "relative_delta",
+    "point": -0.01169354904379542,
+    "ci95": [
+     -0.026023238868762833,
+     -0.0018161102246893569
+    ],
+    "status": "fail"
+   },
+   "B_P1_mean_latency_vs_fifo": {
+    "kind": "relative_delta",
+    "point": -0.24019549636259063,
+    "ci95": [
+     -0.3925504573188258,
+     -0.09727568584885407
+    ],
+    "status": "pass"
+   }
+  },
+  "decay-0.98": {
+   "A_P1_mean_latency_vs_fifo": {
+    "kind": "relative_delta",
+    "point": -0.008487284420383335,
+    "ci95": [
+     -0.019953579265007883,
+     -0.001256171319566185
+    ],
+    "status": "fail"
+   },
+   "B_P1_mean_latency_vs_fifo": {
+    "kind": "relative_delta",
+    "point": -0.21786680953276946,
+    "ci95": [
+     -0.35354359051655615,
+     -0.08969067603549886
+    ],
+    "status": "pass"
+   }
+  },
+  "decay-0.999": {
+   "A_P1_mean_latency_vs_fifo": {
+    "kind": "relative_delta",
+    "point": -0.00932417365023947,
+    "ci95": [
+     -0.02124346498384856,
+     -0.0014756284791091236
+    ],
+    "status": "fail"
+   },
+   "B_P1_mean_latency_vs_fifo": {
+    "kind": "relative_delta",
+    "point": -0.22774418395387555,
+    "ci95": [
+     -0.36935424401852246,
+     -0.09505881089400314
+    ],
+    "status": "pass"
+   }
+  },
+  "decay-1.0": {
+   "A_P1_mean_latency_vs_fifo": {
+    "kind": "relative_delta",
+    "point": -0.009045965639485593,
+    "ci95": [
+     -0.020856956838292102,
+     -0.0014452938107675946
+    ],
+    "status": "fail"
+   },
+   "B_P1_mean_latency_vs_fifo": {
+    "kind": "relative_delta",
+    "point": -0.23032820141795649,
+    "ci95": [
+     -0.3677730053196111,
+     -0.09886713694230274
+    ],
+    "status": "pass"
+   }
+  },
+  "tau-5min": {
+   "A_P1_mean_latency_vs_fifo": {
+    "kind": "relative_delta",
+    "point": -0.007604362961683717,
+    "ci95": [
+     -0.018800686621010282,
+     -0.0008647200673444976
+    ],
+    "status": "fail"
+   },
+   "B_P1_mean_latency_vs_fifo": {
+    "kind": "relative_delta",
+    "point": -0.2109326302146459,
+    "ci95": [
+     -0.34576516196414286,
+     -0.08334860336754121
+    ],
+    "status": "pass"
+   }
+  },
+  "tau-2h": {
+   "A_P1_mean_latency_vs_fifo": {
+    "kind": "relative_delta",
+    "point": -0.009459208774536779,
+    "ci95": [
+     -0.021339238278205802,
+     -0.001471101039585665
+    ],
+    "status": "fail"
+   },
+   "B_P1_mean_latency_vs_fifo": {
+    "kind": "relative_delta",
+    "point": -0.24197189399474023,
+    "ci95": [
+     -0.41020720525661397,
+     -0.09419280489570782
+    ],
+    "status": "pass"
+   }
+  },
+  "tau-off": {
+   "A_P1_mean_latency_vs_fifo": {
+    "kind": "relative_delta",
+    "point": -0.010702301039645836,
+    "ci95": [
+     -0.023395961828925445,
+     -0.0020462906776396164
+    ],
+    "status": "fail"
+   },
+   "B_P1_mean_latency_vs_fifo": {
+    "kind": "relative_delta",
+    "point": -0.2617465885075391,
+    "ci95": [
+     -0.43943634601548814,
+     -0.10234061283733005
+    ],
+    "status": "pass"
+   }
+  },
+  "aging_threshold-1s": {
+   "A_P1_mean_latency_vs_fifo": {
+    "kind": "relative_delta",
+    "point": -0.0020814266007839616,
+    "ci95": [
+     -0.005175393197803737,
+     -0.0002491981060165333
+    ],
+    "status": "fail"
+   },
+   "B_P1_mean_latency_vs_fifo": {
+    "kind": "relative_delta",
+    "point": -0.2250518060391039,
+    "ci95": [
+     -0.3632075091758242,
+     -0.0936884589900198
+    ],
+    "status": "pass"
+   }
+  },
+  "aging_threshold-30s": {
+   "A_P1_mean_latency_vs_fifo": {
+    "kind": "relative_delta",
+    "point": -0.0336169231410504,
+    "ci95": [
+     -0.06750249421968388,
+     -0.007599646731259632
+    ],
+    "status": "fail"
+   },
+   "B_P1_mean_latency_vs_fifo": {
+    "kind": "relative_delta",
+    "point": -0.219680597440681,
+    "ci95": [
+     -0.366232794724393,
+     -0.08477825734719575
+    ],
+    "status": "pass"
+   }
+  },
+  "weights-4-2-1": {
+   "A_P1_mean_latency_vs_fifo": {
+    "kind": "relative_delta",
+    "point": -0.008704085754984452,
+    "ci95": [
+     -0.02020091326036103,
+     -0.001322859730049546
+    ],
+    "status": "fail"
+   },
+   "B_P1_mean_latency_vs_fifo": {
+    "kind": "relative_delta",
+    "point": -0.2199270617074748,
+    "ci95": [
+     -0.363694293174446,
+     -0.0867826589648315
+    ],
+    "status": "pass"
+   }
+  },
+  "weights-16-4-1": {
+   "A_P1_mean_latency_vs_fifo": {
+    "kind": "relative_delta",
+    "point": -0.008704085754984452,
+    "ci95": [
+     -0.02020091326036103,
+     -0.001322859730049546
+    ],
+    "status": "fail"
+   },
+   "B_P1_mean_latency_vs_fifo": {
+    "kind": "relative_delta",
+    "point": -0.23056920935729835,
+    "ci95": [
+     -0.3720867972913061,
+     -0.09755899783083641
+    ],
+    "status": "pass"
+   }
+  },
+  "levels-2": {
+   "A_P1_mean_latency_vs_fifo": {
+    "kind": "relative_delta",
+    "point": -0.006592121270780245,
+    "ci95": [
+     -0.016131291137350238,
+     -0.0008184677077566881
+    ],
+    "status": "fail"
+   },
+   "B_P1_mean_latency_vs_fifo": {
+    "kind": "relative_delta",
+    "point": -0.1007832089644596,
+    "ci95": [
+     -0.15922798089982873,
+     -0.04618331201434576
+    ],
+    "status": "fail"
+   }
+  },
+  "levels-4": {
+   "A_P1_mean_latency_vs_fifo": {
+    "kind": "relative_delta",
+    "point": -0.010740231047352458,
+    "ci95": [
+     -0.027163739510236484,
+     -0.00041031964667384823
+    ],
+    "status": "fail"
+   },
+   "B_P1_mean_latency_vs_fifo": {
+    "kind": "relative_delta",
+    "point": -0.24262643406756756,
+    "ci95": [
+     -0.38509291157880515,
+     -0.11381091284209584
+    ],
+    "status": "pass"
+   }
+  }
+ },
+ "readings": {
+  "A_P1_mean_latency_vs_fifo": {
+   "n_min": {
+    "robust": true,
+    "flips_at": [],
+    "cliff": false
+   },
+   "kappa": {
+    "robust": true,
+    "flips_at": [],
+    "cliff": false
+   },
+   "decay": {
+    "robust": true,
+    "flips_at": [],
+    "cliff": false
+   },
+   "tau": {
+    "robust": true,
+    "flips_at": [],
+    "cliff": false
+   },
+   "aging_threshold": {
+    "robust": true,
+    "flips_at": [],
+    "cliff": false
+   },
+   "weights": {
+    "robust": true,
+    "flips_at": [],
+    "cliff": false
+   },
+   "levels": {
+    "robust": true,
+    "flips_at": [],
+    "cliff": false
+   }
+  },
+  "B_P1_mean_latency_vs_fifo": {
+   "n_min": {
+    "robust": false,
+    "flips_at": [
+     100
+    ],
+    "cliff": true
+   },
+   "kappa": {
+    "robust": true,
+    "flips_at": [],
+    "cliff": false
+   },
+   "decay": {
+    "robust": true,
+    "flips_at": [],
+    "cliff": false
+   },
+   "tau": {
+    "robust": true,
+    "flips_at": [],
+    "cliff": false
+   },
+   "aging_threshold": {
+    "robust": true,
+    "flips_at": [],
+    "cliff": false
+   },
+   "weights": {
+    "robust": true,
+    "flips_at": [],
+    "cliff": false
+   },
+   "levels": {
+    "robust": false,
+    "flips_at": [
+     2
+    ],
+    "cliff": true
+   }
+  }
+ },
+ "passing_variants": {
+  "A_P1_mean_latency_vs_fifo": 0,
+  "B_P1_mean_latency_vs_fifo": 16
+ },
+ "variants": 18
+}

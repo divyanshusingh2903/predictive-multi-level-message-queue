@@ -114,6 +114,7 @@ add_executable(harbinger_predictor_replay tools/predictor_replay.cpp)
 target_link_libraries(harbinger_predictor_replay PRIVATE harbinger_server_lib)
 harbinger_target_warnings(harbinger_predictor_replay)
 add_executable(harbinger_trace_sim tools/trace_sim.cpp)
+target_include_directories(harbinger_trace_sim PRIVATE tools)
 target_link_libraries(harbinger_trace_sim PRIVATE harbinger_server_lib)
 harbinger_target_warnings(harbinger_trace_sim)
 

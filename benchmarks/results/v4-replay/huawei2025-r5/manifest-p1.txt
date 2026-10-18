@@ -1,0 +1,13 @@
+commit 608dd0200a6562f3f66116dca1f637cb82c4ebbc
+mode registered
+config v4-replay-huawei2025-r5.json sha256 c49a78f35a5441da91c6d6604c57a5efdb2a073afca4d9a0331471cb32a988d6
+trace huawei2025-r5.csv sha256 e860c7a699670af200e09b8a6d97b194fd87ecc5a15833f039af88bc7a64656b
+loads 0.5 0.8 0.95
+arms fifo predictive_warm predictive_warm+weights+pausing oracle oracle+weights+pausing static_history predictive_cold
+repeats 3
+split true
+shard 1/2
+image sha256:52c97bb0ca91873359a40822873808c8f899734803bed99bd27f49a29f7bf82a
+started 2026-10-17T03:42:46Z
+broker_image sha256:52c97bb0ca91873359a40822873808c8f899734803bed99bd27f49a29f7bf82a
+finished 2026-10-17T21:02:13Z

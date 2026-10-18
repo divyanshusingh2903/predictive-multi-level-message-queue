@@ -1,0 +1,1133 @@
+{
+ "1": {
+  "0.5": {
+   "criteria": {
+    "A_P1_mean_latency_vs_fifo": {
+     "kind": "relative_delta",
+     "point": -0.009672067133609361,
+     "ci95": [
+      -0.01904573857135399,
+      -0.002526501868582247
+     ],
+     "status": "fail"
+    },
+    "A_G1_all_p99_vs_fifo": {
+     "kind": "ratio",
+     "point": 0.9985456402967315,
+     "ci95": [
+      0.9958879218550283,
+      1.0005726070213434
+     ],
+     "status": "pass"
+    },
+    "A_G2_long_max_wait_vs_fifo": {
+     "kind": "ratio",
+     "point": 1.0314159491105488,
+     "ci95": [
+      1.0027655089810215,
+      1.068481024968392
+     ],
+     "status": "pass"
+    },
+    "B_P1_mean_latency_vs_fifo": {
+     "kind": "relative_delta",
+     "point": -0.08448782715066545,
+     "ci95": [
+      -0.13062158714704789,
+      -0.043029215579155705
+     ],
+     "status": "fail"
+    },
+    "B_G1_all_p99_vs_fifo": {
+     "kind": "ratio",
+     "point": 1.0031599528472703,
+     "ci95": [
+      0.9828017589940605,
+      1.0226941697982515
+     ],
+     "status": "pass"
+    },
+    "B_G2_long_max_wait_vs_fifo": {
+     "kind": "ratio",
+     "point": 1.0635561607301371,
+     "ci95": [
+      1.0292278273118236,
+      1.1107994926196836
+     ],
+     "status": "pass"
+    },
+    "S1_short_p50_vs_fifo": {
+     "kind": "relative_delta",
+     "point": -0.008012842162634674,
+     "ci95": [
+      -0.020787543244534624,
+      -2.61240824044646e-07
+     ],
+     "status": "fail"
+    },
+    "S2_vs_static_history_noninferior": {
+     "kind": "relative_delta",
+     "point": -0.002101596856597578,
+     "ci95": [
+      -0.006241623615090204,
+      0.0017077610230790139
+     ],
+     "status": "pass"
+    },
+    "S3_beats_static_random": {
+     "kind": "relative_delta",
+     "point": -0.013490635994003877,
+     "ci95": [
+      -0.02625871179356683,
+      -0.0037654906964152924
+     ],
+     "status": "pass"
+    },
+    "S4_cold_start_vs_fifo": {
+     "kind": "relative_delta",
+     "point": -0.009640702009296816,
+     "ci95": [
+      -0.0190219592316392,
+      -0.0024869927575312638
+     ],
+     "status": "fail"
+    },
+    "S5_oracle_vs_fifo": {
+     "kind": "relative_delta",
+     "point": -0.015527277034823142,
+     "ci95": [
+      -0.02501586511913853,
+      -0.00793114327615786
+     ],
+     "status": "fail"
+    },
+    "S6_oracle_weights_pausing_vs_fifo": {
+     "kind": "relative_delta",
+     "point": -0.17506781899518517,
+     "ci95": [
+      -0.26745980789089735,
+      -0.09009122590448904
+     ],
+     "status": "pass"
+    },
+    "S7_weights_pausing_vs_predictive_warm": {
+     "kind": "relative_delta",
+     "point": -0.07625291358632927,
+     "ci95": [
+      -0.11953608359267608,
+      -0.0376695713398742
+     ],
+     "status": "pass"
+    }
+   },
+   "gates_passed": {
+    "A_predictive_routing": false,
+    "B_overload_design": false
+   }
+  },
+  "0.8": {
+   "criteria": {
+    "A_P1_mean_latency_vs_fifo": {
+     "kind": "relative_delta",
+     "point": -0.016007733256723174,
+     "ci95": [
+      -0.027751089907678616,
+      -0.00655573296660798
+     ],
+     "status": "fail"
+    },
+    "A_G1_all_p99_vs_fifo": {
+     "kind": "ratio",
+     "point": 0.9953911131603301,
+     "ci95": [
+      0.9867454131107026,
+      1.0017419551762792
+     ],
+     "status": "pass"
+    },
+    "A_G2_long_max_wait_vs_fifo": {
+     "kind": "ratio",
+     "point": 1.005437899181975,
+     "ci95": [
+      0.9981784874251095,
+      1.0175129107288596
+     ],
+     "status": "pass"
+    },
+    "B_P1_mean_latency_vs_fifo": {
+     "kind": "relative_delta",
+     "point": -0.15798251237374936,
+     "ci95": [
+      -0.24091186990703523,
+      -0.0858349659429073
+     ],
+     "status": "pass"
+    },
+    "B_G1_all_p99_vs_fifo": {
+     "kind": "ratio",
+     "point": 1.0003010282578584,
+     "ci95": [
+      0.955808570479409,
+      1.038763881271882
+     ],
+     "status": "pass"
+    },
+    "B_G2_long_max_wait_vs_fifo": {
+     "kind": "ratio",
+     "point": 1.0477146545852205,
+     "ci95": [
+      1.0214856262755367,
+      1.0861193817816572
+     ],
+     "status": "pass"
+    },
+    "S1_short_p50_vs_fifo": {
+     "kind": "relative_delta",
+     "point": -0.0006021588959532402,
+     "ci95": [
+      -0.0017938764132572477,
+      -2.3815676192540215e-06
+     ],
+     "status": "fail"
+    },
+    "S2_vs_static_history_noninferior": {
+     "kind": "relative_delta",
+     "point": -0.001483610156972273,
+     "ci95": [
+      -0.009653826375578807,
+      0.007603343381441318
+     ],
+     "status": "pass"
+    },
+    "S3_beats_static_random": {
+     "kind": "relative_delta",
+     "point": -0.02056319297238847,
+     "ci95": [
+      -0.036121951169838,
+      -0.008237341217396329
+     ],
+     "status": "pass"
+    },
+    "S4_cold_start_vs_fifo": {
+     "kind": "relative_delta",
+     "point": -0.01595204645591836,
+     "ci95": [
+      -0.027689029284486147,
+      -0.006519172968567455
+     ],
+     "status": "fail"
+    },
+    "S5_oracle_vs_fifo": {
+     "kind": "relative_delta",
+     "point": -0.023546626556804125,
+     "ci95": [
+      -0.0378224364806496,
+      -0.012077861991496677
+     ],
+     "status": "fail"
+    },
+    "S6_oracle_weights_pausing_vs_fifo": {
+     "kind": "relative_delta",
+     "point": -0.2404417372502804,
+     "ci95": [
+      -0.33447194538916997,
+      -0.14931605105961734
+     ],
+     "status": "pass"
+    },
+    "S7_weights_pausing_vs_predictive_warm": {
+     "kind": "relative_delta",
+     "point": -0.1466588241210528,
+     "ci95": [
+      -0.22769884679996785,
+      -0.07731691777355629
+     ],
+     "status": "pass"
+    }
+   },
+   "gates_passed": {
+    "A_predictive_routing": false,
+    "B_overload_design": true
+   }
+  },
+  "0.95": {
+   "criteria": {
+    "A_P1_mean_latency_vs_fifo": {
+     "kind": "relative_delta",
+     "point": -0.022970545422876295,
+     "ci95": [
+      -0.03786793858079532,
+      -0.010537196310573056
+     ],
+     "status": "fail"
+    },
+    "A_G1_all_p99_vs_fifo": {
+     "kind": "ratio",
+     "point": 0.9890592311803426,
+     "ci95": [
+      0.977153720365454,
+      0.997492772405961
+     ],
+     "status": "pass"
+    },
+    "A_G2_long_max_wait_vs_fifo": {
+     "kind": "ratio",
+     "point": 1.0286619708084304,
+     "ci95": [
+      1.002842987442144,
+      1.060987932341207
+     ],
+     "status": "pass"
+    },
+    "B_P1_mean_latency_vs_fifo": {
+     "kind": "relative_delta",
+     "point": -0.17853618969969728,
+     "ci95": [
+      -0.26605429674379477,
+      -0.10246985522445984
+     ],
+     "status": "pass"
+    },
+    "B_G1_all_p99_vs_fifo": {
+     "kind": "ratio",
+     "point": 1.0115946608238702,
+     "ci95": [
+      0.9747187893211515,
+      1.054654556535631
+     ],
+     "status": "pass"
+    },
+    "B_G2_long_max_wait_vs_fifo": {
+     "kind": "ratio",
+     "point": 1.0775480102680637,
+     "ci95": [
+      1.0394718667961245,
+      1.125667012848016
+     ],
+     "status": "pass"
+    },
+    "S1_short_p50_vs_fifo": {
+     "kind": "relative_delta",
+     "point": -0.027222957843819055,
+     "ci95": [
+      -0.0625743416231835,
+      -0.00015637340343054436
+     ],
+     "status": "fail"
+    },
+    "S2_vs_static_history_noninferior": {
+     "kind": "relative_delta",
+     "point": 0.0015965861906404842,
+     "ci95": [
+      -0.007332560021069429,
+      0.010651372096149407
+     ],
+     "status": "pass"
+    },
+    "S3_beats_static_random": {
+     "kind": "relative_delta",
+     "point": -0.02878344802341991,
+     "ci95": [
+      -0.047306971064109436,
+      -0.013230841800766713
+     ],
+     "status": "pass"
+    },
+    "S4_cold_start_vs_fifo": {
+     "kind": "relative_delta",
+     "point": -0.02296346153987005,
+     "ci95": [
+      -0.037867891268061636,
+      -0.01052656813267218
+     ],
+     "status": "fail"
+    },
+    "S5_oracle_vs_fifo": {
+     "kind": "relative_delta",
+     "point": -0.032844882357810176,
+     "ci95": [
+      -0.05232460022260676,
+      -0.016889420803202746
+     ],
+     "status": "fail"
+    },
+    "S6_oracle_weights_pausing_vs_fifo": {
+     "kind": "relative_delta",
+     "point": -0.2728700061390717,
+     "ci95": [
+      -0.3693313854669638,
+      -0.17847613448926763
+     ],
+     "status": "pass"
+    },
+    "S7_weights_pausing_vs_predictive_warm": {
+     "kind": "relative_delta",
+     "point": -0.16102549534066768,
+     "ci95": [
+      -0.2470614617191291,
+      -0.08715876086111113
+     ],
+     "status": "pass"
+    }
+   },
+   "gates_passed": {
+    "A_predictive_routing": false,
+    "B_overload_design": true
+   }
+  }
+ },
+ "2": {
+  "0.5": {
+   "criteria": {
+    "A_P1_mean_latency_vs_fifo": {
+     "kind": "relative_delta",
+     "point": -0.009672067133609361,
+     "ci95": [
+      -0.01895869370320621,
+      -0.002389058524297912
+     ],
+     "status": "fail"
+    },
+    "A_G1_all_p99_vs_fifo": {
+     "kind": "ratio",
+     "point": 0.9985456402967315,
+     "ci95": [
+      0.9953698646688001,
+      1.000768575063231
+     ],
+     "status": "pass"
+    },
+    "A_G2_long_max_wait_vs_fifo": {
+     "kind": "ratio",
+     "point": 1.0314159491105488,
+     "ci95": [
+      1.0039778465376836,
+      1.0676011321658367
+     ],
+     "status": "pass"
+    },
+    "B_P1_mean_latency_vs_fifo": {
+     "kind": "relative_delta",
+     "point": -0.08448782715066545,
+     "ci95": [
+      -0.12939938055617806,
+      -0.039798443986199826
+     ],
+     "status": "fail"
+    },
+    "B_G1_all_p99_vs_fifo": {
+     "kind": "ratio",
+     "point": 1.0031599528472703,
+     "ci95": [
+      0.9802626152855262,
+      1.0281251547950616
+     ],
+     "status": "pass"
+    },
+    "B_G2_long_max_wait_vs_fifo": {
+     "kind": "ratio",
+     "point": 1.0635561607301371,
+     "ci95": [
+      1.030233909227042,
+      1.1097367588485352
+     ],
+     "status": "pass"
+    },
+    "S1_short_p50_vs_fifo": {
+     "kind": "relative_delta",
+     "point": -0.008012842162634674,
+     "ci95": [
+      -0.02078840626940819,
+      -3.728134491209059e-07
+     ],
+     "status": "fail"
+    },
+    "S2_vs_static_history_noninferior": {
+     "kind": "relative_delta",
+     "point": -0.002101596856597578,
+     "ci95": [
+      -0.005949293777724655,
+      0.0007971484539123799
+     ],
+     "status": "pass"
+    },
+    "S3_beats_static_random": {
+     "kind": "relative_delta",
+     "point": -0.013490635994003877,
+     "ci95": [
+      -0.027250635089046987,
+      -0.0032107431915623453
+     ],
+     "status": "pass"
+    },
+    "S4_cold_start_vs_fifo": {
+     "kind": "relative_delta",
+     "point": -0.009640702009296816,
+     "ci95": [
+      -0.018913915098781885,
+      -0.002358087837476127
+     ],
+     "status": "fail"
+    },
+    "S5_oracle_vs_fifo": {
+     "kind": "relative_delta",
+     "point": -0.015527277034823142,
+     "ci95": [
+      -0.025939054312516533,
+      -0.007067171513357816
+     ],
+     "status": "fail"
+    },
+    "S6_oracle_weights_pausing_vs_fifo": {
+     "kind": "relative_delta",
+     "point": -0.17506781899518517,
+     "ci95": [
+      -0.2914651348074947,
+      -0.07093708850235847
+     ],
+     "status": "pass"
+    },
+    "S7_weights_pausing_vs_predictive_warm": {
+     "kind": "relative_delta",
+     "point": -0.07625291358632927,
+     "ci95": [
+      -0.1193671117920026,
+      -0.03344462921441182
+     ],
+     "status": "pass"
+    }
+   },
+   "gates_passed": {
+    "A_predictive_routing": false,
+    "B_overload_design": false
+   }
+  },
+  "0.8": {
+   "criteria": {
+    "A_P1_mean_latency_vs_fifo": {
+     "kind": "relative_delta",
+     "point": -0.016007733256723174,
+     "ci95": [
+      -0.03072077716237911,
+      -0.00576090862992416
+     ],
+     "status": "fail"
+    },
+    "A_G1_all_p99_vs_fifo": {
+     "kind": "ratio",
+     "point": 0.9953911131603301,
+     "ci95": [
+      0.9872163934527916,
+      1.0012498071963791
+     ],
+     "status": "pass"
+    },
+    "A_G2_long_max_wait_vs_fifo": {
+     "kind": "ratio",
+     "point": 1.005437899181975,
+     "ci95": [
+      0.9981679234562177,
+      1.017525189036826
+     ],
+     "status": "pass"
+    },
+    "B_P1_mean_latency_vs_fifo": {
+     "kind": "relative_delta",
+     "point": -0.15798251237374936,
+     "ci95": [
+      -0.24777508941339893,
+      -0.08436394301537903
+     ],
+     "status": "pass"
+    },
+    "B_G1_all_p99_vs_fifo": {
+     "kind": "ratio",
+     "point": 1.0003010282578584,
+     "ci95": [
+      0.9578723455934163,
+      1.0408702150247653
+     ],
+     "status": "pass"
+    },
+    "B_G2_long_max_wait_vs_fifo": {
+     "kind": "ratio",
+     "point": 1.0477146545852205,
+     "ci95": [
+      1.023233908387249,
+      1.0832000854802117
+     ],
+     "status": "pass"
+    },
+    "S1_short_p50_vs_fifo": {
+     "kind": "relative_delta",
+     "point": -0.0006021588959532402,
+     "ci95": [
+      -0.0017924112987980842,
+      0.0
+     ],
+     "status": "fail"
+    },
+    "S2_vs_static_history_noninferior": {
+     "kind": "relative_delta",
+     "point": -0.001483610156972273,
+     "ci95": [
+      -0.010234957934552168,
+      0.007287724108938399
+     ],
+     "status": "pass"
+    },
+    "S3_beats_static_random": {
+     "kind": "relative_delta",
+     "point": -0.02056319297238847,
+     "ci95": [
+      -0.04024204623923264,
+      -0.0070038572487673865
+     ],
+     "status": "pass"
+    },
+    "S4_cold_start_vs_fifo": {
+     "kind": "relative_delta",
+     "point": -0.01595204645591836,
+     "ci95": [
+      -0.030634783862497145,
+      -0.005730915218458838
+     ],
+     "status": "fail"
+    },
+    "S5_oracle_vs_fifo": {
+     "kind": "relative_delta",
+     "point": -0.023546626556804125,
+     "ci95": [
+      -0.04077189073546292,
+      -0.010508543034262671
+     ],
+     "status": "fail"
+    },
+    "S6_oracle_weights_pausing_vs_fifo": {
+     "kind": "relative_delta",
+     "point": -0.2404417372502804,
+     "ci95": [
+      -0.3532798195363282,
+      -0.1342729393475323
+     ],
+     "status": "pass"
+    },
+    "S7_weights_pausing_vs_predictive_warm": {
+     "kind": "relative_delta",
+     "point": -0.1466588241210528,
+     "ci95": [
+      -0.23478629697871156,
+      -0.07524610006650935
+     ],
+     "status": "pass"
+    }
+   },
+   "gates_passed": {
+    "A_predictive_routing": false,
+    "B_overload_design": true
+   }
+  },
+  "0.95": {
+   "criteria": {
+    "A_P1_mean_latency_vs_fifo": {
+     "kind": "relative_delta",
+     "point": -0.022970545422876295,
+     "ci95": [
+      -0.040322307313592515,
+      -0.009481982535518269
+     ],
+     "status": "fail"
+    },
+    "A_G1_all_p99_vs_fifo": {
+     "kind": "ratio",
+     "point": 0.9890592311803426,
+     "ci95": [
+      0.9747004730043621,
+      0.9978704835653724
+     ],
+     "status": "pass"
+    },
+    "A_G2_long_max_wait_vs_fifo": {
+     "kind": "ratio",
+     "point": 1.0286619708084304,
+     "ci95": [
+      1.0029653367543738,
+      1.0543442906195917
+     ],
+     "status": "pass"
+    },
+    "B_P1_mean_latency_vs_fifo": {
+     "kind": "relative_delta",
+     "point": -0.17853618969969728,
+     "ci95": [
+      -0.2715128098021637,
+      -0.10313265302639868
+     ],
+     "status": "pass"
+    },
+    "B_G1_all_p99_vs_fifo": {
+     "kind": "ratio",
+     "point": 1.0115946608238702,
+     "ci95": [
+      0.9787224035439421,
+      1.0530894355996179
+     ],
+     "status": "pass"
+    },
+    "B_G2_long_max_wait_vs_fifo": {
+     "kind": "ratio",
+     "point": 1.0775480102680637,
+     "ci95": [
+      1.0384853269129304,
+      1.115838540745759
+     ],
+     "status": "pass"
+    },
+    "S1_short_p50_vs_fifo": {
+     "kind": "relative_delta",
+     "point": -0.027222957843819055,
+     "ci95": [
+      -0.07421908673055228,
+      -0.00015515577788006692
+     ],
+     "status": "fail"
+    },
+    "S2_vs_static_history_noninferior": {
+     "kind": "relative_delta",
+     "point": 0.0015965861906404842,
+     "ci95": [
+      -0.007820631854900407,
+      0.011441747453411026
+     ],
+     "status": "pass"
+    },
+    "S3_beats_static_random": {
+     "kind": "relative_delta",
+     "point": -0.02878344802341991,
+     "ci95": [
+      -0.051787274576336036,
+      -0.011712684693940137
+     ],
+     "status": "pass"
+    },
+    "S4_cold_start_vs_fifo": {
+     "kind": "relative_delta",
+     "point": -0.02296346153987005,
+     "ci95": [
+      -0.04031667984381162,
+      -0.009481252007044586
+     ],
+     "status": "fail"
+    },
+    "S5_oracle_vs_fifo": {
+     "kind": "relative_delta",
+     "point": -0.032844882357810176,
+     "ci95": [
+      -0.05513820029913615,
+      -0.014964443413632714
+     ],
+     "status": "fail"
+    },
+    "S6_oracle_weights_pausing_vs_fifo": {
+     "kind": "relative_delta",
+     "point": -0.2728700061390717,
+     "ci95": [
+      -0.3843896642978771,
+      -0.16478658893024922
+     ],
+     "status": "pass"
+    },
+    "S7_weights_pausing_vs_predictive_warm": {
+     "kind": "relative_delta",
+     "point": -0.16102549534066768,
+     "ci95": [
+      -0.25332513677789936,
+      -0.08687802085182181
+     ],
+     "status": "pass"
+    }
+   },
+   "gates_passed": {
+    "A_predictive_routing": false,
+    "B_overload_design": true
+   }
+  }
+ },
+ "4": {
+  "0.5": {
+   "criteria": {
+    "A_P1_mean_latency_vs_fifo": {
+     "kind": "relative_delta",
+     "point": -0.009672067133609361,
+     "ci95": [
+      -0.019769365117549946,
+      -0.0025632135519426326
+     ],
+     "status": "fail"
+    },
+    "A_G1_all_p99_vs_fifo": {
+     "kind": "ratio",
+     "point": 0.9985456402967315,
+     "ci95": [
+      0.9954009525983455,
+      1.0006682092900896
+     ],
+     "status": "pass"
+    },
+    "A_G2_long_max_wait_vs_fifo": {
+     "kind": "ratio",
+     "point": 1.0314159491105488,
+     "ci95": [
+      1.0090511612245494,
+      1.063617254138107
+     ],
+     "status": "pass"
+    },
+    "B_P1_mean_latency_vs_fifo": {
+     "kind": "relative_delta",
+     "point": -0.08448782715066545,
+     "ci95": [
+      -0.12127035828465117,
+      -0.04375230872420732
+     ],
+     "status": "fail"
+    },
+    "B_G1_all_p99_vs_fifo": {
+     "kind": "ratio",
+     "point": 1.0031599528472703,
+     "ci95": [
+      0.9934572593683344,
+      1.026715285147748
+     ],
+     "status": "pass"
+    },
+    "B_G2_long_max_wait_vs_fifo": {
+     "kind": "ratio",
+     "point": 1.0635561607301371,
+     "ci95": [
+      1.0361718181383002,
+      1.1070746394523188
+     ],
+     "status": "pass"
+    },
+    "S1_short_p50_vs_fifo": {
+     "kind": "relative_delta",
+     "point": -0.008012842162634674,
+     "ci95": [
+      -0.019273561837720204,
+      0.0
+     ],
+     "status": "fail"
+    },
+    "S2_vs_static_history_noninferior": {
+     "kind": "relative_delta",
+     "point": -0.002101596856597578,
+     "ci95": [
+      -0.005965772163806025,
+      0.0003023073225739371
+     ],
+     "status": "pass"
+    },
+    "S3_beats_static_random": {
+     "kind": "relative_delta",
+     "point": -0.013490635994003877,
+     "ci95": [
+      -0.02886524801191655,
+      -0.003365062274578457
+     ],
+     "status": "pass"
+    },
+    "S4_cold_start_vs_fifo": {
+     "kind": "relative_delta",
+     "point": -0.009640702009296816,
+     "ci95": [
+      -0.019724708046706854,
+      -0.0025450076594825807
+     ],
+     "status": "fail"
+    },
+    "S5_oracle_vs_fifo": {
+     "kind": "relative_delta",
+     "point": -0.015527277034823142,
+     "ci95": [
+      -0.027058862858606498,
+      -0.007379760031530169
+     ],
+     "status": "fail"
+    },
+    "S6_oracle_weights_pausing_vs_fifo": {
+     "kind": "relative_delta",
+     "point": -0.17506781899518517,
+     "ci95": [
+      -0.28824797871259755,
+      -0.06547575093985562
+     ],
+     "status": "pass"
+    },
+    "S7_weights_pausing_vs_predictive_warm": {
+     "kind": "relative_delta",
+     "point": -0.07625291358632927,
+     "ci95": [
+      -0.1101216387085365,
+      -0.036178974906133754
+     ],
+     "status": "pass"
+    }
+   },
+   "gates_passed": {
+    "A_predictive_routing": false,
+    "B_overload_design": false
+   }
+  },
+  "0.8": {
+   "criteria": {
+    "A_P1_mean_latency_vs_fifo": {
+     "kind": "relative_delta",
+     "point": -0.016007733256723174,
+     "ci95": [
+      -0.031141599638574033,
+      -0.006495249729637629
+     ],
+     "status": "fail"
+    },
+    "A_G1_all_p99_vs_fifo": {
+     "kind": "ratio",
+     "point": 0.9953911131603301,
+     "ci95": [
+      0.9874098065466299,
+      1.000847029163412
+     ],
+     "status": "pass"
+    },
+    "A_G2_long_max_wait_vs_fifo": {
+     "kind": "ratio",
+     "point": 1.005437899181975,
+     "ci95": [
+      0.9979822194420065,
+      1.0168230958329825
+     ],
+     "status": "pass"
+    },
+    "B_P1_mean_latency_vs_fifo": {
+     "kind": "relative_delta",
+     "point": -0.15798251237374936,
+     "ci95": [
+      -0.251066818401171,
+      -0.09133620500919125
+     ],
+     "status": "pass"
+    },
+    "B_G1_all_p99_vs_fifo": {
+     "kind": "ratio",
+     "point": 1.0003010282578584,
+     "ci95": [
+      0.9668872090274779,
+      1.0364715058610592
+     ],
+     "status": "pass"
+    },
+    "B_G2_long_max_wait_vs_fifo": {
+     "kind": "ratio",
+     "point": 1.0477146545852205,
+     "ci95": [
+      1.0265603708442654,
+      1.084705435031668
+     ],
+     "status": "pass"
+    },
+    "S1_short_p50_vs_fifo": {
+     "kind": "relative_delta",
+     "point": -0.0006021588959532402,
+     "ci95": [
+      -0.001789511996391476,
+      0.0
+     ],
+     "status": "fail"
+    },
+    "S2_vs_static_history_noninferior": {
+     "kind": "relative_delta",
+     "point": -0.001483610156972273,
+     "ci95": [
+      -0.009735787099980377,
+      0.007193381123997865
+     ],
+     "status": "pass"
+    },
+    "S3_beats_static_random": {
+     "kind": "relative_delta",
+     "point": -0.02056319297238847,
+     "ci95": [
+      -0.04235731590799897,
+      -0.007911027119650733
+     ],
+     "status": "pass"
+    },
+    "S4_cold_start_vs_fifo": {
+     "kind": "relative_delta",
+     "point": -0.01595204645591836,
+     "ci95": [
+      -0.031029901624340557,
+      -0.006456590040035722
+     ],
+     "status": "fail"
+    },
+    "S5_oracle_vs_fifo": {
+     "kind": "relative_delta",
+     "point": -0.023546626556804125,
+     "ci95": [
+      -0.04077190110476928,
+      -0.010927811103164337
+     ],
+     "status": "fail"
+    },
+    "S6_oracle_weights_pausing_vs_fifo": {
+     "kind": "relative_delta",
+     "point": -0.2404417372502804,
+     "ci95": [
+      -0.34326173043246594,
+      -0.1311980725662093
+     ],
+     "status": "pass"
+    },
+    "S7_weights_pausing_vs_predictive_warm": {
+     "kind": "relative_delta",
+     "point": -0.1466588241210528,
+     "ci95": [
+      -0.23798664649336204,
+      -0.08097152813098907
+     ],
+     "status": "pass"
+    }
+   },
+   "gates_passed": {
+    "A_predictive_routing": false,
+    "B_overload_design": true
+   }
+  },
+  "0.95": {
+   "criteria": {
+    "A_P1_mean_latency_vs_fifo": {
+     "kind": "relative_delta",
+     "point": -0.022970545422876295,
+     "ci95": [
+      -0.03998852875130938,
+      -0.011371725999958707
+     ],
+     "status": "fail"
+    },
+    "A_G1_all_p99_vs_fifo": {
+     "kind": "ratio",
+     "point": 0.9890592311803426,
+     "ci95": [
+      0.974236670041589,
+      0.9971674793047904
+     ],
+     "status": "pass"
+    },
+    "A_G2_long_max_wait_vs_fifo": {
+     "kind": "ratio",
+     "point": 1.0286619708084304,
+     "ci95": [
+      1.0046738565008482,
+      1.0502389325662775
+     ],
+     "status": "pass"
+    },
+    "B_P1_mean_latency_vs_fifo": {
+     "kind": "relative_delta",
+     "point": -0.17853618969969728,
+     "ci95": [
+      -0.2750058960248687,
+      -0.1170878174955642
+     ],
+     "status": "pass"
+    },
+    "B_G1_all_p99_vs_fifo": {
+     "kind": "ratio",
+     "point": 1.0115946608238702,
+     "ci95": [
+      0.9868265345810755,
+      1.0478481706421845
+     ],
+     "status": "pass"
+    },
+    "B_G2_long_max_wait_vs_fifo": {
+     "kind": "ratio",
+     "point": 1.0775480102680637,
+     "ci95": [
+      1.0439937881413157,
+      1.1087218008940203
+     ],
+     "status": "pass"
+    },
+    "S1_short_p50_vs_fifo": {
+     "kind": "relative_delta",
+     "point": -0.027222957843819055,
+     "ci95": [
+      -0.07434972171030418,
+      -0.0002865144174973989
+     ],
+     "status": "fail"
+    },
+    "S2_vs_static_history_noninferior": {
+     "kind": "relative_delta",
+     "point": 0.0015965861906404842,
+     "ci95": [
+      -0.007016838965204623,
+      0.010858567030272808
+     ],
+     "status": "pass"
+    },
+    "S3_beats_static_random": {
+     "kind": "relative_delta",
+     "point": -0.02878344802341991,
+     "ci95": [
+      -0.05313012514393207,
+      -0.013461954698707404
+     ],
+     "status": "pass"
+    },
+    "S4_cold_start_vs_fifo": {
+     "kind": "relative_delta",
+     "point": -0.02296346153987005,
+     "ci95": [
+      -0.03997680577533303,
+      -0.01135906645050738
+     ],
+     "status": "fail"
+    },
+    "S5_oracle_vs_fifo": {
+     "kind": "relative_delta",
+     "point": -0.032844882357810176,
+     "ci95": [
+      -0.05376005347381511,
+      -0.016802139079545805
+     ],
+     "status": "fail"
+    },
+    "S6_oracle_weights_pausing_vs_fifo": {
+     "kind": "relative_delta",
+     "point": -0.2728700061390717,
+     "ci95": [
+      -0.3726540478406228,
+      -0.1672754199541441
+     ],
+     "status": "pass"
+    },
+    "S7_weights_pausing_vs_predictive_warm": {
+     "kind": "relative_delta",
+     "point": -0.16102549534066768,
+     "ci95": [
+      -0.25695815556279233,
+      -0.098160924982464
+     ],
+     "status": "pass"
+    }
+   },
+   "gates_passed": {
+    "A_predictive_routing": false,
+    "B_overload_design": true
+   }
+  }
+ }
+}
