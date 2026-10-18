@@ -1,7 +1,7 @@
 \section{Results}\label{sec:results}
 
 We begin where the design was meant to work, a shared job queue whose job types differ in cost. In the production-flow
-benchmark, predictive routing passed its pre-registered gate (Table~\ref{tab:prodflow}). Against FIFO it reduced mean latency
+benchmark, predictive routing passed its pre-registered gate (\Cref{fig:prodflow}; criteria and bars in \Cref{tab:prodflow}, \Cref{app:criteria}). Against FIFO it reduced mean latency
 by \VTwoMeanVsFifoAbs{} and the median latency of short jobs by \VTwoShortPFiftyVsFifoAbs{}, while all-message P99 stayed within
 \VTwoPNinetyNine{} of FIFO's and no work was lost. It also did better than what an operator would have done. Compared with a
 hand-tuned static map it was \VTwoVsTunedAbs{} lower in mean latency, and compared with the plausible but misconfigured map it
@@ -11,24 +11,43 @@ reproduced every verdict, with a mean reduction of \EOneMeanVsFifoAbs{} and a sh
 \EOneShortPFiftyVsFifoAbs{}. The predictor also sat close to its ceiling: locally the oracle arm was no faster than the predictive arm, and on AWS the oracle's median mean
 latency was 32\% below FIFO's against 29\% for the predictor.
 
-\input{generated/tab_prodflow}
+\begin{figure}[t]
+  \centering
+  \input{figures/prodflow}
+  \caption{Production-flow benchmark: change in latency against each comparison, in a local quiet-machine re-run and its replication on AWS. Bars are paired point estimates over five seeds and whiskers are 95\% bootstrap intervals; for P99 and maximum wait the bar is the ratio minus one. Every criterion met its pre-registered bar in both runs (\Cref{tab:prodflow}).}\label{fig:prodflow}
+\end{figure}
+
+The gain is not shared evenly, and the figure by job class shows who pays (\Cref{fig:perclass}). Ordered by their median service time, the cheap classes (\texttt{reindex\_product}, \texttt{generate\_invoice}) went from waiting hundreds of milliseconds to seconds at the median to tens of milliseconds, and their P99 fell by about \PerClassCheapPNinetyNineCut{}. The classes in the middle, whose handlers take tens of milliseconds, did worse at the median than under FIFO: \texttt{send\_sms}, \texttt{send\_order\_email} and \texttt{deliver\_webhook} each waited \PerClassMidMin{} to \PerClassMidMax{} longer at P50. That is the price of putting short work first, and it is paid by jobs that are only moderately long. \texttt{export\_report}, the one genuinely long class, was close to unchanged. Across five seeds the whiskers are wide for several mid-cost classes, so we read the direction of these effects and not their size.
+
+\begin{figure}[t]
+  \centering
+  \input{figures/perclass}
+  \caption{Per-class latency in the AWS production flow, FIFO beside predictive routing, with classes ordered by median service time (cheapest first). The axis is logarithmic. Predictive routing cuts the median of the cheap classes by one to two orders of magnitude and their P99 by about half, raises the median of the three mid-cost classes, and leaves the one long class about where it was.}\label{fig:perclass}
+\end{figure}
+
+The mean over a whole run is dominated by the flash sale, where FIFO's mean latency is tens of seconds, so \Cref{tab:phases} breaks it down by phase. The gain is not confined to overload. In the steady phase, at about sixty percent load and with waits of tens of milliseconds, predictive routing cut mean latency by \PhaseSteadyAWS{} on AWS and \PhaseSteadyLocal{} locally, and in every phase and for every seed it was below FIFO. The largest absolute savings, in seconds, come from the flash sale and the recovery that follows it. These rows are descriptive and are not separate pre-registered criteria.
+
+\input{generated/tab_phases}
 
 The result does not depend on the broker being ours. Run against RabbitMQ and Redis on the same workload
-(Table~\ref{tab:brokers}), \sys{}'s predictive arm reduced mean latency by \EThreeVsRabbitAbs{} against RabbitMQ with FIFO and by
+(\Cref{fig:brokers}, \Cref{tab:brokers}), \sys{}'s predictive arm reduced mean latency by \EThreeVsRabbitAbs{} against RabbitMQ with FIFO and by
 \EThreeVsRedisAbs{} against Redis with FIFO, and the gate passed. The margin was smaller than we had predicted, partly
 because \sys{}'s own FIFO arm was \EThreeFifoGapAbs{} slower than RabbitMQ's, just outside the pre-registered equivalence bar:
 the broker adds latency of its own under this load. The more telling result is what happens when the predictor leaves
 \sys{} behind. Running beside RabbitMQ as a sidecar that sets message priorities, it cut mean latency by \EThreeSidecarAbs{},
-well beyond what it achieved inside \sys{}. A plausible reason is that RabbitMQ's priorities never age, so short jobs stay
-ahead through the whole flash sale, while \sys{}'s default aging eventually lifts waiting long jobs back to the top;
-consistent with this, \sys{} with weights and pausing aging cut mean latency by \EThreeWeightedAbs{}, at the price of an all-message P99 of \EThreeWeightedPNinetyNine{} RabbitMQ FIFO's. The experiment does not isolate aging,
-so this is an explanation and not a measurement. It also shows the price of aging's absence: static priorities without
+well beyond what it achieved inside \sys{}. The reason is aging. RabbitMQ's priorities never age, so short jobs stay
+ahead through the whole flash sale, while \sys{}'s default aging eventually lifts waiting long jobs back to the top. This experiment does not isolate it, but a later one does (\Cref{sec:agingoff}):
+with aging switched off, predictive routing inside \sys{} cut mean latency by \BaseNoAgingVsFifoAbs{} against FIFO on the same workload, the same as the sidecar. With weights and pausing aging \sys{} cut it by \EThreeWeightedAbs{} against RabbitMQ FIFO, at the price of an all-message P99 of \EThreeWeightedPNinetyNine{} RabbitMQ FIFO's. The price of aging's absence is the other way round: static priorities without
 aging made the longest wait of a long job \EThreeStaticLongWait{} that of FIFO. In a separate cost measurement with
 empty handlers, \sys{} delivered about \EFourHarbingerPeak{} messages per second at its limit against \EFourRabbitPeak{} for RabbitMQ and
-\EFourRedisPeak{} for Redis, so it is the slowest of the three. At 5{,}000 messages per second offered it was already at its limit, and at 20{,}000 it fell behind in all five repetitions while RabbitMQ kept up in all five and Redis in three. This matters little against handlers that take milliseconds to
+\EFourRedisPeak{} for Redis, so it is the slowest of the three (RabbitMQ ran with a prefetch of one, which also limits its throughput). At 5{,}000 messages per second offered it was already at its limit, and at 20{,}000 it fell behind in all five repetitions while RabbitMQ kept up in all five and Redis in three. This matters little against handlers that take milliseconds to
 seconds, but it does show up in the FIFO gap above.
 
-\input{generated/tab_brokers}
+\begin{figure}[t]
+  \centering
+  \input{figures/brokers}
+  \caption{Harbinger, RabbitMQ and Redis on the same flash-sale workload on AWS: change in latency against each broker's FIFO arm, with the pre-registered bar marked. Bars are paired point estimates over five seeds and whiskers are 95\% bootstrap intervals; ratios are drawn as ratio minus one, and the RabbitMQ-priority bar runs off the axis at $+$423\%, and its pre-registered bar of $+$100\% is also off the axis. Two criteria missed their bar: Harbinger's own FIFO is slower than RabbitMQ's, and RabbitMQ's strict priority leaves long jobs waiting five times as long as under FIFO (\Cref{tab:brokers}).}\label{fig:brokers}
+\end{figure}
 
 \subsection{Why the mean falls and the tail does not}\label{sec:analysis}
 
@@ -56,18 +75,24 @@ Kleinrock's conservation law \citep{kleinrock1965}. The short class gains by a f
 class loses by a factor of only $1/(1-\rho_s)$, which stays modest when long jobs carry most of the work. Averaged over all jobs, with $p=\lambda_s/(\lambda_s+\lambda_l)$
 the share of jobs that are short, the mean wait relative to FIFO is $(1-p\rho)/(1-\rho_s)$, which is below one exactly when $p\rho>\rho_s$, that is, when the short class's
 share of the jobs exceeds its share of the work. That holds whenever the short class is shorter than average, so the mean always falls, and it falls more the more skewed the sizes are
-(Table~\ref{tab:cobham}). The same equations also say why P99 does not improve. When more than one job in a hundred is long, the all-message
-99th percentile is set by long jobs, and Equation~\eqref{eq:ratios} shows that their wait cannot fall: it rises by a factor of $1/(1-\rho_s)$. This is the shape of the production-flow results
+(\Cref{fig:cobham}). The same equations also say why P99 does not improve. When more than one job in a hundred is long, the all-message
+99th percentile is set by long jobs, and \Cref{eq:ratios} shows that their wait cannot fall: it rises by a factor of $1/(1-\rho_s)$. This is the shape of the production-flow results
 above, a large gain in mean and short-job median with all-message P99 within a few percent of FIFO's.
 
-\input{generated/tab_cobham}
+\begin{figure}[t]
+  \centering
+  \input{figures/cobham}
+  \caption{Mean waiting time under non-preemptive priority relative to FIFO, from the closed forms above, for three mixes of short and long jobs. The short class gains more as load approaches one, the long class loses by a bounded factor, and the all-jobs mean always falls. This is an illustration of the model, not a measurement; the plotted points are tabulated in \Cref{tab:cobham}.}\label{fig:cobham}
+\end{figure}
 
 The model is an idealisation, and the experiments depart from it in three ways that the reader should keep in mind. It assumes one server, whereas the
 broker feeds several workers, and for several servers the analysis gives bounds rather than such a closed form \citep{scully2020gittins}. It assumes Poisson arrivals, whereas the flash sale is a burst. And it assumes perfect classification, whereas
 the predictor makes mistakes. It also describes waiting time, while the latencies we report add each job's service time, which no ordering changes, so the measured reductions are smaller than the waiting-time ratios
 suggest. The model nevertheless sets a bound on what to expect from an ideal order, and we use it that way. On DAS2-fs2, where long jobs carry most of the
 work, an ideal order would have cost them only about a tenth more waiting at load 0.8, yet they waited several times longer. The excess cannot come from reordering as such. The oracle with the same scheduler improved every window there, so
-the likelier source is the predictor's mistakes, which Equation~\eqref{eq:ratios} does not include.
+the likelier source is the predictor's mistakes, which \Cref{eq:ratios} does not include.
+
+\subsection{Long backlogs and the traces}\label{sec:traces}
 
 The benefit shrinks when backlogs last longer. In the thirty-minute run, with the broker on its own host, the reduction in
 mean latency fell to \ETwoMeanAAbs{} and \ETwoMeanBAbs{} in the two repetitions, short of the pre-registered bar. Three of the eight checks failed in all: the short-job median fell by \ETwoShortAAbs{} and \ETwoShortBAbs{}, so the first repetition missed its bar, and the mean after the mid-run cost shift fell by \ETwoShiftAAbs{} and \ETwoShiftBAbs{}, so the first repetition missed that bar by 0.3 points. P99 and
@@ -76,31 +101,28 @@ predictor still cut latency substantially; it was the six-minute flash sale, whi
 and the long recovery after it, that dominated the overall mean. At those waits the default aging promotes nearly every message to the
 top level, so the order barely changes. This is the pattern the traces make explicit.
 
-The simulations show it at its clearest (Table~\ref{tab:traces}). On the two serverless traces, predictive routing as built
-beat FIFO by the pre-registered margin only once, at Huawei with load 0.8, where a reduction of \HuaweiAEightAbs{} is right at the
-threshold. Everywhere else the strict-priority designs with the default aging gained little: on Azure not even the oracle moved mean
-latency by more than \AzureOracleNinetyFiveAbs{} against FIFO, and on Huawei the oracle cut it by \HuaweiOracleEightAbs{} at load 0.8 and the
-predictor by \HuaweiAEightAbs{}. The backlogs are long enough for aging to erase most of the order. With weights and pausing aging the same
-predictor passed five of the six cells, with reductions of \AzureBEightAbs{} on Azure and \HuaweiBEightAbs{} on Huawei at load 0.8 and
-\AzureBNinetyFiveAbs{} and \HuaweiBNinetyFiveAbs{} at 0.95. The cost fell where theory says it should: on Huawei at load 0.8 the
-median short job waited milliseconds instead of seconds, while long jobs waited a little longer and the all-message P99
-stayed within \HuaweiBPNinetyNineEight{} of FIFO. The only failure, at Huawei with load 0.5, is a regime without queueing, in
-which every policy is already at the service time. That the same weighted design works on two serverless providers, and
-that the improvement from adding it over today's aging is a further \HuaweiBVsAEightAbs{} reduction on Huawei and \AzureBVsAEightAbs{} on Azure at load 0.8,
-suggests the aging mechanism, and not the particular predictor, is the lever under sustained overload. Two caveats apply. On Huawei a static map built from the history half's per-key medians matched or beat the predictor at loads 0.8 and 0.95, because Huawei's keys are stable within a day, so the predictor's case there is that it needs no map, not that it out-predicts one. And the Azure figures here differ slightly from those in Section~\ref{sec:weights}, because the common-rules run reads the trace through its converted file and splits history and evaluation windows by time instead of by row count, which moves the load-0.5 reduction from \AgingSimHalfAbs{} to \AzureBHalfAbs{} and across the pre-registered bar.
+The traces show it at its clearest (\Cref{fig:traces}, \Cref{tab:traces}). We replayed the Azure and Huawei traces through the real broker on AWS, with handlers that sleep for each job's recorded duration; this isolates the queueing and leaves out the contention that real work would add. Predictive routing as built, with the default aging, failed its gate in all \ReplayCells{} cells. On Huawei it cut mean latency by \ReplayHuaweiAEightAbs{} at load 0.8 and \ReplayHuaweiANinetyFiveAbs{} at 0.95, short of the pre-registered 15\%, and on Azure by no more than \ReplayAzureANinetyFiveAbs{}. The oracle with the same aging did no better: it cut Huawei's mean by \ReplayHuaweiOracleEightAbs{} at load 0.8 and Azure's by only \ReplayAzureOracleEightAbs{}. The backlogs are long enough for aging to erase most of the order, and \Cref{sec:agingoff} shows that it is aging and not the predictor: with aging switched off the same predictor passes.
 
-\input{generated/tab_traces}
+With weights and pausing aging the same predictor passed its gate at loads 0.8 and 0.95 on both traces and failed at 0.5, four of six cells, with reductions of \ReplayHuaweiBEightAbs{} and \ReplayHuaweiBNinetyFiveAbs{} on Huawei and \ReplayAzureBEightAbs{} and \ReplayAzureBNinetyFiveAbs{} on Azure. The cost fell where theory says it should. On Huawei at load 0.8 the whole-run mean latency fell from \ReplayHuaweiFifoMeanEight{} under FIFO to \ReplayHuaweiWeightedMeanEight{}, and the median latency fell from \ReplayHuaweiFifoMedianEight{} to \ReplayHuaweiWeightedMedianEight{}, while long jobs waited a little longer (their longest wait stayed within \ReplayHuaweiBLongEight{} of FIFO's) and the all-message P99 stayed within \ReplayHuaweiBPNinetyNineEight{}. The failures at load 0.5 are a regime without much queueing, in which every policy is close to the service time. Azure's gain is small in absolute terms and its load-0.8 cell passes by 0.3 points on a single run, so we read Azure's gate B as a pass at the margin; the three Huawei repeats agreed on every cell. That the same weighted design works on two serverless providers, and that adding it over today's aging is a further \ReplayHuaweiBVsAEightAbs{} reduction on Huawei and \ReplayAzureBVsAEightAbs{} on Azure at load 0.8, again says that the aging mechanism, and not the particular predictor, is the lever under sustained overload.
+
+The simulator had predicted this, but only after it was corrected. With seven independent windows it gave gate A one pass and gate B five of the six cells; with 28 windows and a block bootstrap it gave \SimBlockAPassed{} and \SimBlockBPassed{}, exactly what the broker did. The two cells that differ, Huawei's gate A at load 0.8 and Azure's gate B at load 0.5, sat right at a bar (\HuaweiAEight{} and \AzureBHalf{} with seven windows, against $-$15\%), and the finer windows moved them across it. Two caveats apply to the replay. On Huawei a static map built from the history half's per-key medians beat the live predictor, by \ReplayHuaweiVsStaticEightAbs{} in mean latency at load 0.8 and \ReplayHuaweiVsStaticNinetyFiveAbs{} at 0.95 (the two are equal at 0.5), because Huawei's keys are stable within a day, so the predictor's case there is that it needs no map, not that it out-predicts one. And two of the 76 cells lost the broker within seconds of starting, one on each pair of hosts, and were re-run once as pre-registered; both retries are valid, and we do not know the cause (\Cref{sec:limits}).
+
+\begin{figure}[t]
+  \centering
+  \input{figures/traces}
+  \caption{Trace results: mean latency against FIFO at offered loads 0.5, 0.8 and 0.95, for predictive routing as built (gate A) and with worker-time weights and pausing aging (gate B). Azure and Huawei were replayed through the real broker (28 windows, block bootstrap; Huawei pooled over three repeats); LPC-EGEE and DAS2-fs2 were simulated (seven windows). Bars are point estimates and whiskers are 95\% intervals, clipped at $+$100\% with an arrowhead where they run past it (DAS2-fs2 at loads 0.8 and 0.95 reaches $+$213\% and $+$156\%). Solid bars passed their pre-registered gate and outlined bars did not.}\label{fig:traces}
+\end{figure}
 
 What makes the serverless traces work is that their keys recur and are predictable. On Azure a per-key median predicts a
 held-out duration to within a typical factor of \AzurePerKeyErrFactor{}, against \AzureGlobalErrFactor{} for a single global
-median (Table~\ref{tab:predictability}); the keys that carry most jobs are the same functions over and over. The two HPC logs
-are the opposite case, and the results there are the clearest failures in the paper. On LPC-EGEE only \LPCPredictedShare{}
+median (\Cref{tab:predictability}); the keys that carry most jobs are the same functions over and over. The two HPC logs
+are the opposite case, and the results there are the clearest failures in the paper. They are simulations, since we did not replay them (\Cref{sec:limits}), but the simulator matched the broker on the two traces we did replay (\Cref{sec:simreplay}). On LPC-EGEE only \LPCPredictedShare{}
 of the \LPCJobs{} evaluated jobs got a prediction at load 0.8: \LPCColdShare{} belonged to keys that were too new and
 \LPCStaleShare{} to keys whose history had expired. Of those stale-key jobs, \LPCStaleBacklogShare{} had themselves waited
 more than a minute, which suggests that many keys were not idle so much as stuck behind a backlog that delivered no fresh
 completions. Most jobs therefore took the default level, and the weighted design stayed close to FIFO, with mean latency
 \LPCBHalfAbs{} to \LPCBNinetyFiveAbs{} above FIFO's and intervals that included zero. On DAS2-fs2 most jobs did get a prediction, but the predictions were about as good as a global median, and acting on them hurt. At load 0.8 the design with
-weights and pausing aging raised mean latency by \DASBEightAbs{}: short jobs gained several-fold, but long jobs carry most of
+weights and pausing aging raised mean latency by \DASBEightAbs{} on average across the seven windows, an interval of \DASBCIEight{} that includes zero (pooled over all jobs the rise was 44\%): short jobs gained several-fold, but long jobs carry most of
 the work, and they waited several times longer, so that the guardrails failed with the all-message P99 at
 \DASBPNinetyNineEight{} FIFO's and an upper bound of \DASBPNinetyNineUpperEight{}. The oracle with the same scheduler improved every
 window there, with a mean reduction of \DASOracleBEightAbs{}. The scheduler is therefore not the problem. An exploratory diagnosis, run afterwards and not pre-registered, points at the predictor and at the aging time scale. With the predictor's levels and no aging, short jobs gained but medium jobs slowed by 44\% and long jobs waited about twice as long, whereas with the oracle's levels medium jobs became faster. And a pausing rule with a five-second threshold moves thousands of jobs, large mispredicted ones included, upward during waits of hours: with weights and no aging the predictor was 7\% better than FIFO, and with pausing aging 44\% worse. Scaling the aging threshold to the workload was not tested.
@@ -110,9 +132,37 @@ window there, with a mean reduction of \DASOracleBEightAbs{}. The scheduler is t
 Two further results are negative. We tested whether size-binned keys, which split a job type by the size of its input, would
 improve prediction under load. They did improve the predictor's accuracy, but mean latency changed by only \SizeBinsMeanCI{}
 against job-type keys, which missed the pre-registered bar, and for one job type whose cost does not follow its size it got
-\SizeBinsInvoiceAbs{} worse. And before settling on statistics we compared eight online learners, including River models,
+\SizeBinsInvoiceAbs{} worse. The AWS replication agreed: mean latency changed by \SizeBinsAwsMeanCI{}, again short of the bar, and the invoice job was \SizeBinsAwsInvoiceAbs{} worse. And before settling on statistics we compared eight online learners, including River models,
 against per-key statistics and simple baselines offline. None of them passed both quality criteria on every workload, with
-the strict rule that a model be no worse than both baselines everywhere and no tolerance for noise. As Section~\ref{sec:limits}
+the strict rule that a model be no worse than both baselines everywhere and no tolerance for noise. As \Cref{sec:limits}
 says, the workload gave a model little to find, so this is evidence that statistics suffice here, not that learning cannot help.
+
+\subsection{Switching aging off}\label{sec:agingoff}
+
+If aging is what limits the gain, switching it off should recover it. Two experiments test that. On the production flow on AWS, with ten seeds, predictive routing with aging off cut mean latency by \BaseNoAgingVsPredAbs{} against predictive routing with the default aging (interval \BaseNoAgingVsPredCI{}), which puts it \BaseNoAgingVsFifoAbs{} below FIFO, the size of the RabbitMQ sidecar's gain. The cost was a rise against FIFO of \BaseNoAgingPNinetyNineAbs{} in all-message P99 and \BaseNoAgingLongWaitAbs{} in the longest wait of a long job, in runs of five minutes that cannot show starvation. And on Huawei Cloud through the real broker (\Cref{tab:agingreplay}), predictive routing with aging off passed gate A's rules at both loads, with mean latency \AgingReplayNEightAbs{} and \AgingReplayNNinetyFiveAbs{} below FIFO's, where the default aging failed with \AgingReplayAEightAbs{} and \AgingReplayANinetyFiveAbs{}. At load 0.8 the whole-run mean fell from \AgingReplayFifoMeanEight{} under FIFO and \AgingReplayPredMeanEight{} under the default aging to \AgingReplayNoAgingMeanEight{}. The all-message P99 stayed within \AgingReplayNPNinetyNineNinetyFive{} of FIFO's and the longest wait of a long job within \AgingReplayNLongEight{}, and the three repeats agreed. A Huawei cell lasts about twenty-five minutes, so this cannot show starvation over hours either, and aging is the protection against it. The weighted design, which keeps a pausing form of aging, is the safer version of the same fix. This experiment ran on two smaller hosts than the main replay and carries its own FIFO and predictive arms, so its numbers are not tested against the main replay's.
+
+\input{generated/tab_agingreplay}
+
+\subsection{Baselines and ablation}\label{sec:baselines}
+
+A reader's first question is whether the predictor is needed at all. We tested simple alternatives on the production flow on AWS, with ten seeds and readings fixed before the run (\Cref{tab:baselines}). Predictive routing again reduced mean latency by \BaseQOneAbs{} against FIFO and beat the hand-tuned map by \BaseBTwoAbs{}. But a queue per job type, served in equal shares of worker time with no prediction at all, had a mean latency \BasePtfVsPredAbs{} below predictive routing's. Its all-message P99 was \BasePtfPNinetyNineAbs{} higher, because its slowest classes wait longer, and it needs an operator to create one queue per type, which does not scale to the hundreds of keys of a serverless trace. This workload is that design's best case, nine job types of nearly fixed cost, so the predictor's advantage here is that it needs no per-type queues, not that it schedules better. Summarising a key by its mean or its 75th percentile instead of its median made predictive routing \BaseBThreeAbs{} and \BaseBFourAbs{} worse. Removing any one of the four predictor components changed mean latency over the whole run by less than three percent, and the intervals after the cost shift were too wide to decide (\Cref{tab:ablation}). This workload's costs are stable and its keys active, so it cannot show what those components were built for, and we do not claim they help on it.
+
+\input{generated/tab_baselines}
+
+\input{generated/tab_ablation}
+
+\subsection{Parameter sensitivity}\label{sec:sensitivity}
+
+The predictor's and aging's parameters were fixed by judgement. We varied each in turn, in the simulator at load 0.8 on both traces (\Cref{tab:sensitivity}; \SensVariants{} variants including the defaults, with the values listed in the pre-registration). The weighted design's gate was robust: it passed in \SensHuaweiBPassed{} of \SensVariants{} variants on Huawei and \SensAzureBPassed{} on Azure, failing on Azure only with 100 minimum observations and with two levels. Predictive routing as built was fragile. On Azure it passed in \SensAzureAPassed{} variants, and on Huawei its default sits at the bar (\SensHuaweiDefaultA{} against a limit of $-$15\%) and its verdict flips under \SensHuaweiAFlips{} of the other variants. The aging threshold dominates: Huawei's gate-A change is \SensHuaweiAgingAOne{} with a one-second threshold, \SensHuaweiAgingAFive{} at the default five seconds and \SensHuaweiAgingAThirty{} at thirty. These are simulator results. The simulator matched the broker on both traces (\Cref{sec:simreplay}), but we did not rerun the variants through the broker, apart from the extreme of switching aging off above.
+
+\input{generated/tab_sensitivity}
+
+\subsection{The simulator against the real broker}\label{sec:simreplay}
+
+The replay lets us check the simulator on the traces (\Cref{tab:simreplay}). Whole-run mean-latency changes agree to within \SimReplayGapMax{} points in every arm and cell, with a median gap of \SimReplayGapMedian{} points, including the weighted oracle, which both put more than sixty percent below FIFO on Huawei at loads 0.8 and 0.95. That is the opposite of the production flow, where the simulator overstated predictive routing's gain by about \SimValOverstatePct{}. The difference is the handlers: the production flow's do real CPU work on four workers, which the simulator does not model, and the replay's only sleep. So the agreement shows that the simulator's queueing is right, and it does not show that a real application with CPU-bound handlers would match it. The broker's own cost is small at light load: a job on Huawei took a median of \ReplayProbeHuaweiMedian{} (P99 \ReplayProbeHuaweiPNinetyNine{}) longer than its duration, and on Azure \ReplayProbeAzureMedian{} (\ReplayProbeAzurePNinetyNine{}), in trace time.
+
+\input{generated/tab_simreplay}
+
+\subsection{Conditions of the local runs}
 
 The local production-flow figures in this paper, and those for the aging guardrails and the size bins, come from a quiet-machine re-run: the three wall-clock matrices were repeated on a laptop with turbo disabled and the clock capped at 2.3\,GHz, with the same frozen configurations and analysis, and the simulations were re-run too. We use the re-run because its conditions are documented and it was much less noisy. No pre-registered verdict differs from the original runs, and all four simulations reproduced byte for byte. Effect sizes do depend on CPU speed, because job sizes and arrival rates are fixed and a slower CPU is a heavier load. The original local run's kernels were 1.6 to 1.8 times faster than the re-run's, and there the mean fell by 27.9\% against FIFO, the short-job median by 88.4\% and producer-only keys by 15.4\%, against 25.6\%, 57.7\% and 10.5\% here; the longer backlog gives the default aging more to promote, which hurts the short-job median most. Load relative to CPU speed therefore matters as much as the policy, and the AWS replication, whose CPU was about twice as fast as the re-run's, is the independent check.
