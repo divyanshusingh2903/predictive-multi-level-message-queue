@@ -104,7 +104,7 @@ boundaries, and the level is the number of boundaries that the estimate has reac
   \label{eq:level}
 \end{equation}
 so that level $0$, the highest priority, holds the shortest expected jobs and the levels adapt to the workload instead of being set by hand. The lookup costs about a hundred
-nanoseconds in isolation and about two microseconds inside the running broker.
+nanoseconds in isolation and about 2.7 microseconds on average inside the running broker.
 
 \Cref{fig:histogram} shows how the pieces fit on a concrete example. The top panel is the pooled histogram of every key, and its tertiles, shown by the dashed lines, are the two
 boundaries that divide three levels. Below it are four keys. A key whose handlers take a few milliseconds has its median to the left of the first boundary and is routed to the
@@ -197,7 +197,7 @@ again after another threshold, so a message reaches the top level after at most 
 
 This works well when backlogs last seconds, and it is the right behaviour for a queue in which waiting is the exception. It does not work when they last minutes or hours. Then almost every waiting message has waited longer than the threshold, so
 promotion carries each one upward as soon as it is eligible, and the top level fills with work that the predictor had placed lower. The ordering the predictor produced is erased, because all levels converge on one first-in-first-out queue.
-This was the reason the Azure simulation did not pass, and the oracle, which has perfect predictions, did no better. It is also why the opt-in described next exists. \Cref{fig:aging} in the next subsection shows the effect in a small model. The effect is also measured: with aging switched off, predictive routing's mean latency on the production flow fell a further \BaseNoAgingVsPredAbs{}, and on Huawei Cloud through the real broker it passed the gate that it fails with the default aging (\Cref{sec:agingoff}). The price is the protection, since without aging a long job can be passed over indefinitely, which runs of five and twenty-five minutes are too short to show.
+This is the likely reason the Azure simulation did not pass, since the oracle, which has perfect predictions, did no better; we did not switch aging off on Azure, and in the simulator a thirty-second threshold still cut gate A's mean latency by only \SensAzureAgingAThirtyAbs{}. It is also why the opt-in described next exists. \Cref{fig:aging} in the next subsection shows the effect in a small model. The effect is also measured: with aging switched off, predictive routing's mean latency on the production flow fell a further \BaseNoAgingVsPredAbs{}, and on Huawei Cloud through the real broker it passed the gate that it fails with the default aging (\Cref{sec:agingoff}). The price is the protection, since without aging a long job can be passed over indefinitely, which runs of five and twenty-five minutes are too short to show.
 
 \subsection{Weights and pausing aging}\label{sec:weights}
 
