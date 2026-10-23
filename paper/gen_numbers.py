@@ -27,7 +27,8 @@ def pct(c, ci=True):
     s = "$0.0$\\%" if abs(v) < 0.05 else f"{v:+.1f}\\%".replace("-", "$-$").replace("+", "$+$")
     if ci and c.get("ci95"):
         lo, hi = (x * 100 for x in c["ci95"])
-        s += f" [{lo:+.1f}, {hi:+.1f}]".replace("-", "$-$").replace("+", "$+$")
+        end = lambda x: "0.0" if abs(x) < 0.05 else f"{x:+.1f}".replace("-", "$-$").replace("+", "$+$")
+        s += f" [{end(lo)}, {end(hi)}]"
     return s
 
 
@@ -40,6 +41,26 @@ def ratio(c, ci=True):
 
 def verdict(c):
     return {"pass": "\\hbpass{}", "fail": "\\hbfail{}"}.get(c["status"], c["status"])
+
+
+def _signed(v, unit):
+    t = f"{abs(v):.1f}" if unit == "pts" else f"{abs(v):.2f}"
+    sign = "$-$" if v < -0.05 / (1 if unit == "pts" else 10) else "$+$"
+    return f"{sign}{t}" + (" pts" if unit == "pts" else "$\\times$")
+
+
+def margin(c, rule, bar):
+    """Distance from the pre-registered bar, positive when inside it, from the same quantity the pass rule tests:
+    'point' (improvement: the point estimate against the bar), 'upper' (the interval's upper end against the bar),
+    'zero' (the upper end against no change), 'equiv' (the interval's farther end against +-bar)."""
+    point, (lo, hi) = c["point"], c["ci95"]
+    if rule == "point":
+        return _signed((bar - point) * 100, "pts")
+    if rule == "upper":
+        return _signed(bar - hi, "x") if c["kind"] == "ratio" else _signed((bar - hi) * 100, "pts")
+    if rule == "zero":
+        return _signed(-hi * 100, "pts")
+    return _signed((bar - max(abs(lo), abs(hi))) * 100, "pts")
 
 
 macros = []
@@ -64,6 +85,12 @@ for tag, c in (("VTwo", v2), ("EOne", e1)):
     macro(f"{tag}VsTuned", pct(c["S1_vs_static_tuned_noninferior"], ci=False))
     macro(f"{tag}VsMisconf", pct(c["S2_beats_static_misconfigured"], ci=False))
     macro(f"{tag}ZeroConfig", pct(c["S4_zero_config_vs_fifo"], ci=False))
+# Paired per-seed changes against FIFO for the arms the criteria do not report directly (oracle, misconfigured map).
+for _tag, _rel in (("VTwo", "rerun-2026-10-12/v2-prodflow/summary.json"), ("EOne", "v3-aws/e1/summary.json")):
+    _arms = load(_rel)["arms"]
+    _vs_fifo = lambda arm: statistics.mean(_arms[arm][s]["mean_latency_ms"] / _arms["fifo"][s]["mean_latency_ms"] - 1 for s in _arms["fifo"])
+    macro(f"{_tag}OracleVsFifo", pct({"point": _vs_fifo("oracle")}, ci=False))
+    macro(f"{_tag}MisconfVsFifo", pct({"point": _vs_fifo("static_misconfigured")}, ci=False))
 macro("EThreeVsRabbit", pct(e3["P1_mean_vs_rabbitmq_fifo"], ci=False))
 macro("EThreeVsRedis", pct(e3["P3_mean_vs_redis_fifo"], ci=False))
 macro("EThreeSidecar", pct(e3["S3_transfer_rabbitmq_predictive_vs_fifo"], ci=False))
@@ -103,36 +130,41 @@ def table(caption, label, header, rows, spec, rules=(), size="small", place="t")
 
 
 rows = []
-for key, name, fn, bar in [
-    ("P1_mean_latency_vs_fifo", "P1 mean vs FIFO", pct, "$\\le -15\\%$"),
-    ("P2_short_class_p50_vs_fifo", "P2 short-class P50 vs FIFO", pct, "$\\le -30\\%$"),
-    ("G1_all_p99_vs_fifo", "G1 all-message P99 vs FIFO", ratio, "$\\le 1.25\\times$"),
-    ("G2_long_class_max_wait", "G2 long-class max wait vs FIFO", ratio, "$\\le 2\\times$"),
-    ("S1_vs_static_tuned_noninferior", "S1 vs hand-tuned static", pct, "$\\le +10\\%$"),
-    ("S2_beats_static_misconfigured", "S2 vs misconfigured static", pct, "---"),
-    ("S4_zero_config_vs_fifo", "S4 producer-only keys vs FIFO", pct, "$\\le -5\\%$"),
+for key, name, fn, bar, mr in [
+    ("P1_mean_latency_vs_fifo", "P1 mean vs FIFO", pct, "$\\le -15\\%$", ("point", -0.15)),
+    ("P2_short_class_p50_vs_fifo", "P2 short-class P50 vs FIFO", pct, "$\\le -30\\%$", ("point", -0.30)),
+    ("G1_all_p99_vs_fifo", "G1 all-message P99 vs FIFO", ratio, "$\\le 1.25\\times$", ("upper", 1.25)),
+    ("G2_long_class_max_wait", "G2 long max wait vs FIFO", ratio, "$\\le 2\\times$", ("upper", 2.0)),
+    ("S1_vs_static_tuned_noninferior", "S1 vs hand-tuned static", pct, "$\\le +10\\%$", ("upper", 0.10)),
+    ("S2_beats_static_misconfigured", "S2 vs misconfigured static", pct, "interval $<0$", ("zero", 0.0)),
+    ("S4_zero_config_vs_fifo", "S4 producer keys vs FIFO", pct, "$\\le -5\\%$", ("point", -0.05)),
 ]:
-    rows.append([name, bar, fn(v2[key]), verdict(v2[key]), fn(e1[key]), verdict(e1[key])])
+    rows.append([name, bar, fn(v2[key]), margin(v2[key], *mr), verdict(v2[key]),
+                 fn(e1[key]), margin(e1[key], *mr), verdict(e1[key])])
 table("Production-flow benchmark: local quiet-machine re-run and its replication on AWS. "
-      " Point estimates with 95\\% bootstrap intervals, paired over five seeds.",
-      "tab:prodflow", [["Criterion", "Bar", "\\multicolumn{2}{c}{\\textbf{Local run}}", "\\multicolumn{2}{c}{\\textbf{AWS replication}}"]],
-      rows, "Llrcrc", rules=("\\cmidrule(lr){3-4}", "\\cmidrule(lr){5-6}"), size="footnotesize", place="H")
+      " Point estimates with 95\\% bootstrap intervals, paired over five seeds. "
+      "Margin is the distance inside the bar (negative: outside), taken at the quantity the rule tests: the point estimate for the "
+      "improvement bars (P1, P2, S4), the interval's upper end for the guardrails and S1, and the upper end against zero for S2.",
+      "tab:prodflow", [["Criterion", "Bar", "\\multicolumn{3}{c}{\\textbf{Local run}}", "\\multicolumn{3}{c}{\\textbf{AWS replication}}"],
+                       ["", "", "Estimate [95\\% CI]", "Margin", "Result", "Estimate [95\\% CI]", "Margin", "Result"]],
+      rows, "Llrrcrrc", rules=("\\cmidrule(lr){3-5}", "\\cmidrule(lr){6-8}"), size="scriptsize\\setlength{\\tabcolsep}{3.5pt}", place="H")
 
 rows = []
-for key, name, fn, bar in [
-    ("P1_mean_vs_rabbitmq_fifo", "P1 mean vs RabbitMQ FIFO", pct, "$\\le -15\\%$"),
-    ("P3_mean_vs_redis_fifo", "P3 mean vs Redis FIFO", pct, "$\\le -15\\%$"),
-    ("P2_short_p50_vs_rabbitmq_fifo", "P2 short-class P50 vs RabbitMQ FIFO", pct, "$\\le -30\\%$"),
-    ("G1_all_p99_vs_rabbitmq_fifo", "G1 all-message P99 vs RabbitMQ FIFO", ratio, "$\\le 1.25\\times$"),
-    ("S1_fifo_equivalence_rabbitmq", "S1 Harbinger FIFO vs RabbitMQ FIFO", pct, "$\\pm 10\\%$"),
-    ("S3_transfer_rabbitmq_predictive_vs_fifo", "S3 sidecar on RabbitMQ vs RabbitMQ FIFO", pct, "$\\le -15\\%$"),
-    ("S6_weighted_mean_vs_rabbitmq_fifo", "S6 weighted aging vs RabbitMQ FIFO", pct, "$\\le -15\\%$"),
-    ("S8_rabbitmq_priority_long_wait_vs_fifo", "S8 RabbitMQ priority, long-class max wait", ratio, "$\\le 2\\times$"),
+for key, name, fn, bar, mr in [
+    ("P1_mean_vs_rabbitmq_fifo", "P1 mean vs RabbitMQ FIFO", pct, "$\\le -15\\%$", ("point", -0.15)),
+    ("P3_mean_vs_redis_fifo", "P3 mean vs Redis FIFO", pct, "$\\le -15\\%$", ("point", -0.15)),
+    ("P2_short_p50_vs_rabbitmq_fifo", "P2 short-class P50 vs RabbitMQ FIFO", pct, "$\\le -30\\%$", ("point", -0.30)),
+    ("G1_all_p99_vs_rabbitmq_fifo", "G1 all-message P99 vs RabbitMQ FIFO", ratio, "$\\le 1.25\\times$", ("upper", 1.25)),
+    ("S1_fifo_equivalence_rabbitmq", "S1 Harbinger FIFO vs RabbitMQ FIFO", pct, "$\\pm 10\\%$", ("equiv", 0.10)),
+    ("S3_transfer_rabbitmq_predictive_vs_fifo", "S3 sidecar on RabbitMQ vs RabbitMQ FIFO", pct, "$\\le -15\\%$", ("point", -0.15)),
+    ("S6_weighted_mean_vs_rabbitmq_fifo", "S6 weighted aging vs RabbitMQ FIFO", pct, "$\\le -15\\%$", ("point", -0.15)),
+    ("S8_rabbitmq_priority_long_wait_vs_fifo", "S8 RabbitMQ priority, long-class max wait", ratio, "$\\le 2\\times$", ("upper", 2.0)),
 ]:
     c = e3[key]
-    rows.append([name, bar, (ratio if c["kind"] == "ratio" else pct)(c), verdict(c)])
-table("Harbinger against RabbitMQ and Redis on the same workload, on AWS.",
-      "tab:brokers", ["Criterion", "Bar", "Estimate [95\\% CI]", "Result"], rows, "Llrc", size="footnotesize", place="H")
+    rows.append([name, bar, (ratio if c["kind"] == "ratio" else pct)(c), margin(c, *mr), verdict(c)])
+table("Harbinger against RabbitMQ and Redis on the same workload, on AWS. Margin is the distance inside the bar (negative: outside), "
+      "as in \\Cref{tab:prodflow}; for the equivalence bar S1 it is the distance of the interval's farther end from the limit.",
+      "tab:brokers", ["Criterion", "Bar", "Estimate [95\\% CI]", "Margin", "Result"], rows, "Llrrc", size="footnotesize", place="H")
 
 
 def trace_rows(name, summ):
@@ -142,8 +174,11 @@ def trace_rows(name, summ):
         cr = ev["criteria"]
         a, b = cr["A_P1_mean_latency_vs_fifo"], cr["B_P1_mean_latency_vs_fifo"]
         g = ev["gates_passed"]
-        rows.append([name, load_, pct(a, ci=False), "\\hbyes{}" if g["A_predictive_routing"] else "\\hbno{}",
-                     pct(b, ci=False), "\\hbyes{}" if g["B_overload_design"] else "\\hbno{}"])
+        cells = []
+        for c, gk in ((a, "A_predictive_routing"), (b, "B_overload_design")):
+            est = "$0.0$\\% (none)" if max(abs(c["point"]), *map(abs, c["ci95"])) < 0.0005 else pct(c)
+            cells += [est, margin(c, "point", -0.15), "\\hbyes{}" if g[gk] else "\\hbno{}"]
+        rows.append([name, load_] + cells)
     return rows
 
 
@@ -161,18 +196,21 @@ for name, summ in [("Azure 2021, replay", _replay_eval("v4-replay/azure2021")),
 table("Trace results, mean latency against FIFO and whether each pre-registered gate passed. "
       "Azure and Huawei were replayed through the real broker on AWS (28 windows, block bootstrap, Huawei pooled over three repeats); "
       "the two research-cluster logs were simulated (seven windows). "
-      "A: predictive routing as built. B: with worker-time weights and pausing aging.",
-      "tab:traces", [["", "", "\\multicolumn{2}{c}{\\textbf{Gate A: strict priority}}", "\\multicolumn{2}{c}{\\textbf{Gate B: weights, pausing aging}}"],
-                     ["Trace", "Load", "Mean vs FIFO", "Passed", "Mean vs FIFO", "Passed"]],
-      rows, "llrcrc", rules=("\\cmidrule(lr){3-4}", "\\cmidrule(lr){5-6}"), place="H")
+      "A: predictive routing as built. B: with worker-time weights and pausing aging. "
+      "Mean vs FIFO is the average of the per-window paired changes, as gated; the whole-run changes of \\Cref{tab:simreplay} differ (\\Cref{sec:method}). "
+      "Margin is how many points the point estimate lies beyond the $-15\\%$ bar (negative: short of it); a pass also needs the interval to exclude zero and the guardrails to hold, "
+      "so a positive margin is not by itself a pass, and the upper end of the interval is the cut the data support with confidence.",
+      "tab:traces", [["", "", "\\multicolumn{3}{c}{\\textbf{Gate A: strict priority}}", "\\multicolumn{3}{c}{\\textbf{Gate B: weights, pausing aging}}"],
+                     ["Trace", "Load", "Change [95\\% CI]", "Margin", "Passed", "Change [95\\% CI]", "Margin", "Passed"]],
+      rows, "llrrcrrc", rules=("\\cmidrule(lr){3-5}", "\\cmidrule(lr){6-8}"), size="scriptsize\\setlength{\\tabcolsep}{3.5pt}", place="H")
 rows = []
 for name, rel in [("Azure 2021", "v3-traces/azure2021"), ("Huawei 2025", "v3-traces/huawei2025-r5")]:
     rows += trace_rows(name, load(rel + "/summary.json"))
 table("The same two traces in the simulator, as first run (seven independent windows), before the replay. "
-      "Gate A passed in one of six cells and gate B in five.",
-      "tab:tracessim", [["", "", "\\multicolumn{2}{c}{\\textbf{Gate A: strict priority}}", "\\multicolumn{2}{c}{\\textbf{Gate B: weights, pausing aging}}"],
-                        ["Trace", "Load", "Mean vs FIFO", "Passed", "Mean vs FIFO", "Passed"]],
-      rows, "llrcrc", rules=("\\cmidrule(lr){3-4}", "\\cmidrule(lr){5-6}"), place="H")
+      "Gate A passed in one of six cells and gate B in five. Margin as in \\Cref{tab:traces}.",
+      "tab:tracessim", [["", "", "\\multicolumn{3}{c}{\\textbf{Gate A: strict priority}}", "\\multicolumn{3}{c}{\\textbf{Gate B: weights, pausing aging}}"],
+                        ["Trace", "Load", "Change [95\\% CI]", "Margin", "Passed", "Change [95\\% CI]", "Margin", "Passed"]],
+      rows, "llrrcrrc", rules=("\\cmidrule(lr){3-5}", "\\cmidrule(lr){6-8}"), size="scriptsize\\setlength{\\tabcolsep}{3.5pt}", place="H")
 
 pr = load("azure2021/predictability.json")["held_out"]
 rows = [
@@ -183,7 +221,7 @@ rows = [
 ]
 table("Predicting held-out Azure Functions durations: median absolute $\\log_2$ error, share within a factor of 2, "
       "and tier accuracy.", "tab:predictability", ["Predictor", "Median $|\\log_2|$ error", "Within 2$\\times$", "Tier acc."],
-      rows, "Lrrr")
+      rows, "Lrrr", place="H")
 macro("AzureGlobalErrFactor", f"{2 ** pr['global_median']['median_abs_log2_error']:.0f}")
 macro("AzurePerKeyErrFactor", f"{2 ** pr['per_key_median_all_keys']['median_abs_log2_error']:.1f}")
 
@@ -440,12 +478,15 @@ for ds, rs in _replay.items():
             else:
                 cell += ["---", "---"]
         _sr_rows.append([f"{ds}", ld] + cell)
-table("Mean-latency change against FIFO over each whole run, measured through the real broker and predicted by the simulator, "
+table("Mean-latency change against FIFO over each whole run (the mean over all jobs of the evaluation half, not the window average of \\Cref{tab:traces}), measured through the real broker and predicted by the simulator, "
       "for the same arms, traces and loads. Azure's strict-priority arm is omitted because it changes nothing in either (a few hundredths of a point), "
       "and the weighted oracle ran at load 0.8 on Azure only.",
       "tab:simreplay", [["", "", "\\multicolumn{2}{c}{\\textbf{Predictive}}", "\\multicolumn{2}{c}{\\textbf{Weighted}}", "\\multicolumn{2}{c}{\\textbf{Weighted oracle}}"],
                         ["Trace", "Load", "Replay", "Simulator", "Replay", "Simulator", "Replay", "Simulator"]],
       _sr_rows, "llrrrrrr", rules=("\\cmidrule(lr){3-4}", "\\cmidrule(lr){5-6}", "\\cmidrule(lr){7-8}"), size="footnotesize", place="H")
+for _ds in ("Azure", "Huawei"):
+    for _ld, _w in (("0.8", "Eight"), ("0.95", "NinetyFive")):
+        macro(f"Replay{_ds}WholeB{_w}", pct({"point": _replay[_ds]["simulator_comparison"][_ld]["mean_latency_change"][ARMS_W]["replay"]}, ci=False))
 macro("SimReplayGapMax", f"{max(_gaps):.1f}")
 macro("SimReplayGapMedian", f"{statistics.median(_gaps):.1f}")
 # the original seven-window simulator verdicts and the 28-window re-estimate, to count the cells
@@ -527,7 +568,7 @@ table("Aging switched off, Huawei Cloud replayed through the real broker (three 
       "Default aging is gate A; the same predictor with aging off is gate N, with the same three rules.",
       "tab:agingreplay", [["", "\\multicolumn{2}{c}{\\textbf{Default aging (gate A)}}", "\\multicolumn{2}{c}{\\textbf{Aging off (gate N)}}", "", "\\multicolumn{2}{c}{\\textbf{Gate N guardrails}}"],
                           ["Load", "Mean vs FIFO", "Passed", "Mean vs FIFO", "Passed", "Off vs default", "P99", "Long wait"]],
-      rows, "lrcrcrrr", rules=("\\cmidrule(lr){2-3}", "\\cmidrule(lr){4-5}", "\\cmidrule(lr){7-8}"), size="scriptsize", place="H")
+      rows, "lrcrcrrr", rules=("\\cmidrule(lr){2-3}", "\\cmidrule(lr){4-5}", "\\cmidrule(lr){7-8}"), size="scriptsize\\setlength{\\tabcolsep}{3.5pt}", place="H")
 
 
 # ---- parameter sensitivity in the simulator (v4-sensitivity-1) ------------------------------------------------

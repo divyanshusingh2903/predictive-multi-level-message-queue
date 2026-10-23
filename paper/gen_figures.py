@@ -242,8 +242,17 @@ def prodflow_figure():
     Whiskers are the 95% bootstrap intervals the table reports.
     """
     ev = lambda rel: json.loads((RES / rel).read_text())["evaluation"]["criteria"]
-    runs = (("Local run", "hbslate!55", ev("rerun-2026-10-12/v2-prodflow/summary.json")),
-            ("AWS replication", "hbink", ev("v3-aws/e1/summary.json")))
+    arms = lambda rel: json.loads((RES / rel).read_text())["arms"]
+    runs = (("Local run", "hbslate!55", ev("rerun-2026-10-12/v2-prodflow/summary.json"), arms("rerun-2026-10-12/v2-prodflow/summary.json")),
+            ("AWS replication", "hbink", ev("v3-aws/e1/summary.json"), arms("v3-aws/e1/summary.json")))
+    # (arm, baseline, metric) behind each criterion, to draw every seed's own paired value
+    seeds_of = {"P1_mean_latency_vs_fifo": ("predictive", "fifo", "mean_latency_ms"),
+                "P2_short_class_p50_vs_fifo": ("predictive", "fifo", "short_p50_ms"),
+                "G1_all_p99_vs_fifo": ("predictive", "fifo", "p99_latency_ms"),
+                "G2_long_class_max_wait": ("predictive", "fifo", "long_max_wait_ms"),
+                "S1_vs_static_tuned_noninferior": ("predictive", "static_tuned", "mean_latency_ms"),
+                "S2_beats_static_misconfigured": ("predictive", "static_misconfigured", "mean_latency_ms"),
+                "S4_zero_config_vs_fifo": ("predictive_producer", "fifo", "mean_latency_ms")}
     rows = [("P1_mean_latency_vs_fifo", "Mean latency vs FIFO"),
             ("P2_short_class_p50_vs_fifo", "Short-job median vs FIFO"),
             ("G1_all_p99_vs_fifo", "All-message P99 vs FIFO"),
@@ -273,7 +282,7 @@ def prodflow_figure():
     for i, (key, label) in enumerate(rows):
         yc = top - (i + 0.5) * gh
         lines.append(f"  \\node[anchor=east, align=right] at ({x0 - 0.15:.2f},{yc:.2f}) {{{label}}};")
-        for j, (rname, col, crit) in enumerate(runs):
+        for j, (rname, col, crit, arm_tab) in enumerate(runs):
             p, lo, hi = est(crit[key])
             y = yc + (0.5 - j) * (bh + 0.04)
             xa, xb = sorted((zx, zx + p * sc))
@@ -281,13 +290,19 @@ def prodflow_figure():
             lines.append(f"  \\draw[hbink, line width=0.6pt] ({zx + lo * sc:.3f},{y:.3f}) -- ({zx + hi * sc:.3f},{y:.3f});")
             for e in (lo, hi):
                 lines.append(f"  \\draw[hbink, line width=0.6pt] ({zx + e * sc:.3f},{y - 0.07:.3f}) -- ({zx + e * sc:.3f},{y + 0.07:.3f});")
+            arm, base, metric = seeds_of[key]
+            for sd in arm_tab[arm]:
+                v = arm_tab[arm][sd][metric] / arm_tab[base][sd][metric] - 1
+                if lo_ax <= 100 * v <= hi_ax:
+                    lines.append(f"  \\draw[hbink, line width=0.45pt, fill=white] ({zx + 100 * v * sc:.3f},{y:.3f}) circle (0.045);")
             txt = f"{p:+.1f}\\% [{lo:+.1f}, {hi:+.1f}]".replace("-", "$-$").replace("+", "$+$")
             lines.append(f"  \\node[anchor=west, font=\\scriptsize, text={'hbslate' if j == 0 else 'hbink'}] at ({vx:.2f},{y:.3f}) {{{txt}}};")
     ly = top + 0.45
-    for j, (rname, col, _) in enumerate(runs):
+    for j, (rname, col, _, _a) in enumerate(runs):
         lx = x0 + j * 3.4
         lines.append(f"  \\fill[{col}] ({lx:.2f},{ly - 0.1:.2f}) rectangle ({lx + 0.3:.2f},{ly + 0.1:.2f}); \\node[anchor=west, font=\\footnotesize] at ({lx + 0.4:.2f},{ly:.2f}) {{{rname}}};")
     lines.append(f"  \\node[anchor=west, font=\\scriptsize, text=hbslate] at ({vx:.2f},{ly:.2f}) {{estimate [95\\% interval]}};")
+    lines.append(f"  \\draw[hbink, line width=0.45pt, fill=white] ({x0 + 2.4:.2f},-1.0) circle (0.045); \\node[anchor=west, font=\\footnotesize] at ({x0 + 2.55:.2f},-1.0) {{one seed's paired value}};")
     lines.append(f"  \\node[font=\\footnotesize, anchor=north] at ({x0 + (hi_ax - lo_ax) * sc / 2:.2f},-0.45) {{change in latency relative to the comparison (negative is better)}};")
     lines.append("\\end{tikzpicture}}")
     (OUT / "prodflow.tex").write_text("\n".join(lines) + "\n")
@@ -360,80 +375,76 @@ def brokers_figure():
 
 
 def traces_figure():
-    """Grouped vertical bars: mean latency against FIFO in the trace simulations, gate A beside gate B.
+    """Forest plot: mean latency against FIFO for each trace and load, gate A beside gate B.
 
-    Solid bars passed their pre-registered gate, outlined bars did not. Whiskers are 95% intervals, clipped at the
-    top of the axis with an arrowhead where they run past it.
+    One dot per cell with its 95% interval. A filled dot passed its pre-registered gate, a hollow one did not. The
+    dashed line is the -15% bar and the solid line is no change. Intervals are clipped at the axis ends, with an arrowhead.
     """
     # Azure and Huawei come from the real-broker replay (v4-replay-1); the two HPC logs are simulated.
     traces = [("Azure 2021", "replay", "v4-replay/azure2021"), ("Huawei 2025", "replay", "v4-replay/huawei2025-r5"),
               ("LPC-EGEE", "simulation", "v3-traces-2/lpc-egee-2004"), ("DAS2-fs2", "simulation", "v3-traces-2/das2-fs2-2003")]
     loads = ("0.5", "0.8", "0.95")
-    lo_ax, hi_ax = -80, 100
-    sc = 0.034  # cm per percentage point
-    gw, bw = 1.3, 0.46  # group pitch, bar width
-    x0 = 1.7
-    zy = -lo_ax * sc
-    H = (hi_ax - lo_ax) * sc
+    gates = (("A_P1_mean_latency_vs_fifo", "A_predictive_routing", "Gate A: strict priority"),
+             ("B_P1_mean_latency_vs_fifo", "B_overload_design", "Gate B: weights, pausing aging"))
+    lo_ax, hi_ax = -100, 100
+    sc = 0.03                      # cm per percentage point
+    pw = (hi_ax - lo_ax) * sc      # panel width
+    gap = 1.9
+    x_lab = 3.1                    # left of the first panel, where the labels go
+    pitch, tgap = 0.42, 0.3
+    n = len(traces) * len(loads)
+    H = n * pitch + (len(traces) - 1) * tgap
     lines = ["\\resizebox{\\textwidth}{!}{%", "\\begin{tikzpicture}[font=\\small]"]
-    total_w = len(traces) * len(loads) * gw
-    for yt in range(lo_ax, hi_ax + 1, 20):
-        y = (yt - lo_ax) * sc
-        tick = "0\\%" if yt == 0 else (f"$-${abs(yt)}\\%" if yt < 0 else f"$+${yt}\\%")
-        lines.append(f"  \\draw[hbslate!25] ({x0:.2f},{y:.3f}) -- ({x0 + total_w:.2f},{y:.3f});")
-        lines.append(f"  \\node[font=\\scriptsize, text=hbslate, anchor=east] at ({x0 - 0.1:.2f},{y:.3f}) {{{tick}}};")
-    lines.append(f"  \\draw[hbslate, line width=0.7pt] ({x0:.2f},{zy:.3f}) -- ({x0 + total_w:.2f},{zy:.3f});")
+    for k, (ckey, gkey, title) in enumerate(gates):
+        px = x_lab + k * (pw + gap)
+        zx = px + (0 - lo_ax) * sc
+        bx = px + (-15 - lo_ax) * sc
+        for xt in range(lo_ax, hi_ax + 1, 50):
+            x = px + (xt - lo_ax) * sc
+            lines.append(f"  \\draw[hbslate!22] ({x:.3f},0) -- ({x:.3f},{H:.2f});")
+            tick = "0\\%" if xt == 0 else (f"$-${abs(xt)}\\%" if xt < 0 else f"$+${xt}\\%")
+            lines.append(f"  \\node[font=\\scriptsize, text=hbslate, anchor=north] at ({x:.3f},-0.05) {{{tick}}};")
+        lines.append(f"  \\draw[hbslate, line width=0.7pt] ({zx:.3f},0) -- ({zx:.3f},{H:.2f});")
+        lines.append(f"  \\draw[hbslate, dashed, line width=0.8pt] ({bx:.3f},0) -- ({bx:.3f},{H + 0.12:.2f});")
+        lines.append(f"  \\node[font=\\scriptsize, text=hbslate, anchor=south] at ({bx:.3f},{H + 0.12:.2f}) {{bar $-$15\\%}};")
+        lines.append(f"  \\node[font=\\footnotesize\\bfseries, anchor=south] at ({px + pw / 2:.2f},{H + 0.55:.2f}) {{{title}}};")
+        lines.append(f"  \\node[font=\\scriptsize, anchor=north] at ({px + pw / 2:.2f},-0.6) {{mean latency vs FIFO (negative is better)}};")
     for ti, (tname, source, rel) in enumerate(traces):
         if source == "replay":
             ev = json.loads((RES / (rel + "/replay_summary.json")).read_text())["primary_block_bootstrap"]
         else:
             ev = json.loads((RES / (rel + "/summary.json")).read_text())["evaluation"]
+        top = H - ti * (len(loads) * pitch + tgap)
         for li, ld in enumerate(loads):
-            gx = x0 + (ti * len(loads) + li) * gw
-            cr, gp = ev[ld]["criteria"], ev[ld]["gates_passed"]
-            for k, (ckey, gkey, col) in enumerate((("A_P1_mean_latency_vs_fifo", "A_predictive_routing", "hbslate!55"),
-                                                    ("B_P1_mean_latency_vs_fifo", "B_overload_design", "hbink"))):
-                c = cr[ckey]
+            y = top - (li + 0.5) * pitch
+            lines.append(f"  \\node[anchor=east, font=\\scriptsize, text=hbslate] at ({x_lab - 0.15:.2f},{y:.3f}) {{load {ld}}};")
+            for k, (ckey, gkey, _) in enumerate(gates):
+                px = x_lab + k * (pw + gap)
+                c = ev[ld]["criteria"][ckey]
+                passed = ev[ld]["gates_passed"][gkey]
                 p, lo, hi = (100 * v for v in (c["point"], *c["ci95"]))
-                bx = gx + 0.17 + k * (bw + 0.04)
-                ya, yb = sorted((zy, zy + max(lo_ax, min(hi_ax, p)) * sc))
-                if gp[gkey]:
-                    lines.append(f"  \\fill[{col}] ({bx:.3f},{ya:.3f}) rectangle ({bx + bw:.3f},{yb:.3f});")
+                X = lambda v: px + (max(lo_ax, min(hi_ax, v)) - lo_ax) * sc
+                if hi - lo > 0.4:
+                    lines.append(f"  \\draw[hbink, line width=0.7pt] ({X(lo):.3f},{y:.3f}) -- ({X(hi):.3f},{y:.3f});")
+                    for e, past in ((lo, lo < lo_ax), (hi, hi > hi_ax)):
+                        if past:
+                            d = 1 if e > hi_ax else -1
+                            lines.append(f"  \\fill[hbink] ({X(e) + d * 0.1:.3f},{y:.3f}) -- ({X(e) - d * 0.02:.3f},{y + 0.07:.3f}) -- ({X(e) - d * 0.02:.3f},{y - 0.07:.3f}) -- cycle;")
+                        else:
+                            lines.append(f"  \\draw[hbink, line width=0.7pt] ({X(e):.3f},{y - 0.06:.3f}) -- ({X(e):.3f},{y + 0.06:.3f});")
+                if passed:
+                    lines.append(f"  \\fill[hbink] ({X(p):.3f},{y:.3f}) circle (0.085);")
                 else:
-                    lines.append(f"  \\draw[{col}, line width=0.8pt, fill=white] ({bx:.3f},{ya:.3f}) rectangle ({bx + bw:.3f},{yb:.3f});")
-                cx = bx + bw / 2
-                lo_c, hi_c = max(lo_ax, lo), min(hi_ax, hi)
-                if abs(hi_c - lo_c) > 0.3:
-                    lines.append(f"  \\draw[hbink, line width=0.6pt] ({cx:.3f},{zy + lo_c * sc:.3f}) -- ({cx:.3f},{zy + hi_c * sc:.3f});")
-                    if hi <= hi_ax:
-                        lines.append(f"  \\draw[hbink, line width=0.6pt] ({cx - 0.06:.3f},{zy + hi_c * sc:.3f}) -- ({cx + 0.06:.3f},{zy + hi_c * sc:.3f});")
-                    else:
-                        lines.append(f"  \\fill[hbink] ({cx:.3f},{zy + hi_c * sc + 0.1:.3f}) -- ({cx - 0.07:.3f},{zy + hi_c * sc - 0.02:.3f}) -- ({cx + 0.07:.3f},{zy + hi_c * sc - 0.02:.3f}) -- cycle;")
-                    if lo >= lo_ax:
-                        lines.append(f"  \\draw[hbink, line width=0.6pt] ({cx - 0.06:.3f},{zy + lo_c * sc:.3f}) -- ({cx + 0.06:.3f},{zy + lo_c * sc:.3f});")
-                lab = ("$-$" if p < -0.05 else "$+$" if p > 0.05 else "") + f"{abs(p):.0f}" if abs(p) >= 0.5 else "0"
-                if p >= 0:
-                    ly, anc = zy + max(hi_c, p) * sc + (0.14 if hi <= hi_ax else 0.3), "south"
-                else:
-                    ly, anc = zy + min(lo_c, p) * sc - 0.06, "north"
-                if lab != "0" and gp[gkey] and p < 0 and -p * sc > 0.8:
-                    lines.append(f"  \\node[font=\\tiny, text=white, rotate=90, anchor=west] at ({cx - 0.1:.3f},{zy + p * sc + 0.06:.3f}) {{{lab}}};")
-                elif lab != "0":
-                    lines.append(f"  \\node[font=\\tiny, text={'hbink' if gp[gkey] else 'hbslate'}, anchor={anc}] at ({cx:.3f},{ly:.3f}) {{{lab}}};")
-            lines.append(f"  \\node[font=\\scriptsize, text=hbslate, anchor=north] at ({gx + gw / 2 - 0.02:.2f},-0.05) {{{ld}}};")
-        mid = x0 + (ti * len(loads) + len(loads) / 2) * gw
-        lines.append(f"  \\node[font=\\footnotesize\\bfseries, anchor=north] at ({mid:.2f},-0.45) {{{tname}}};")
-        lines.append(f"  \\node[font=\\scriptsize, text=hbslate, anchor=north] at ({mid:.2f},-0.9) {{{source}}};")
+                    lines.append(f"  \\draw[hbink, line width=0.8pt, fill=white] ({X(p):.3f},{y:.3f}) circle (0.085);")
+        mid = top - len(loads) * pitch / 2
+        lines.append(f"  \\node[anchor=east, font=\\footnotesize\\bfseries, align=right] at (1.2,{mid + 0.05:.3f}) {{{tname}}};")
+        lines.append(f"  \\node[anchor=east, font=\\tiny, text=hbslate] at (1.2,{mid - 0.22:.3f}) {{{source}}};")
         if ti:
-            sx = x0 + ti * len(loads) * gw
-            lines.append(f"  \\draw[hbslate!40, dashed] ({sx:.2f},-0.2) -- ({sx:.2f},{H:.2f});")
-    ly = H + 0.95
-    for k, (name, col) in enumerate((("Gate A: strict priority", "hbslate!55"), ("Gate B: weights, pausing aging", "hbink"))):
-        lx = x0 + 0.3 + k * 4.9
-        lines.append(f"  \\fill[{col}] ({lx:.2f},{ly - 0.1:.2f}) rectangle ({lx + 0.3:.2f},{ly + 0.1:.2f}); \\node[anchor=west, font=\\footnotesize] at ({lx + 0.4:.2f},{ly:.2f}) {{{name}}};")
-    lx = x0 + 0.3 + 10.4
-    lines.append(f"  \\draw[hbink, line width=0.8pt, fill=white] ({lx:.2f},{ly - 0.1:.2f}) rectangle ({lx + 0.3:.2f},{ly + 0.1:.2f}); \\node[anchor=west, font=\\footnotesize] at ({lx + 0.4:.2f},{ly:.2f}) {{outlined: gate not passed}};")
-    lines.append(f"  \\node[font=\\footnotesize, rotate=90, anchor=south] at ({x0 - 1.1:.2f},{H / 2:.2f}) {{mean latency vs FIFO}};")
+            lines.append(f"  \\draw[hbslate!35, dashed] (-0.2,{top + tgap / 2:.3f}) -- ({x_lab + 2 * pw + gap:.2f},{top + tgap / 2:.3f});")
+    ly = -1.4
+    lines.append(f"  \\fill[hbink] ({x_lab + 0.2:.2f},{ly:.2f}) circle (0.085); \\node[anchor=west, font=\\footnotesize] at ({x_lab + 0.4:.2f},{ly:.2f}) {{gate passed}};")
+    lines.append(f"  \\draw[hbink, line width=0.8pt, fill=white] ({x_lab + 3.6:.2f},{ly:.2f}) circle (0.085); \\node[anchor=west, font=\\footnotesize] at ({x_lab + 3.8:.2f},{ly:.2f}) {{gate not passed}};")
+    lines.append(f"  \\draw[hbink, line width=0.7pt] ({x_lab + 7.2:.2f},{ly:.2f}) -- ({x_lab + 7.8:.2f},{ly:.2f}); \\node[anchor=west, font=\\footnotesize] at ({x_lab + 7.95:.2f},{ly:.2f}) {{95\\% interval (arrowhead: runs past the axis)}};")
     lines.append("\\end{tikzpicture}}")
     (OUT / "traces.tex").write_text("\n".join(lines) + "\n")
 

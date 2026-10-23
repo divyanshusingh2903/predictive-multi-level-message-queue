@@ -2,7 +2,7 @@
 Learning each message key's duration from the acknowledgements a broker already receives is enough to schedule
 shortest-expected-first without any per-endpoint configuration. On a production-style workload it beats FIFO and hand-tuned
 priorities, and it does so on separate cloud hardware and against RabbitMQ and Redis. But the predictor is not the most important part.
-Under sustained backlogs the broker's default aging erases the order that the predictor produces: predictive routing as built failed in every cell of the Azure and Huawei replays,
-passed on Huawei once aging was switched off, and, with an aging design built for overload, passed in four of six cells. Where job types are few and stable, a queue per type does better on the mean with no
+Under sustained backlogs the broker's default aging appears to erase the order that the predictor produces: predictive routing as built failed in every cell of the Azure and Huawei replays,
+passed on Huawei once aging was switched off (a test we ran on Huawei and the production flow only), and, with an aging design built for overload, passed in four of six cells. Where job types are few and stable, a queue per type does better on the mean with no
 prediction at all, and on one stable trace a static map from history did as well; the predictor's case is that it needs neither. It needs keys that recur and predict well, which serverless functions have and the two HPC logs largely lack, and where keys do not
 predict well, or where long jobs carry most of the work, it does not help and can hurt. We make no claim about tail latency, and learned models remain untested against workloads rich enough to need them.

@@ -19,11 +19,11 @@ Others come from the scheduler. A non-preemptive queue cannot shorten a long job
 all-message tail latency improves; in the production flow it stays within \EOnePNinetyNine{} of FIFO's. The tails of individual classes do move, by about \PerClassCheapPNinetyNineCut{} down for the cheapest classes and by about \PerClassMidPNinetyNineMax{} up for the mid-cost ones (\Cref{fig:perclass}). Where long jobs carry most of the work, favouring short ones can make the overall result worse, as
 the DAS2 log shows. The comparison with a queue per job type is on one workload, which is that design's best case, nine job types of nearly fixed cost; we did not test it where types are many or costs vary within a type. The broker is a prototype with in-memory state and no durability, authentication or backpressure, and it
 had the lowest throughput of the three brokers we measured. The comparison with RabbitMQ is also bounded by our
-configuration: RabbitMQ ran with a prefetch of one, which is how priorities take effect at all, and which limits its
+configuration: RabbitMQ 3.12 ran with classic priority queues and a prefetch of one, which is how priorities take effect at all, and which limits its
 throughput. Kafka, Pulsar, managed queues and durable modes were out of scope, and we did not run Alibaba's GPU traces.
 
 Finally, the code, configurations, pre-registrations and result files are in the repository at
 \url{https://github.com/divyanshusingh2903/predictive-multi-level-message-queue}, with the raw per-message data archived
-outside git and hashed with SHA-256, so that the published files can be checked against them. The version described here is the release tagged \texttt{v0.1.1-preprint}.
+outside git and hashed with SHA-256, so that the published files can be checked against them. The version described here is the release tagged \texttt{v0.2.0-preprint}.
 
-\paragraph{Use of AI assistance.} AI models were involved in the code, in running the tests and benchmarks, and in writing this paper. The models were Claude Sonnet 5.5, Claude Opus 5.5, ChatGPT Sol 6, Sol 6.1 and Luna 6, used through \href{https://claude.com/claude-code}{Claude Code} and through \href{https://divyanshusingh.site/forge}{Forge}, a custom open-source fork of opencode. The author directed the work, reviewed the results and the text, and is responsible for the content.
+\paragraph{Use of AI assistance.} AI models were involved in the code, in running the tests and benchmarks, and in writing this paper. The models were Claude Sonnet 5.5, Claude Opus 5.5, ChatGPT Sol 6, Sol 6.1 and Luna 6, used through \href{https://claude.com/claude-code}{Claude Code} and through \href{https://divyanshusingh.site/forge}{Forge}, a custom open-source fork of \href{https://opencode.ai}{Opencode}. The author directed the work, reviewed the results and the text, and is responsible for the content.
